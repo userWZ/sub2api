@@ -1113,6 +1113,30 @@ export async function updateOverloadCooldownSettings(
   return data;
 }
 
+// ==================== Image Workbench Account Pool ====================
+
+export interface ImageWorkbenchAccountSettings {
+  enabled: boolean;
+  account_ids: number[];
+}
+
+export async function getImageWorkbenchAccountSettings(): Promise<ImageWorkbenchAccountSettings> {
+  const { data } = await apiClient.get<ImageWorkbenchAccountSettings>(
+    "/admin/settings/image-workbench-accounts",
+  );
+  return data;
+}
+
+export async function updateImageWorkbenchAccountSettings(
+  settings: ImageWorkbenchAccountSettings,
+): Promise<ImageWorkbenchAccountSettings> {
+  const { data } = await apiClient.put<ImageWorkbenchAccountSettings>(
+    "/admin/settings/image-workbench-accounts",
+    settings,
+  );
+  return data;
+}
+
 // ==================== 429 Rate Limit Cooldown Settings ====================
 
 export interface RateLimit429CooldownSettings {
@@ -1361,6 +1385,8 @@ export const settingsAPI = {
   deleteAdminApiKey,
   getOverloadCooldownSettings,
   updateOverloadCooldownSettings,
+  getImageWorkbenchAccountSettings,
+  updateImageWorkbenchAccountSettings,
   getRateLimit429CooldownSettings,
   updateRateLimit429CooldownSettings,
   getStreamTimeoutSettings,

@@ -3154,6 +3154,49 @@ func (h *SettingHandler) UpdateOverloadCooldownSettings(c *gin.Context) {
 	})
 }
 
+// GetImageWorkbenchAccountSettings 获取生图工作台账号池配置
+// GET /api/v1/admin/settings/image-workbench-accounts
+func (h *SettingHandler) GetImageWorkbenchAccountSettings(c *gin.Context) {
+	settings, err := h.settingService.GetImageWorkbenchAccountSettings(c.Request.Context())
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+
+	response.Success(c, settings)
+}
+
+type UpdateImageWorkbenchAccountSettingsRequest struct {
+	Enabled    bool    `json:"enabled"`
+	AccountIDs []int64 `json:"account_ids"`
+}
+
+// UpdateImageWorkbenchAccountSettings 更新生图工作台账号池配置
+// PUT /api/v1/admin/settings/image-workbench-accounts
+func (h *SettingHandler) UpdateImageWorkbenchAccountSettings(c *gin.Context) {
+	var req UpdateImageWorkbenchAccountSettingsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Invalid request: "+err.Error())
+		return
+	}
+
+	settings := &service.ImageWorkbenchAccountSettings{
+		Enabled:    req.Enabled,
+		AccountIDs: req.AccountIDs,
+	}
+	if err := h.settingService.SetImageWorkbenchAccountSettings(c.Request.Context(), settings); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+
+	updatedSettings, err := h.settingService.GetImageWorkbenchAccountSettings(c.Request.Context())
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, updatedSettings)
+}
+
 // GetRateLimit429CooldownSettings 获取429默认回避配置
 // GET /api/v1/admin/settings/rate-limit-429-cooldown
 func (h *SettingHandler) GetRateLimit429CooldownSettings(c *gin.Context) {

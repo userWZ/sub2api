@@ -304,6 +304,131 @@
             </div>
           </div>
 
+          <!-- Image Workbench Account Pool Settings -->
+          <div class="card">
+            <div
+              class="border-b border-gray-100 px-6 py-4 dark:border-dark-700"
+            >
+              <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
+                {{ t("admin.settings.imageWorkbenchAccounts.title") }}
+              </h2>
+              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                {{ t("admin.settings.imageWorkbenchAccounts.description") }}
+              </p>
+            </div>
+            <div class="space-y-5 p-6">
+              <div
+                v-if="imageWorkbenchAccountsLoading"
+                class="flex items-center gap-2 text-gray-500"
+              >
+                <div
+                  class="h-4 w-4 animate-spin rounded-full border-b-2 border-primary-600"
+                ></div>
+                {{ t("common.loading") }}
+              </div>
+
+              <template v-else>
+                <div class="flex items-center justify-between gap-4">
+                  <div>
+                    <label class="font-medium text-gray-900 dark:text-white">
+                      {{ t("admin.settings.imageWorkbenchAccounts.enabled") }}
+                    </label>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">
+                      {{
+                        t("admin.settings.imageWorkbenchAccounts.enabledHint")
+                      }}
+                    </p>
+                  </div>
+                  <Toggle v-model="imageWorkbenchAccountForm.enabled" />
+                </div>
+
+                <div
+                  v-if="imageWorkbenchAccountForm.enabled"
+                  class="space-y-4 border-t border-gray-100 pt-4 dark:border-dark-700"
+                >
+                  <div>
+                    <label
+                      class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                    >
+                      {{
+                        t(
+                          "admin.settings.imageWorkbenchAccounts.accountPool",
+                        )
+                      }}
+                    </label>
+                    <select
+                      v-model="imageWorkbenchAccountForm.account_ids"
+                      multiple
+                      class="input min-h-48 w-full"
+                    >
+                      <option
+                        v-for="account in imageWorkbenchOpenAIAccounts"
+                        :key="account.id"
+                        :value="account.id"
+                      >
+                        #{{ account.id }} {{ account.name }} ·
+                        {{ account.type }} · {{ account.status }}
+                      </option>
+                    </select>
+                    <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                      {{ t("admin.settings.imageWorkbenchAccounts.poolHint") }}
+                    </p>
+                  </div>
+
+                  <div
+                    v-if="selectedImageWorkbenchAccounts.length"
+                    class="flex flex-wrap gap-2"
+                  >
+                    <span
+                      v-for="account in selectedImageWorkbenchAccounts"
+                      :key="account.id"
+                      class="inline-flex items-center rounded border border-primary-200 bg-primary-50 px-2 py-1 text-xs font-medium text-primary-700 dark:border-primary-800 dark:bg-primary-900/30 dark:text-primary-200"
+                    >
+                      #{{ account.id }} {{ account.name }}
+                    </span>
+                  </div>
+                </div>
+
+                <div
+                  class="flex justify-end border-t border-gray-100 pt-4 dark:border-dark-700"
+                >
+                  <button
+                    type="button"
+                    @click="saveImageWorkbenchAccountSettings"
+                    :disabled="imageWorkbenchAccountsSaving"
+                    class="btn btn-primary btn-sm"
+                  >
+                    <svg
+                      v-if="imageWorkbenchAccountsSaving"
+                      class="mr-1 h-4 w-4 animate-spin"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        class="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        stroke-width="4"
+                      ></circle>
+                      <path
+                        class="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
+                    </svg>
+                    {{
+                      imageWorkbenchAccountsSaving
+                        ? t("common.saving")
+                        : t("common.save")
+                    }}
+                  </button>
+                </div>
+              </template>
+            </div>
+          </div>
+
           <!-- Rate Limit Cooldown (429) Settings -->
           <div class="card">
             <div
@@ -6976,6 +7101,7 @@ import type {
   WebSearchTestResult,
 } from "@/api/admin/settings";
 import type {
+  Account,
   AdminGroup,
   LoginAgreementDocument,
   NotifyEmailEntry,
@@ -7129,6 +7255,21 @@ const overloadCooldownSaving = ref(false);
 const overloadCooldownForm = reactive({
   enabled: true,
   cooldown_minutes: 10,
+});
+
+// Image Workbench account pool 状态
+const imageWorkbenchAccountsLoading = ref(true);
+const imageWorkbenchAccountsSaving = ref(false);
+const imageWorkbenchOpenAIAccounts = ref<Account[]>([]);
+const imageWorkbenchAccountForm = reactive({
+  enabled: false,
+  account_ids: [] as number[],
+});
+const selectedImageWorkbenchAccounts = computed(() => {
+  const selected = new Set(imageWorkbenchAccountForm.account_ids);
+  return imageWorkbenchOpenAIAccounts.value.filter((account) =>
+    selected.has(account.id),
+  );
 });
 
 // Rate Limit Cooldown (429) 状态
@@ -9288,6 +9429,59 @@ async function saveOverloadCooldownSettings() {
   }
 }
 
+async function loadImageWorkbenchAccountSettings() {
+  imageWorkbenchAccountsLoading.value = true;
+  try {
+    const [settings, accounts] = await Promise.all([
+      adminAPI.settings.getImageWorkbenchAccountSettings(),
+      adminAPI.accounts.list(1, 500, {
+        platform: "openai",
+        status: "active",
+        sort_by: "name",
+        sort_order: "asc",
+      }),
+    ]);
+    imageWorkbenchOpenAIAccounts.value = accounts.items || [];
+    imageWorkbenchAccountForm.enabled = settings.enabled;
+    imageWorkbenchAccountForm.account_ids = Array.isArray(settings.account_ids)
+      ? settings.account_ids.filter((id) => Number.isFinite(id) && id > 0)
+      : [];
+  } catch (_error: unknown) {
+    imageWorkbenchOpenAIAccounts.value = [];
+  } finally {
+    imageWorkbenchAccountsLoading.value = false;
+  }
+}
+
+async function saveImageWorkbenchAccountSettings() {
+  imageWorkbenchAccountsSaving.value = true;
+  try {
+    const accountIDs = Array.from(
+      new Set(
+        imageWorkbenchAccountForm.account_ids
+          .map((id) => Number(id))
+          .filter((id) => Number.isFinite(id) && id > 0),
+      ),
+    );
+    const updated = await adminAPI.settings.updateImageWorkbenchAccountSettings({
+      enabled: imageWorkbenchAccountForm.enabled && accountIDs.length > 0,
+      account_ids: accountIDs,
+    });
+    imageWorkbenchAccountForm.enabled = updated.enabled;
+    imageWorkbenchAccountForm.account_ids = updated.account_ids || [];
+    appStore.showSuccess(t("admin.settings.imageWorkbenchAccounts.saved"));
+  } catch (error: unknown) {
+    appStore.showError(
+      extractApiErrorMessage(
+        error,
+        t("admin.settings.imageWorkbenchAccounts.saveFailed"),
+      ),
+    );
+  } finally {
+    imageWorkbenchAccountsSaving.value = false;
+  }
+}
+
 // Rate Limit Cooldown (429) 方法
 async function loadRateLimit429CooldownSettings() {
   rateLimit429CooldownLoading.value = true;
@@ -9935,6 +10129,7 @@ onMounted(() => {
   loadSubscriptionGroups();
   loadAdminApiKey();
   loadOverloadCooldownSettings();
+  loadImageWorkbenchAccountSettings();
   loadRateLimit429CooldownSettings();
   loadStreamTimeoutSettings();
   loadRectifierSettings();

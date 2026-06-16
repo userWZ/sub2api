@@ -6470,6 +6470,16 @@ export default {
         saved: '过载冷却设置保存成功',
         saveFailed: '保存过载冷却设置失败'
       },
+      imageWorkbenchAccounts: {
+        title: '生图工作台账号池',
+        description: '指定用户生图工作台固定调用的 OpenAI 上游账号',
+        enabled: '启用固定账号池',
+        enabledHint: '启用后，工作台生图只会从选中的账号中调度；未启用时使用默认调度策略',
+        accountPool: 'OpenAI 账号池',
+        poolHint: '可多选。只会保存账号 ID；账号能力、分组和限额仍由现有调度链路判断。',
+        saved: '生图工作台账号池保存成功',
+        saveFailed: '保存生图工作台账号池失败'
+      },
       rateLimit429Cooldown: {
         title: '429 默认回避',
         description: '配置上游返回 429 且没有明确重置时间时的默认账号回避策略',

@@ -6315,6 +6315,16 @@ export default {
         saved: 'Overload cooldown settings saved',
         saveFailed: 'Failed to save overload cooldown settings'
       },
+      imageWorkbenchAccounts: {
+        title: 'Image Workbench Account Pool',
+        description: 'Choose the OpenAI upstream accounts used by the user image workbench',
+        enabled: 'Enable Fixed Account Pool',
+        enabledHint: 'When enabled, workbench image requests are scheduled only from selected accounts; otherwise the default scheduler is used',
+        accountPool: 'OpenAI Account Pool',
+        poolHint: 'Multiple accounts can be selected. Only account IDs are saved; capabilities, groups, and limits still use the existing scheduler checks.',
+        saved: 'Image workbench account pool saved',
+        saveFailed: 'Failed to save image workbench account pool'
+      },
       rateLimit429Cooldown: {
         title: '429 Default Cooldown',
         description: 'Configure the default account cooldown when upstream returns 429 without an explicit reset time',
