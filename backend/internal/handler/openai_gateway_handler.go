@@ -16,6 +16,7 @@ import (
 	pkghttputil "github.com/Wei-Shaw/sub2api/internal/pkg/httputil"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/ip"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/logger"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/pagination"
 	middleware2 "github.com/Wei-Shaw/sub2api/internal/server/middleware"
 	"github.com/Wei-Shaw/sub2api/internal/service"
 
@@ -130,6 +131,78 @@ func NewOpenAIGatewayHandler(
 		maxAccountSwitches:       maxAccountSwitches,
 		cfg:                      cfg,
 	}
+}
+
+// BindImageWorkbenchDefaultKey converts a logged-in console request into a
+// gateway request billed through the user's default API key.
+func (h *OpenAIGatewayHandler) BindImageWorkbenchDefaultKey(c *gin.Context) {
+	subject, ok := middleware2.GetAuthSubjectFromContext(c)
+	if !ok || subject.UserID <= 0 {
+		h.errorResponse(c, http.StatusUnauthorized, "authentication_error", "User context not found")
+		c.Abort()
+		return
+	}
+	if h.apiKeyService == nil {
+		h.errorResponse(c, http.StatusInternalServerError, "api_error", "API key service unavailable")
+		c.Abort()
+		return
+	}
+
+	apiKey, err := h.ensureImageWorkbenchDefaultKey(c.Request.Context(), subject.UserID)
+	if err != nil {
+		reqLog := requestLogger(c, "handler.openai_gateway.image_workbench.bind_default_key",
+			zap.Int64("user_id", subject.UserID),
+		)
+		reqLog.Warn("failed to resolve image workbench default key", zap.Error(err))
+		h.errorResponse(c, http.StatusInternalServerError, "api_error", "Failed to resolve default API key")
+		c.Abort()
+		return
+	}
+	if apiKey == nil || strings.TrimSpace(apiKey.Key) == "" {
+		h.errorResponse(c, http.StatusInternalServerError, "api_error", "Default API key is unavailable")
+		c.Abort()
+		return
+	}
+
+	c.Request.Header.Set("Authorization", "Bearer "+apiKey.Key)
+	c.Set(service.ContextKeyImageWorkbenchRequest, true)
+	c.Next()
+}
+
+func (h *OpenAIGatewayHandler) ensureImageWorkbenchDefaultKey(ctx context.Context, userID int64) (*service.APIKey, error) {
+	params := pagination.PaginationParams{
+		Page:      1,
+		PageSize:  100,
+		SortBy:    "created_at",
+		SortOrder: pagination.SortOrderAsc,
+	}
+	keys, _, err := h.apiKeyService.List(ctx, userID, params, service.APIKeyListFilters{Status: service.StatusAPIKeyActive})
+	if err != nil {
+		return nil, err
+	}
+
+	if key := pickImageWorkbenchDefaultKey(keys); key != nil {
+		return key, nil
+	}
+
+	return h.apiKeyService.Create(ctx, userID, service.CreateAPIKeyRequest{
+		Name:          "Default Key",
+		QuotaDisabled: false,
+	})
+}
+
+func pickImageWorkbenchDefaultKey(keys []service.APIKey) *service.APIKey {
+	for i := range keys {
+		if strings.EqualFold(strings.TrimSpace(keys[i].Name), "Default Key") {
+			return &keys[i]
+		}
+	}
+	for i := range keys {
+		if strings.TrimSpace(keys[i].Name) != "" {
+			return &keys[i]
+		}
+	}
+	return nil
 }
 
 // Responses handles OpenAI Responses API endpoint
