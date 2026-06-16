@@ -829,6 +829,8 @@ export default {
     },
     // 配额和有效期
     quotaLimit: '额度限制',
+    quotaDisabled: '使用账户订阅与余额',
+    quotaDisabledHint: '开启后此 Key 不再单独限制额度，调用会优先使用有效订阅，订阅不可用时使用账户余额。',
     quotaAmount: '额度金额 (USD)',
     quotaAmountPlaceholder: '输入 USD 额度限制',
     quotaAmountHint: '设置此密钥可消费的最大金额。0 = 无限制。',

@@ -825,6 +825,8 @@ export default {
     },
     // Quota and expiration
     quotaLimit: 'Quota Limit',
+    quotaDisabled: 'Use account subscriptions and balance',
+    quotaDisabledHint: 'When enabled, this key has no separate quota. Requests use active subscriptions first, then account balance.',
     quotaAmount: 'Quota Amount (USD)',
     quotaAmountPlaceholder: 'Enter quota limit in USD',
     quotaAmountHint: 'Set the maximum amount this key can spend. 0 = unlimited.',
