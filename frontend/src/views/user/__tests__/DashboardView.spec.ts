@@ -115,7 +115,7 @@ function activeKeyFixture() {
     status: 'active',
     ip_whitelist: [],
     ip_blacklist: [],
-    quota_disabled: true,
+    quota_disabled: false,
     last_used_at: null,
     quota: 0,
     quota_used: 0,
@@ -208,7 +208,7 @@ describe('DashboardView', () => {
     expect(wrapper.find('[data-test="recent"]').exists()).toBe(true)
   })
 
-  it('creates an unbound quota-disabled default key when no key exists', async () => {
+  it('creates an unbound quota-enabled default key when no key exists', async () => {
     listKeys.mockResolvedValue({ items: [] })
     const wrapper = mountDashboard()
     await flushPromises()
@@ -216,7 +216,7 @@ describe('DashboardView', () => {
     await wrapper.findAll('button').find(button => button.text() === '创建默认 Key')?.trigger('click')
     await flushPromises()
 
-    expect(createKey).toHaveBeenCalledWith('默认 API Key', null, undefined, undefined, undefined, undefined, undefined, undefined, true)
+    expect(createKey).toHaveBeenCalledWith('默认 API Key', null, undefined, undefined, undefined, undefined, undefined, undefined, false)
     expect(showSuccess).toHaveBeenCalledWith('默认 API Key 已创建并复制')
     expect(copyToClipboard).toHaveBeenCalledWith('sk-oceanway-default-1234567890', '已复制')
   })

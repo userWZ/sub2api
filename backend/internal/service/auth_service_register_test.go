@@ -330,7 +330,7 @@ func TestAuthService_Register_CreatesDefaultAPIKey(t *testing.T) {
 
 	require.Len(t, keyCreator.calls, 1)
 	require.Equal(t, "Default Key", keyCreator.calls[0].Name)
-	require.True(t, keyCreator.calls[0].QuotaDisabled)
+	require.False(t, keyCreator.calls[0].QuotaDisabled)
 	require.Nil(t, keyCreator.calls[0].GroupID)
 }
 

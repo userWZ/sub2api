@@ -929,7 +929,7 @@ func (s *AuthService) ensureDefaultAPIKey(ctx context.Context, userID int64) {
 	}
 	if _, err := s.defaultKeyCreator.Create(ctx, userID, CreateAPIKeyRequest{
 		Name:          "Default Key",
-		QuotaDisabled: true,
+		QuotaDisabled: false,
 	}); err != nil {
 		logger.LegacyPrintf("service.auth", "[Auth] Failed to create default api key for user %d: %v", userID, err)
 	}

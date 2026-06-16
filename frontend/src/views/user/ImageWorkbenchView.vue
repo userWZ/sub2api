@@ -269,7 +269,7 @@ async function createDefaultKey() {
   if (creatingKey.value) return
   creatingKey.value = true
   try {
-    const created = await keysAPI.create(copy.value.defaultKeyName, null, undefined, undefined, undefined, undefined, undefined, undefined, true)
+    const created = await keysAPI.create(copy.value.defaultKeyName, null, undefined, undefined, undefined, undefined, undefined, undefined, false)
     keys.value = [created, ...keys.value]
     appStore.showSuccess(copy.value.keyCreated)
   } catch {
