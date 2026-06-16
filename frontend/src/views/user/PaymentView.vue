@@ -41,7 +41,36 @@
               <p class="text-gray-500 dark:text-gray-400">{{ t('payment.notAvailable') }}</p>
             </div>
             <template v-else>
-            <div class="card p-6">
+            <div v-if="creditProducts.length" class="card p-6">
+              <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <button
+                  v-for="product in creditProducts"
+                  :key="product.id"
+                  type="button"
+                  class="rounded-xl border p-4 text-left transition"
+                  :class="selectedCreditProduct?.id === product.id
+                    ? 'border-primary-500 bg-primary-50 shadow-sm dark:border-primary-400 dark:bg-primary-900/20'
+                    : 'border-gray-200 hover:border-primary-300 dark:border-dark-600 dark:hover:border-primary-500'"
+                  @click="selectCreditProduct(product)"
+                >
+                  <div class="flex items-start justify-between gap-2">
+                    <div>
+                      <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ pickHomePricingText(product.name) }}</p>
+                      <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ pickHomePricingText(product.description) }}</p>
+                    </div>
+                    <span v-if="pickHomePricingOptionalText(product.badge)" class="badge badge-primary shrink-0 text-[10px]">
+                      {{ pickHomePricingOptionalText(product.badge) }}
+                    </span>
+                  </div>
+                  <div class="mt-4 flex items-end justify-between gap-3">
+                    <span class="text-lg font-bold text-primary-600 dark:text-primary-400">{{ formatSelectedPaymentAmount(product.recharge_amount) }}</span>
+                    <span class="text-xs text-gray-500 dark:text-gray-400">{{ product.credited_amount }}</span>
+                  </div>
+                </button>
+              </div>
+              <p v-if="amountError" class="mt-3 text-xs text-amber-600 dark:text-amber-300">{{ amountError }}</p>
+            </div>
+            <div v-else class="card p-6">
               <AmountInput
                 v-model="amount"
                 :amounts="[10, 20, 50, 100, 200, 500, 1000, 2000, 5000]"
@@ -71,11 +100,11 @@
                   <span class="font-medium text-gray-700 dark:text-gray-300">{{ t('payment.actualPay') }}</span>
                   <span class="text-lg font-bold text-primary-600 dark:text-primary-400">{{ formatSelectedPaymentAmount(totalAmount) }}</span>
                 </div>
-                <div v-if="balanceRechargeMultiplier !== 1" class="flex justify-between" :class="{ 'border-t border-gray-200 pt-2 dark:border-dark-600': feeRate <= 0 }">
+                <div v-if="balanceRechargeMultiplier !== 1 || selectedCreditProduct" class="flex justify-between" :class="{ 'border-t border-gray-200 pt-2 dark:border-dark-600': feeRate <= 0 }">
                   <span class="text-gray-500 dark:text-gray-400">{{ t('payment.creditedBalance') }}</span>
-                  <span class="text-gray-900 dark:text-white">${{ creditedAmount.toFixed(2) }}</span>
+                  <span class="text-gray-900 dark:text-white">${{ displayedCreditedAmount.toFixed(2) }}</span>
                 </div>
-                <p v-if="balanceRechargeMultiplier !== 1" class="border-t border-gray-200 pt-2 text-xs text-gray-500 dark:border-dark-600 dark:text-gray-400">
+                <p v-if="balanceRechargeMultiplier !== 1 && !selectedCreditProduct" class="border-t border-gray-200 pt-2 text-xs text-gray-500 dark:border-dark-600 dark:text-gray-400">
                   {{ t('payment.rechargeRatePreview', { usd: balanceRechargeMultiplier.toFixed(2) }) }}
                 </p>
               </div>
@@ -256,6 +285,7 @@ import { paymentAPI } from '@/api/payment'
 import { extractApiErrorMessage, extractI18nErrorMessage } from '@/utils/apiError'
 import { isMobileDevice } from '@/utils/device'
 import type { SubscriptionPlan, CheckoutInfoResponse, CreateOrderResult, OrderType } from '@/types/payment'
+import type { HomePricingCreditCardConfig, HomePricingLocalizedText } from '@/types'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import AmountInput from '@/components/payment/AmountInput.vue'
 import PaymentMethodSelector from '@/components/payment/PaymentMethodSelector.vue'
@@ -303,6 +333,7 @@ const errorMessage = ref('')
 const errorHintMessage = ref('')
 const activeTab = ref<'recharge' | 'subscription'>('recharge')
 const amount = ref<number | null>(null)
+const selectedCreditProductId = ref('')
 const selectedMethod = ref('')
 const selectedPlan = ref<SubscriptionPlan | null>(null)
 const previewImage = ref('')
@@ -481,6 +512,43 @@ const checkout = ref<CheckoutInfoResponse>({
   plans: [], balance_disabled: false, balance_recharge_multiplier: 1, recharge_fee_rate: 0, help_text: '', help_image_url: '', stripe_publishable_key: '',
 })
 
+const homePricingConfig = computed(() => appStore.cachedPublicSettings?.home_pricing_config || null)
+const creditProducts = computed<HomePricingCreditCardConfig[]>(() => {
+  const cards = homePricingConfig.value?.credit_cards || []
+  return cards
+    .filter(card => card.enabled !== false && card.recharge_amount > 0)
+    .map(card => ({
+      ...card,
+      credited_amount: card.credited_amount > 0 ? card.credited_amount : card.recharge_amount,
+    }))
+    .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+})
+const selectedCreditProduct = computed(() =>
+  creditProducts.value.find(product => product.id === selectedCreditProductId.value) || null
+)
+
+function pickHomePricingText(value?: HomePricingLocalizedText | null) {
+  if (!value) return ''
+  const rawLocale = i18n.locale as unknown
+  const locale = String(
+    typeof rawLocale === 'string'
+      ? rawLocale
+      : rawLocale && typeof rawLocale === 'object' && 'value' in rawLocale
+        ? (rawLocale as { value?: string }).value || ''
+        : '',
+  ).toLowerCase()
+  return locale.startsWith('en') ? value.en || value.zh || '' : value.zh || value.en || ''
+}
+
+function pickHomePricingOptionalText(value?: HomePricingLocalizedText | null) {
+  return pickHomePricingText(value).trim()
+}
+
+function selectCreditProduct(product: HomePricingCreditCardConfig) {
+  selectedCreditProductId.value = product.id
+  amount.value = product.recharge_amount
+}
+
 const tabs = computed(() => {
   const result: { key: 'recharge' | 'subscription'; label: string }[] = []
   if (!checkout.value.balance_disabled) result.push({ key: 'recharge', label: t('payment.tabTopUp') })
@@ -496,6 +564,9 @@ const balanceRechargeMultiplier = computed(() => {
   return multiplier > 0 ? multiplier : 1
 })
 const creditedAmount = computed(() => Math.round((validAmount.value * balanceRechargeMultiplier.value) * 100) / 100)
+const displayedCreditedAmount = computed(() =>
+  selectedCreditProduct.value?.credited_amount ?? creditedAmount.value
+)
 
 // Adaptive grid: center single card, 2-col for 2 plans, 3-col for 3+
 const planGridClass = computed(() => {
@@ -584,6 +655,7 @@ const amountError = computed(() => {
 
 const canSubmit = computed(() =>
   validAmount.value > 0
+    && (creditProducts.value.length === 0 || selectedCreditProduct.value !== null)
     && amountFitsMethod(validAmount.value, selectedMethod.value)
     && selectedLimit.value?.available !== false
 )
@@ -625,6 +697,17 @@ watch(() => [validAmount.value, selectedMethod.value] as const, ([amt, method]) 
   const available = enabledMethods.value.find((m) => amountFitsMethod(amt, m))
   if (available) selectedMethod.value = available
 })
+
+watch(creditProducts, (products) => {
+  if (!products.length) {
+    selectedCreditProductId.value = ''
+    return
+  }
+  const current = products.find(product => product.id === selectedCreditProductId.value)
+  if (!current) {
+    selectCreditProduct(products[0])
+  }
+}, { immediate: true })
 
 // Payment button class: follows selected payment method color
 const paymentButtonClass = computed(() => {
@@ -989,6 +1072,10 @@ async function resumeWechatPaymentFromQuery() {
   selectedMethod.value = resume.paymentType
   if (resume.orderType === 'balance' && resume.orderAmount > 0) {
     amount.value = resume.orderAmount
+    const product = creditProducts.value.find(item => Math.abs(item.recharge_amount - resume.orderAmount) < 0.001)
+    if (product) {
+      selectedCreditProductId.value = product.id
+    }
   }
   if (resume.orderType === 'subscription' && resume.planId) {
     selectedPlan.value = checkout.value.plans.find(plan => plan.id === resume.planId) ?? null
@@ -1016,6 +1103,9 @@ async function resumeWechatPaymentFromQuery() {
 
 onMounted(async () => {
   try {
+    if (typeof appStore.fetchPublicSettings === 'function') {
+      await appStore.fetchPublicSettings()
+    }
     const res = await paymentAPI.getCheckoutInfo()
     checkout.value = res.data
     if (enabledMethods.value.length) {

@@ -186,6 +186,62 @@ export interface LoginAgreementDocument {
   content_md: string
 }
 
+export interface HomePricingLocalizedText {
+  zh: string
+  en: string
+}
+
+export interface HomePricingMetricConfig {
+  label: HomePricingLocalizedText
+  value: HomePricingLocalizedText
+}
+
+export interface HomePricingGroupConfig {
+  title: HomePricingLocalizedText
+  description: HomePricingLocalizedText
+}
+
+export interface HomePricingSubscriptionCardConfig {
+  id: string
+  enabled: boolean
+  sort_order: number
+  subscription_plan_id: number
+  name: HomePricingLocalizedText
+  description: HomePricingLocalizedText
+  badge: HomePricingLocalizedText
+  period: HomePricingLocalizedText
+  highlight: boolean
+  metrics: HomePricingMetricConfig[]
+  price?: number
+  original_price?: number | null
+  for_sale?: boolean
+}
+
+export interface HomePricingCreditCardConfig {
+  id: string
+  enabled: boolean
+  sort_order: number
+  recharge_amount: number
+  credited_amount: number
+  name: HomePricingLocalizedText
+  description: HomePricingLocalizedText
+  badge: HomePricingLocalizedText
+  period: HomePricingLocalizedText
+  highlight: boolean
+  metrics: HomePricingMetricConfig[]
+  price?: number
+}
+
+export interface HomePricingConfig {
+  eyebrow: HomePricingLocalizedText
+  title: HomePricingLocalizedText
+  description: HomePricingLocalizedText
+  subscription_group: HomePricingGroupConfig
+  credit_group: HomePricingGroupConfig
+  subscription_cards: HomePricingSubscriptionCardConfig[]
+  credit_cards: HomePricingCreditCardConfig[]
+}
+
 export interface PublicSettings {
   registration_enabled: boolean
   email_verify_enabled: boolean
@@ -209,7 +265,7 @@ export interface PublicSettings {
   doc_url: string
   home_content: string
   internal_home_domains: string[]
-  home_pricing_config?: Record<string, unknown> | null
+  home_pricing_config?: HomePricingConfig | null
   hide_ccs_import_button: boolean
   payment_enabled: boolean
   risk_control_enabled: boolean

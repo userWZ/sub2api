@@ -57,7 +57,11 @@ func (s *PaymentService) CreateOrder(ctx context.Context, req CreateOrderRequest
 		orderAmount = plan.Price
 		limitAmount = plan.Price
 	} else if req.OrderType == payment.OrderTypeBalance {
-		orderAmount = calculateCreditedBalance(req.Amount, cfg.BalanceRechargeMultiplier)
+		creditedAmount, err := s.resolveBalanceOrderPackageAmount(ctx, req.Amount, cfg)
+		if err != nil {
+			return nil, err
+		}
+		orderAmount = creditedAmount
 	}
 	feeRate := cfg.RechargeFeeRate
 	methodCurrency := payment.DefaultPaymentCurrency
@@ -145,6 +149,29 @@ func (s *PaymentService) validateSubOrder(ctx context.Context, req CreateOrderRe
 		return nil, infraerrors.BadRequest("GROUP_TYPE_MISMATCH", "group is not a subscription type")
 	}
 	return plan, nil
+}
+
+func (s *PaymentService) resolveBalanceOrderPackageAmount(ctx context.Context, amount float64, cfg *PaymentConfig) (float64, error) {
+	if s == nil || s.configService == nil {
+		return 0, infraerrors.InternalServer("PAYMENT_CONFIG_UNAVAILABLE", "payment config service unavailable")
+	}
+	homePricing, err := s.configService.GetHomePricingConfig(ctx)
+	if err != nil {
+		return 0, err
+	}
+	for _, card := range homePricing.CreditCards {
+		if !card.Enabled {
+			continue
+		}
+		if math.Abs(card.RechargeAmount-amount) > 0.001 {
+			continue
+		}
+		if card.CreditedAmount > 0 {
+			return card.CreditedAmount, nil
+		}
+		return calculateCreditedBalance(card.RechargeAmount, cfg.BalanceRechargeMultiplier), nil
+	}
+	return 0, infraerrors.BadRequest("BALANCE_PACKAGE_NOT_AVAILABLE", "balance recharge amount must match an enabled credit package")
 }
 
 func (s *PaymentService) createOrderInTx(ctx context.Context, req CreateOrderRequest, user *User, plan *dbent.SubscriptionPlan, cfg *PaymentConfig, orderAmount, limitAmount, feeRate, payAmount float64, sel *payment.InstanceSelection) (*dbent.PaymentOrder, error) {

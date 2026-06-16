@@ -64,6 +64,8 @@
           </div>
         </template>
       </DataTable>
+
+      <HomePricingConfigPanel :plans="plans" />
     </div>
 
     <!-- Plan Edit Dialog -->
@@ -89,6 +91,7 @@ import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import Icon from '@/components/icons/Icon.vue'
 import GroupBadge from '@/components/common/GroupBadge.vue'
 import PlanEditDialog from './PlanEditDialog.vue'
+import HomePricingConfigPanel from './HomePricingConfigPanel.vue'
 import { platformTextClass } from '@/utils/platformColors'
 
 const { t } = useI18n()
