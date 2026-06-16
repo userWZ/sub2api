@@ -6,7 +6,6 @@ export type ImageWorkbenchBackground = 'auto' | 'transparent' | 'opaque'
 export type ImageWorkbenchModeration = 'auto' | 'low'
 
 export interface GenerateImagesRequest {
-  apiKey: string
   model: ImageWorkbenchModel
   prompt: string
   size: ImageWorkbenchSize
@@ -39,6 +38,11 @@ interface OpenAIErrorBody {
 }
 
 export async function generateImages(req: GenerateImagesRequest, signal?: AbortSignal): Promise<GenerateImagesResponse> {
+  const token = localStorage.getItem('auth_token')
+  if (!token) {
+    throw new Error('Please sign in before generating images')
+  }
+
   const payload: Record<string, unknown> = {
     model: req.model,
     prompt: req.prompt,
@@ -51,10 +55,10 @@ export async function generateImages(req: GenerateImagesRequest, signal?: AbortS
   if (req.background !== 'auto') payload.background = req.background
   if (req.moderation !== 'auto') payload.moderation = req.moderation
 
-  const response = await fetch('/v1/images/generations', {
+  const response = await fetch('/api/v1/user/image-workbench/images/generations', {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${req.apiKey}`,
+      Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(payload),

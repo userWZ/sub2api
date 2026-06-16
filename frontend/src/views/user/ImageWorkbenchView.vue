@@ -247,7 +247,7 @@ const isZh = computed(() => locale.value.toLowerCase().startsWith('zh'))
 const copy = computed(() => isZh.value ? zhCopy : enCopy)
 const selectedKey = computed(() => keys.value.find(key => key.status === 'active') || keys.value[0] || null)
 const activeConversation = computed(() => conversations.value.find(item => item.id === activeConversationId.value) || null)
-const canGenerate = computed(() => Boolean(selectedKey.value && form.prompt.trim() && !generating.value))
+const canGenerate = computed(() => Boolean(form.prompt.trim() && !generating.value))
 
 watch(activeConversationId, (id) => {
   if (id) localStorage.setItem(ACTIVE_ID_KEY, id)
@@ -326,9 +326,10 @@ async function clearHistory() {
 }
 
 async function runGeneration() {
-  if (!selectedKey.value || !form.prompt.trim() || generating.value) return
+  if (!form.prompt.trim() || generating.value) return
 
   const prompt = form.prompt.trim()
+  const hadDefaultKey = Boolean(selectedKey.value)
   const now = new Date().toISOString()
   let conversation = activeConversation.value
   if (!conversation) {
@@ -371,7 +372,6 @@ async function runGeneration() {
 
   try {
     const result = await generateImages({
-      apiKey: selectedKey.value.key,
       model: turn.model,
       prompt: turn.prompt,
       size: turn.size,
@@ -405,6 +405,9 @@ async function runGeneration() {
     appStore.showError(message)
   } finally {
     generating.value = false
+    if (!hadDefaultKey) {
+      void loadKeys()
+    }
     conversation.updatedAt = new Date().toISOString()
     touchConversation(conversation)
     await persistCurrentHistory()
