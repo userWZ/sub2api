@@ -16,8 +16,9 @@ type APIKeyAuthSnapshot struct {
 	Group       *APIKeyAuthGroupSnapshot `json:"group,omitempty"`
 
 	// Quota fields for API Key independent quota feature
-	Quota     float64 `json:"quota"`      // Quota limit in USD (0 = unlimited)
-	QuotaUsed float64 `json:"quota_used"` // Used quota amount
+	QuotaDisabled bool    `json:"quota_disabled"` // Disable key-level quota accounting
+	Quota         float64 `json:"quota"`          // Quota limit in USD (0 = unlimited)
+	QuotaUsed     float64 `json:"quota_used"`     // Used quota amount
 
 	// Expiration field for API Key expiration feature
 	ExpiresAt *time.Time `json:"expires_at,omitempty"` // Expiration time (nil = never expires)

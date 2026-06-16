@@ -190,6 +190,20 @@ func (_u *APIKeyUpdate) ClearIPBlacklist() *APIKeyUpdate {
 	return _u
 }
 
+// SetQuotaDisabled sets the "quota_disabled" field.
+func (_u *APIKeyUpdate) SetQuotaDisabled(v bool) *APIKeyUpdate {
+	_u.mutation.SetQuotaDisabled(v)
+	return _u
+}
+
+// SetNillableQuotaDisabled sets the "quota_disabled" field if the given value is not nil.
+func (_u *APIKeyUpdate) SetNillableQuotaDisabled(v *bool) *APIKeyUpdate {
+	if v != nil {
+		_u.SetQuotaDisabled(*v)
+	}
+	return _u
+}
+
 // SetQuota sets the "quota" field.
 func (_u *APIKeyUpdate) SetQuota(v float64) *APIKeyUpdate {
 	_u.mutation.ResetQuota()
@@ -624,6 +638,9 @@ func (_u *APIKeyUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if _u.mutation.IPBlacklistCleared() {
 		_spec.ClearField(apikey.FieldIPBlacklist, field.TypeJSON)
 	}
+	if value, ok := _u.mutation.QuotaDisabled(); ok {
+		_spec.SetField(apikey.FieldQuotaDisabled, field.TypeBool, value)
+	}
 	if value, ok := _u.mutation.Quota(); ok {
 		_spec.SetField(apikey.FieldQuota, field.TypeFloat64, value)
 	}
@@ -974,6 +991,20 @@ func (_u *APIKeyUpdateOne) AppendIPBlacklist(v []string) *APIKeyUpdateOne {
 // ClearIPBlacklist clears the value of the "ip_blacklist" field.
 func (_u *APIKeyUpdateOne) ClearIPBlacklist() *APIKeyUpdateOne {
 	_u.mutation.ClearIPBlacklist()
+	return _u
+}
+
+// SetQuotaDisabled sets the "quota_disabled" field.
+func (_u *APIKeyUpdateOne) SetQuotaDisabled(v bool) *APIKeyUpdateOne {
+	_u.mutation.SetQuotaDisabled(v)
+	return _u
+}
+
+// SetNillableQuotaDisabled sets the "quota_disabled" field if the given value is not nil.
+func (_u *APIKeyUpdateOne) SetNillableQuotaDisabled(v *bool) *APIKeyUpdateOne {
+	if v != nil {
+		_u.SetQuotaDisabled(*v)
+	}
 	return _u
 }
 
@@ -1440,6 +1471,9 @@ func (_u *APIKeyUpdateOne) sqlSave(ctx context.Context) (_node *APIKey, err erro
 	}
 	if _u.mutation.IPBlacklistCleared() {
 		_spec.ClearField(apikey.FieldIPBlacklist, field.TypeJSON)
+	}
+	if value, ok := _u.mutation.QuotaDisabled(); ok {
+		_spec.SetField(apikey.FieldQuotaDisabled, field.TypeBool, value)
 	}
 	if value, ok := _u.mutation.Quota(); ok {
 		_spec.SetField(apikey.FieldQuota, field.TypeFloat64, value)

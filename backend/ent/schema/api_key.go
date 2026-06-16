@@ -57,6 +57,9 @@ func (APIKey) Fields() []ent.Field {
 		field.JSON("ip_blacklist", []string{}).
 			Optional().
 			Comment("Blocked IPs/CIDRs"),
+		field.Bool("quota_disabled").
+			Default(false).
+			Comment("Disable API-key-level quota accounting; user balance/subscription billing still applies"),
 
 		// ========== Quota fields ==========
 		// Quota limit in USD (0 = unlimited)

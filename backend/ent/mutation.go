@@ -114,6 +114,7 @@ type APIKeyMutation struct {
 	appendip_whitelist []string
 	ip_blacklist       *[]string
 	appendip_blacklist []string
+	quota_disabled     *bool
 	quota              *float64
 	addquota           *float64
 	quota_used         *float64
@@ -736,6 +737,42 @@ func (m *APIKeyMutation) ResetIPBlacklist() {
 	m.ip_blacklist = nil
 	m.appendip_blacklist = nil
 	delete(m.clearedFields, apikey.FieldIPBlacklist)
+}
+
+// SetQuotaDisabled sets the "quota_disabled" field.
+func (m *APIKeyMutation) SetQuotaDisabled(b bool) {
+	m.quota_disabled = &b
+}
+
+// QuotaDisabled returns the value of the "quota_disabled" field in the mutation.
+func (m *APIKeyMutation) QuotaDisabled() (r bool, exists bool) {
+	v := m.quota_disabled
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldQuotaDisabled returns the old "quota_disabled" field's value of the APIKey entity.
+// If the APIKey object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *APIKeyMutation) OldQuotaDisabled(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldQuotaDisabled is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldQuotaDisabled requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldQuotaDisabled: %w", err)
+	}
+	return oldValue.QuotaDisabled, nil
+}
+
+// ResetQuotaDisabled resets all changes to the "quota_disabled" field.
+func (m *APIKeyMutation) ResetQuotaDisabled() {
+	m.quota_disabled = nil
 }
 
 // SetQuota sets the "quota" field.
@@ -1524,7 +1561,7 @@ func (m *APIKeyMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *APIKeyMutation) Fields() []string {
-	fields := make([]string, 0, 23)
+	fields := make([]string, 0, 24)
 	if m.created_at != nil {
 		fields = append(fields, apikey.FieldCreatedAt)
 	}
@@ -1557,6 +1594,9 @@ func (m *APIKeyMutation) Fields() []string {
 	}
 	if m.ip_blacklist != nil {
 		fields = append(fields, apikey.FieldIPBlacklist)
+	}
+	if m.quota_disabled != nil {
+		fields = append(fields, apikey.FieldQuotaDisabled)
 	}
 	if m.quota != nil {
 		fields = append(fields, apikey.FieldQuota)
@@ -1624,6 +1664,8 @@ func (m *APIKeyMutation) Field(name string) (ent.Value, bool) {
 		return m.IPWhitelist()
 	case apikey.FieldIPBlacklist:
 		return m.IPBlacklist()
+	case apikey.FieldQuotaDisabled:
+		return m.QuotaDisabled()
 	case apikey.FieldQuota:
 		return m.Quota()
 	case apikey.FieldQuotaUsed:
@@ -1679,6 +1721,8 @@ func (m *APIKeyMutation) OldField(ctx context.Context, name string) (ent.Value, 
 		return m.OldIPWhitelist(ctx)
 	case apikey.FieldIPBlacklist:
 		return m.OldIPBlacklist(ctx)
+	case apikey.FieldQuotaDisabled:
+		return m.OldQuotaDisabled(ctx)
 	case apikey.FieldQuota:
 		return m.OldQuota(ctx)
 	case apikey.FieldQuotaUsed:
@@ -1788,6 +1832,13 @@ func (m *APIKeyMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetIPBlacklist(v)
+		return nil
+	case apikey.FieldQuotaDisabled:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetQuotaDisabled(v)
 		return nil
 	case apikey.FieldQuota:
 		v, ok := value.(float64)
@@ -2110,6 +2161,9 @@ func (m *APIKeyMutation) ResetField(name string) error {
 		return nil
 	case apikey.FieldIPBlacklist:
 		m.ResetIPBlacklist()
+		return nil
+	case apikey.FieldQuotaDisabled:
+		m.ResetQuotaDisabled()
 		return nil
 	case apikey.FieldQuota:
 		m.ResetQuota()

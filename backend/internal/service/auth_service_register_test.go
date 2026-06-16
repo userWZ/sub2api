@@ -71,6 +71,11 @@ type defaultSubscriptionAssignerStub struct {
 	err   error
 }
 
+type defaultAPIKeyCreatorStub struct {
+	calls []CreateAPIKeyRequest
+	err   error
+}
+
 type refreshTokenCacheStub struct{}
 
 type userPlatformQuotaRepoStub struct {
@@ -117,6 +122,15 @@ func (s *defaultSubscriptionAssignerStub) AssignOrExtendSubscription(_ context.C
 		return nil, false, s.err
 	}
 	return &UserSubscription{UserID: input.UserID, GroupID: input.GroupID}, false, nil
+}
+
+func (s *defaultAPIKeyCreatorStub) Create(_ context.Context, userID int64, req CreateAPIKeyRequest) (*APIKey, error) {
+	reqCopy := req
+	s.calls = append(s.calls, reqCopy)
+	if s.err != nil {
+		return nil, s.err
+	}
+	return &APIKey{ID: int64(len(s.calls)), UserID: userID, Name: req.Name, QuotaDisabled: req.QuotaDisabled}, nil
 }
 
 func (s *refreshTokenCacheStub) StoreRefreshToken(context.Context, string, *RefreshTokenData, time.Duration) error {
@@ -299,6 +313,25 @@ func TestAuthService_Register_SnapshotsPlatformQuotaDefaults(t *testing.T) {
 	require.Equal(t, int64(77), openaiRecord.UserID)
 	require.NotNil(t, openaiRecord.WeeklyLimitUSD)
 	require.InDelta(t, 12.34, *openaiRecord.WeeklyLimitUSD, 0.0001)
+}
+
+func TestAuthService_Register_CreatesDefaultAPIKey(t *testing.T) {
+	repo := &userRepoStub{nextID: 88}
+	keyCreator := &defaultAPIKeyCreatorStub{}
+
+	service := newAuthService(repo, map[string]string{
+		SettingKeyRegistrationEnabled: "true",
+	}, nil, nil)
+	service.SetDefaultAPIKeyCreator(keyCreator)
+
+	_, user, err := service.Register(context.Background(), "newuser@test.com", "password")
+	require.NoError(t, err)
+	require.NotNil(t, user)
+
+	require.Len(t, keyCreator.calls, 1)
+	require.Equal(t, "Default Key", keyCreator.calls[0].Name)
+	require.True(t, keyCreator.calls[0].QuotaDisabled)
+	require.Nil(t, keyCreator.calls[0].GroupID)
 }
 
 func TestAuthService_Register_DoesNotSnapshotOnDisabled(t *testing.T) {

@@ -139,6 +139,20 @@ func (_c *APIKeyCreate) SetIPBlacklist(v []string) *APIKeyCreate {
 	return _c
 }
 
+// SetQuotaDisabled sets the "quota_disabled" field.
+func (_c *APIKeyCreate) SetQuotaDisabled(v bool) *APIKeyCreate {
+	_c.mutation.SetQuotaDisabled(v)
+	return _c
+}
+
+// SetNillableQuotaDisabled sets the "quota_disabled" field if the given value is not nil.
+func (_c *APIKeyCreate) SetNillableQuotaDisabled(v *bool) *APIKeyCreate {
+	if v != nil {
+		_c.SetQuotaDisabled(*v)
+	}
+	return _c
+}
+
 // SetQuota sets the "quota" field.
 func (_c *APIKeyCreate) SetQuota(v float64) *APIKeyCreate {
 	_c.mutation.SetQuota(v)
@@ -387,6 +401,10 @@ func (_c *APIKeyCreate) defaults() error {
 		v := apikey.DefaultStatus
 		_c.mutation.SetStatus(v)
 	}
+	if _, ok := _c.mutation.QuotaDisabled(); !ok {
+		v := apikey.DefaultQuotaDisabled
+		_c.mutation.SetQuotaDisabled(v)
+	}
 	if _, ok := _c.mutation.Quota(); !ok {
 		v := apikey.DefaultQuota
 		_c.mutation.SetQuota(v)
@@ -456,6 +474,9 @@ func (_c *APIKeyCreate) check() error {
 		if err := apikey.StatusValidator(v); err != nil {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "APIKey.status": %w`, err)}
 		}
+	}
+	if _, ok := _c.mutation.QuotaDisabled(); !ok {
+		return &ValidationError{Name: "quota_disabled", err: errors.New(`ent: missing required field "APIKey.quota_disabled"`)}
 	}
 	if _, ok := _c.mutation.Quota(); !ok {
 		return &ValidationError{Name: "quota", err: errors.New(`ent: missing required field "APIKey.quota"`)}
@@ -546,6 +567,10 @@ func (_c *APIKeyCreate) createSpec() (*APIKey, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.IPBlacklist(); ok {
 		_spec.SetField(apikey.FieldIPBlacklist, field.TypeJSON, value)
 		_node.IPBlacklist = value
+	}
+	if value, ok := _c.mutation.QuotaDisabled(); ok {
+		_spec.SetField(apikey.FieldQuotaDisabled, field.TypeBool, value)
+		_node.QuotaDisabled = value
 	}
 	if value, ok := _c.mutation.Quota(); ok {
 		_spec.SetField(apikey.FieldQuota, field.TypeFloat64, value)
@@ -844,6 +869,18 @@ func (u *APIKeyUpsert) UpdateIPBlacklist() *APIKeyUpsert {
 // ClearIPBlacklist clears the value of the "ip_blacklist" field.
 func (u *APIKeyUpsert) ClearIPBlacklist() *APIKeyUpsert {
 	u.SetNull(apikey.FieldIPBlacklist)
+	return u
+}
+
+// SetQuotaDisabled sets the "quota_disabled" field.
+func (u *APIKeyUpsert) SetQuotaDisabled(v bool) *APIKeyUpsert {
+	u.Set(apikey.FieldQuotaDisabled, v)
+	return u
+}
+
+// UpdateQuotaDisabled sets the "quota_disabled" field to the value that was provided on create.
+func (u *APIKeyUpsert) UpdateQuotaDisabled() *APIKeyUpsert {
+	u.SetExcluded(apikey.FieldQuotaDisabled)
 	return u
 }
 
@@ -1280,6 +1317,20 @@ func (u *APIKeyUpsertOne) UpdateIPBlacklist() *APIKeyUpsertOne {
 func (u *APIKeyUpsertOne) ClearIPBlacklist() *APIKeyUpsertOne {
 	return u.Update(func(s *APIKeyUpsert) {
 		s.ClearIPBlacklist()
+	})
+}
+
+// SetQuotaDisabled sets the "quota_disabled" field.
+func (u *APIKeyUpsertOne) SetQuotaDisabled(v bool) *APIKeyUpsertOne {
+	return u.Update(func(s *APIKeyUpsert) {
+		s.SetQuotaDisabled(v)
+	})
+}
+
+// UpdateQuotaDisabled sets the "quota_disabled" field to the value that was provided on create.
+func (u *APIKeyUpsertOne) UpdateQuotaDisabled() *APIKeyUpsertOne {
+	return u.Update(func(s *APIKeyUpsert) {
+		s.UpdateQuotaDisabled()
 	})
 }
 
@@ -1918,6 +1969,20 @@ func (u *APIKeyUpsertBulk) UpdateIPBlacklist() *APIKeyUpsertBulk {
 func (u *APIKeyUpsertBulk) ClearIPBlacklist() *APIKeyUpsertBulk {
 	return u.Update(func(s *APIKeyUpsert) {
 		s.ClearIPBlacklist()
+	})
+}
+
+// SetQuotaDisabled sets the "quota_disabled" field.
+func (u *APIKeyUpsertBulk) SetQuotaDisabled(v bool) *APIKeyUpsertBulk {
+	return u.Update(func(s *APIKeyUpsert) {
+		s.SetQuotaDisabled(v)
+	})
+}
+
+// UpdateQuotaDisabled sets the "quota_disabled" field to the value that was provided on create.
+func (u *APIKeyUpsertBulk) UpdateQuotaDisabled() *APIKeyUpsertBulk {
+	return u.Update(func(s *APIKeyUpsert) {
+		s.UpdateQuotaDisabled()
 	})
 }
 

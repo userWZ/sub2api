@@ -119,10 +119,11 @@ func (d *APIKeyRateLimitData) EffectiveUsage7d() float64 {
 // APIKeyQuotaUsageState captures the latest quota fields after an atomic quota update.
 // It is intentionally small so repositories can return it from a single SQL statement.
 type APIKeyQuotaUsageState struct {
-	QuotaUsed float64
-	Quota     float64
-	Key       string
-	Status    string
+	QuotaUsed     float64
+	Quota         float64
+	Key           string
+	Status        string
+	QuotaDisabled bool
 }
 
 // APIKeyCache defines cache operations for API key service
@@ -152,11 +153,12 @@ type APIKeyAuthCacheInvalidator interface {
 
 // CreateAPIKeyRequest 创建API Key请求
 type CreateAPIKeyRequest struct {
-	Name        string   `json:"name"`
-	GroupID     *int64   `json:"group_id"`
-	CustomKey   *string  `json:"custom_key"`   // 可选的自定义key
-	IPWhitelist []string `json:"ip_whitelist"` // IP 白名单
-	IPBlacklist []string `json:"ip_blacklist"` // IP 黑名单
+	Name          string   `json:"name"`
+	GroupID       *int64   `json:"group_id"`
+	CustomKey     *string  `json:"custom_key"`   // 可选的自定义key
+	IPWhitelist   []string `json:"ip_whitelist"` // IP 白名单
+	IPBlacklist   []string `json:"ip_blacklist"` // IP 黑名单
+	QuotaDisabled bool     `json:"quota_disabled"`
 
 	// Quota fields
 	Quota         float64 `json:"quota"`           // Quota limit in USD (0 = unlimited)
@@ -170,11 +172,12 @@ type CreateAPIKeyRequest struct {
 
 // UpdateAPIKeyRequest 更新API Key请求
 type UpdateAPIKeyRequest struct {
-	Name        *string  `json:"name"`
-	GroupID     *int64   `json:"group_id"`
-	Status      *string  `json:"status"`
-	IPWhitelist []string `json:"ip_whitelist"` // IP 白名单（空数组清空）
-	IPBlacklist []string `json:"ip_blacklist"` // IP 黑名单（空数组清空）
+	Name          *string  `json:"name"`
+	GroupID       *int64   `json:"group_id"`
+	Status        *string  `json:"status"`
+	IPWhitelist   []string `json:"ip_whitelist"` // IP 白名单（空数组清空）
+	IPBlacklist   []string `json:"ip_blacklist"` // IP 黑名单（空数组清空）
+	QuotaDisabled *bool    `json:"quota_disabled"`
 
 	// Quota fields
 	Quota           *float64   `json:"quota"`       // Quota limit in USD (nil = no change, 0 = unlimited)
@@ -400,18 +403,19 @@ func (s *APIKeyService) Create(ctx context.Context, userID int64, req CreateAPIK
 
 	// 创建API Key记录
 	apiKey := &APIKey{
-		UserID:      userID,
-		Key:         key,
-		Name:        html.EscapeString(req.Name),
-		GroupID:     req.GroupID,
-		Status:      StatusActive,
-		IPWhitelist: req.IPWhitelist,
-		IPBlacklist: req.IPBlacklist,
-		Quota:       req.Quota,
-		QuotaUsed:   0,
-		RateLimit5h: req.RateLimit5h,
-		RateLimit1d: req.RateLimit1d,
-		RateLimit7d: req.RateLimit7d,
+		UserID:        userID,
+		Key:           key,
+		Name:          html.EscapeString(req.Name),
+		GroupID:       req.GroupID,
+		Status:        StatusActive,
+		IPWhitelist:   req.IPWhitelist,
+		IPBlacklist:   req.IPBlacklist,
+		QuotaDisabled: req.QuotaDisabled,
+		Quota:         req.Quota,
+		QuotaUsed:     0,
+		RateLimit5h:   req.RateLimit5h,
+		RateLimit1d:   req.RateLimit1d,
+		RateLimit7d:   req.RateLimit7d,
 	}
 
 	// Set expiration time if specified
@@ -542,6 +546,12 @@ func (s *APIKeyService) Update(ctx context.Context, id int64, userID int64, req 
 	// 更新字段
 	if req.Name != nil {
 		apiKey.Name = html.EscapeString(*req.Name)
+	}
+	if req.QuotaDisabled != nil {
+		apiKey.QuotaDisabled = *req.QuotaDisabled
+		if *req.QuotaDisabled && apiKey.Status == StatusAPIKeyQuotaExhausted {
+			apiKey.Status = StatusActive
+		}
 	}
 
 	if req.GroupID != nil {
@@ -842,9 +852,20 @@ func (s *APIKeyService) UpdateQuotaUsed(ctx context.Context, apiKeyID int64, cos
 		if err != nil {
 			return fmt.Errorf("increment quota used: %w", err)
 		}
+		if state != nil && state.QuotaDisabled {
+			return nil
+		}
 		if state != nil && state.Status == StatusAPIKeyQuotaExhausted && strings.TrimSpace(state.Key) != "" {
 			s.InvalidateAuthCacheByKey(ctx, state.Key)
 		}
+		return nil
+	}
+
+	apiKey, err := s.apiKeyRepo.GetByID(ctx, apiKeyID)
+	if err != nil {
+		return nil // Don't fail the request, just log
+	}
+	if apiKey.QuotaDisabled {
 		return nil
 	}
 
@@ -852,12 +873,6 @@ func (s *APIKeyService) UpdateQuotaUsed(ctx context.Context, apiKeyID int64, cos
 	newQuotaUsed, err := s.apiKeyRepo.IncrementQuotaUsed(ctx, apiKeyID, cost)
 	if err != nil {
 		return fmt.Errorf("increment quota used: %w", err)
-	}
-
-	// Check if quota is now exhausted and update status if needed
-	apiKey, err := s.apiKeyRepo.GetByID(ctx, apiKeyID)
-	if err != nil {
-		return nil // Don't fail the request, just log
 	}
 
 	// If quota is set and now exhausted, update status

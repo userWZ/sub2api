@@ -36,6 +36,9 @@ type APIKey struct {
 	Status      string
 	IPWhitelist []string
 	IPBlacklist []string
+	// QuotaDisabled disables API-key-level quota accounting only. User balance
+	// and subscription billing are still enforced.
+	QuotaDisabled bool
 	// 预编译的 IP 规则，用于认证热路径避免重复 ParseIP/ParseCIDR。
 	CompiledIPWhitelist *ip.CompiledIPRules `json:"-"`
 	CompiledIPBlacklist *ip.CompiledIPRules `json:"-"`
@@ -81,6 +84,9 @@ func (k *APIKey) IsExpired() bool {
 
 // IsQuotaExhausted checks if the API key quota is exhausted
 func (k *APIKey) IsQuotaExhausted() bool {
+	if k.QuotaDisabled {
+		return false
+	}
 	if k.Quota <= 0 {
 		return false // unlimited
 	}
@@ -89,6 +95,9 @@ func (k *APIKey) IsQuotaExhausted() bool {
 
 // GetQuotaRemaining returns remaining quota (-1 for unlimited)
 func (k *APIKey) GetQuotaRemaining() float64 {
+	if k.QuotaDisabled {
+		return -1 // API-key-level quota disabled
+	}
 	if k.Quota <= 0 {
 		return -1 // unlimited
 	}

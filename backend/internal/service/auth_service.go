@@ -74,11 +74,16 @@ type AuthService struct {
 	promoService          *PromoService
 	affiliateService      *AffiliateService
 	defaultSubAssigner    DefaultSubscriptionAssigner
+	defaultKeyCreator     DefaultAPIKeyCreator
 	userPlatformQuotaRepo UserPlatformQuotaRepository
 }
 
 type DefaultSubscriptionAssigner interface {
 	AssignOrExtendSubscription(ctx context.Context, input *AssignSubscriptionInput) (*UserSubscription, bool, error)
+}
+
+type DefaultAPIKeyCreator interface {
+	Create(ctx context.Context, userID int64, req CreateAPIKeyRequest) (*APIKey, error)
 }
 
 type signupGrantPlan struct {
@@ -126,6 +131,13 @@ func (s *AuthService) EntClient() *dbent.Client {
 		return nil
 	}
 	return s.entClient
+}
+
+func (s *AuthService) SetDefaultAPIKeyCreator(creator DefaultAPIKeyCreator) {
+	if s == nil {
+		return
+	}
+	s.defaultKeyCreator = creator
 }
 
 // Register 用户注册，返回token和用户
@@ -904,6 +916,19 @@ func (s *AuthService) postAuthUserBootstrap(ctx context.Context, user *User, sig
 
 	if touchLogin {
 		s.touchUserLogin(ctx, user.ID)
+	}
+	s.ensureDefaultAPIKey(ctx, user.ID)
+}
+
+func (s *AuthService) ensureDefaultAPIKey(ctx context.Context, userID int64) {
+	if s == nil || s.defaultKeyCreator == nil || userID <= 0 {
+		return
+	}
+	if _, err := s.defaultKeyCreator.Create(ctx, userID, CreateAPIKeyRequest{
+		Name:          "Default Key",
+		QuotaDisabled: true,
+	}); err != nil {
+		logger.LegacyPrintf("service.auth", "[Auth] Failed to create default api key for user %d: %v", userID, err)
 	}
 }
 

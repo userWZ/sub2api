@@ -87,6 +87,7 @@ func APIKeyFromService(k *service.APIKey) *APIKey {
 		Status:        k.Status,
 		IPWhitelist:   k.IPWhitelist,
 		IPBlacklist:   k.IPBlacklist,
+		QuotaDisabled: k.QuotaDisabled,
 		LastUsedAt:    k.LastUsedAt,
 		Quota:         k.Quota,
 		QuotaUsed:     k.QuotaUsed,

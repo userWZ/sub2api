@@ -42,6 +42,8 @@ type APIKey struct {
 	IPWhitelist []string `json:"ip_whitelist,omitempty"`
 	// Blocked IPs/CIDRs
 	IPBlacklist []string `json:"ip_blacklist,omitempty"`
+	// Disable API-key-level quota accounting; user balance/subscription billing still applies
+	QuotaDisabled bool `json:"quota_disabled,omitempty"`
 	// Quota limit in USD for this API key (0 = unlimited)
 	Quota float64 `json:"quota,omitempty"`
 	// Used quota amount in USD
@@ -123,6 +125,8 @@ func (*APIKey) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case apikey.FieldIPWhitelist, apikey.FieldIPBlacklist:
 			values[i] = new([]byte)
+		case apikey.FieldQuotaDisabled:
+			values[i] = new(sql.NullBool)
 		case apikey.FieldQuota, apikey.FieldQuotaUsed, apikey.FieldRateLimit5h, apikey.FieldRateLimit1d, apikey.FieldRateLimit7d, apikey.FieldUsage5h, apikey.FieldUsage1d, apikey.FieldUsage7d:
 			values[i] = new(sql.NullFloat64)
 		case apikey.FieldID, apikey.FieldUserID, apikey.FieldGroupID:
@@ -224,6 +228,12 @@ func (_m *APIKey) assignValues(columns []string, values []any) error {
 				if err := json.Unmarshal(*value, &_m.IPBlacklist); err != nil {
 					return fmt.Errorf("unmarshal field ip_blacklist: %w", err)
 				}
+			}
+		case apikey.FieldQuotaDisabled:
+			if value, ok := values[i].(*sql.NullBool); !ok {
+				return fmt.Errorf("unexpected type %T for field quota_disabled", values[i])
+			} else if value.Valid {
+				_m.QuotaDisabled = value.Bool
 			}
 		case apikey.FieldQuota:
 			if value, ok := values[i].(*sql.NullFloat64); !ok {
@@ -390,6 +400,9 @@ func (_m *APIKey) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("ip_blacklist=")
 	builder.WriteString(fmt.Sprintf("%v", _m.IPBlacklist))
+	builder.WriteString(", ")
+	builder.WriteString("quota_disabled=")
+	builder.WriteString(fmt.Sprintf("%v", _m.QuotaDisabled))
 	builder.WriteString(", ")
 	builder.WriteString("quota=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Quota))
