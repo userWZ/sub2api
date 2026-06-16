@@ -158,6 +158,7 @@ import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import { keysAPI } from '@/api'
 import {
   generateImages,
+  ImageWorkbenchTimeoutError,
   imageDataUrl,
   type ImageWorkbenchBackground,
   type ImageWorkbenchFormat,
@@ -287,7 +288,12 @@ async function copyDefaultKey() {
 async function loadHistory() {
   historyLoading.value = true
   try {
-    conversations.value = await listConversations()
+    const loaded = await listConversations()
+    const { conversations: recovered, changed } = recoverInterruptedTurns(loaded)
+    conversations.value = recovered
+    if (changed) {
+      await persistCurrentHistory()
+    }
     const activeId = localStorage.getItem(ACTIVE_ID_KEY)
     activeConversationId.value = conversations.value.some(item => item.id === activeId)
       ? activeId
@@ -297,6 +303,25 @@ async function loadHistory() {
   } finally {
     historyLoading.value = false
   }
+}
+
+function recoverInterruptedTurns(items: WorkbenchConversation[]) {
+  let changed = false
+  const interruptedMessage = copy.value.generateInterrupted
+  const conversations = items.map(conversation => {
+    const turns = conversation.turns.map(turn => {
+      if (turn.status !== 'generating') return turn
+      changed = true
+      return {
+        ...turn,
+        status: 'error' as TurnStatus,
+        error: turn.error || interruptedMessage,
+      }
+    })
+    return turns === conversation.turns ? conversation : { ...conversation, turns }
+  })
+
+  return { conversations, changed }
 }
 
 function createDraftConversation() {
@@ -365,7 +390,7 @@ async function runGeneration() {
   generating.value = true
   form.prompt = ''
   await nextTick(scrollToBottom)
-  await persistCurrentHistory()
+  void persistCurrentHistory().catch(() => appStore.showError(copy.value.saveHistoryFailed))
 
   controller?.abort()
   controller = new AbortController()
@@ -398,7 +423,9 @@ async function runGeneration() {
     }
   } catch (error: any) {
     if (error?.name === 'AbortError') return
-    const message = error?.message || copy.value.generateFailed
+    const message = error instanceof ImageWorkbenchTimeoutError
+      ? copy.value.generateTimeout
+      : error?.message || copy.value.generateFailed
     turn.status = 'error'
     turn.error = message
     errorMessage.value = message
@@ -410,7 +437,7 @@ async function runGeneration() {
     }
     conversation.updatedAt = new Date().toISOString()
     touchConversation(conversation)
-    await persistCurrentHistory()
+    void persistCurrentHistory().catch(() => appStore.showError(copy.value.saveHistoryFailed))
     await nextTick(scrollToBottom)
   }
 }
@@ -533,10 +560,35 @@ async function saveConversation(conversation: WorkbenchConversation): Promise<vo
   const db = await openDB()
   await new Promise<void>((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, 'readwrite')
-    tx.objectStore(STORE_NAME).put(conversation)
+    tx.objectStore(STORE_NAME).put(serializeConversation(conversation))
     tx.oncomplete = () => resolve()
     tx.onerror = () => reject(tx.error)
   })
+}
+
+function serializeConversation(conversation: WorkbenchConversation): WorkbenchConversation {
+  return {
+    id: conversation.id,
+    title: conversation.title,
+    createdAt: conversation.createdAt,
+    updatedAt: conversation.updatedAt,
+    turns: conversation.turns.map(turn => ({
+      id: turn.id,
+      prompt: turn.prompt,
+      model: turn.model,
+      size: turn.size,
+      quality: turn.quality,
+      output_format: turn.output_format,
+      count: turn.count,
+      status: turn.status,
+      images: turn.images.map(image => ({
+        src: image.src,
+        revised_prompt: image.revised_prompt,
+      })),
+      createdAt: turn.createdAt,
+      error: turn.error,
+    })),
+  }
 }
 
 async function clearConversations(): Promise<void> {
@@ -603,8 +655,11 @@ const zhCopy = {
   keyCreateFailed: '创建默认 API Key 失败',
   loadKeysFailed: '加载 API Key 失败',
   loadHistoryFailed: '加载本地生图历史失败',
+  saveHistoryFailed: '保存本地生图历史失败',
   noImageReturned: '请求成功，但没有返回图片。',
   generateFailed: '图片生成失败',
+  generateTimeout: '图片生成超时。请稍后重试，或联系管理员检查工作台账号池的上游状态。',
+  generateInterrupted: '上次生成已中断，请重新发起生成。',
 }
 
 const enCopy = {
@@ -652,8 +707,11 @@ const enCopy = {
   keyCreateFailed: 'Failed to create default API key',
   loadKeysFailed: 'Failed to load API keys',
   loadHistoryFailed: 'Failed to load local image history',
+  saveHistoryFailed: 'Failed to save local image history',
   noImageReturned: 'The request succeeded, but no image was returned.',
   generateFailed: 'Image generation failed',
+  generateTimeout: 'Image generation timed out. Please try again later or ask an admin to check the workbench account pool.',
+  generateInterrupted: 'The previous generation was interrupted. Please start it again.',
 }
 </script>
 

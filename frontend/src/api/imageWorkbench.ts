@@ -1,3 +1,5 @@
+import { apiClient } from './client'
+
 export type ImageWorkbenchModel = 'gpt-image-2' | 'gpt-image-1.5' | 'gpt-image-1' | 'gpt-image-1-mini'
 export type ImageWorkbenchSize = '1024x1024' | '1024x1536' | '1536x1024' | 'auto'
 export type ImageWorkbenchQuality = 'auto' | 'low' | 'medium' | 'high'
@@ -28,21 +30,42 @@ export interface GenerateImagesResponse {
   usage?: unknown
 }
 
-interface OpenAIErrorBody {
-  error?: {
-    message?: string
-    type?: string
-    code?: string
+const IMAGE_WORKBENCH_TIMEOUT_MS = 180_000
+
+export class ImageWorkbenchTimeoutError extends Error {
+  constructor() {
+    super('Image generation timed out')
+    this.name = 'ImageWorkbenchTimeoutError'
   }
-  message?: string
+}
+
+function createTimedSignal(signal?: AbortSignal) {
+  const controller = new AbortController()
+  let timedOut = false
+
+  const timeoutId = window.setTimeout(() => {
+    timedOut = true
+    controller.abort()
+  }, IMAGE_WORKBENCH_TIMEOUT_MS)
+
+  const abortFromParent = () => controller.abort()
+  if (signal?.aborted) {
+    controller.abort()
+  } else {
+    signal?.addEventListener('abort', abortFromParent, { once: true })
+  }
+
+  return {
+    signal: controller.signal,
+    timedOut: () => timedOut,
+    cleanup: () => {
+      window.clearTimeout(timeoutId)
+      signal?.removeEventListener('abort', abortFromParent)
+    },
+  }
 }
 
 export async function generateImages(req: GenerateImagesRequest, signal?: AbortSignal): Promise<GenerateImagesResponse> {
-  const token = localStorage.getItem('auth_token')
-  if (!token) {
-    throw new Error('Please sign in before generating images')
-  }
-
   const payload: Record<string, unknown> = {
     model: req.model,
     prompt: req.prompt,
@@ -55,32 +78,24 @@ export async function generateImages(req: GenerateImagesRequest, signal?: AbortS
   if (req.background !== 'auto') payload.background = req.background
   if (req.moderation !== 'auto') payload.moderation = req.moderation
 
-  const response = await fetch('/api/v1/user/image-workbench/images/generations', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(payload),
-    signal,
-  })
+  const timedSignal = createTimedSignal(signal)
 
-  const contentType = response.headers.get('content-type') || ''
-  const body = contentType.includes('application/json')
-    ? await response.json().catch(() => ({}))
-    : await response.text().catch(() => '')
-
-  if (!response.ok) {
-    const errorBody = body as OpenAIErrorBody
-    const message =
-      errorBody?.error?.message ||
-      errorBody?.message ||
-      (typeof body === 'string' && body.trim()) ||
-      `Image generation failed with HTTP ${response.status}`
-    throw new Error(message)
+  let response: { data: GenerateImagesResponse }
+  try {
+    response = await apiClient.post<GenerateImagesResponse>('/user/image-workbench/images/generations', payload, {
+      signal: timedSignal.signal,
+      timeout: IMAGE_WORKBENCH_TIMEOUT_MS + 5_000,
+    })
+  } catch (error) {
+    if (timedSignal.timedOut()) {
+      throw new ImageWorkbenchTimeoutError()
+    }
+    throw error
+  } finally {
+    timedSignal.cleanup()
   }
 
-  const result = body as GenerateImagesResponse
+  const result = response.data
   return {
     ...result,
     data: Array.isArray(result.data) ? result.data : [],
