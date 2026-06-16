@@ -74,6 +74,37 @@ export function formatCurrency(amount: number | null | undefined, currency: stri
   }).format(amount)
 }
 
+type PointFormatOptions = {
+  minimumFractionDigits?: number
+  maximumFractionDigits?: number
+}
+
+/**
+ * Format in-app credits without meaningless trailing zeroes.
+ */
+export function formatPointAmount(
+  amount: number | null | undefined,
+  options: PointFormatOptions = {}
+): string {
+  const value = Number(amount ?? 0)
+  const safeValue = Number.isFinite(value) ? value : 0
+  const absValue = Math.abs(safeValue)
+  const maximumFractionDigits = options.maximumFractionDigits ?? (absValue > 0 && absValue < 0.01 ? 6 : 2)
+
+  return new Intl.NumberFormat(getLocale(), {
+    minimumFractionDigits: options.minimumFractionDigits ?? 0,
+    maximumFractionDigits
+  }).format(safeValue)
+}
+
+export function formatPoints(
+  amount: number | null | undefined,
+  options: PointFormatOptions = {}
+): string {
+  const unit = getLocale().toLowerCase().startsWith('zh') ? '积分' : 'credits'
+  return `${formatPointAmount(amount, options)} ${unit}`
+}
+
 /**
  * 格式化字节大小
  * @param bytes 字节数
