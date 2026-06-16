@@ -8,6 +8,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -227,6 +228,205 @@ func TestAPIKeyAuthSetsGroupContext(t *testing.T) {
 		}
 		c.JSON(http.StatusOK, gin.H{"ok": true})
 	})
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/t", nil)
+	req.Header.Set("x-api-key", apiKey.Key)
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+}
+
+func TestAPIKeyAuthAutomaticallyUsesSubscriptionForUnboundKey(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	group := &service.Group{
+		ID:                   301,
+		Name:                 "openai-sub",
+		Status:               service.StatusActive,
+		Platform:             service.PlatformOpenAI,
+		Hydrated:             true,
+		SubscriptionType:     service.SubscriptionTypeSubscription,
+		AllowImageGeneration: true,
+	}
+	user := &service.User{
+		ID:           7,
+		Role:         service.RoleUser,
+		Status:       service.StatusActive,
+		CustomerType: service.CustomerTypeDirect,
+		Balance:      0,
+		Concurrency:  3,
+	}
+	apiKey := &service.APIKey{
+		ID:     100,
+		UserID: user.ID,
+		Key:    "test-key",
+		Status: service.StatusActive,
+		User:   user,
+	}
+	apiKeyRepo := &stubApiKeyRepo{
+		getByKey: func(ctx context.Context, key string) (*service.APIKey, error) {
+			if key != apiKey.Key {
+				return nil, service.ErrAPIKeyNotFound
+			}
+			clone := *apiKey
+			return &clone, nil
+		},
+	}
+	now := time.Now()
+	subscriptionRepo := &stubUserSubscriptionRepo{
+		listActive: func(ctx context.Context, userID int64) ([]service.UserSubscription, error) {
+			require.Equal(t, user.ID, userID)
+			return []service.UserSubscription{{
+				ID:               55,
+				UserID:           user.ID,
+				GroupID:          group.ID,
+				Status:           service.SubscriptionStatusActive,
+				ExpiresAt:        now.Add(24 * time.Hour),
+				DailyWindowStart: &now,
+				Group:            group,
+			}}, nil
+		},
+	}
+
+	cfg := &config.Config{RunMode: config.RunModeStandard}
+	apiKeyService := service.NewAPIKeyService(apiKeyRepo, nil, nil, nil, nil, nil, cfg)
+	subscriptionService := service.NewSubscriptionService(nil, subscriptionRepo, nil, nil, cfg)
+	router := gin.New()
+	router.Use(gin.HandlerFunc(NewAPIKeyAuthMiddleware(apiKeyService, subscriptionService, cfg)))
+	router.POST("/v1/chat/completions", func(c *gin.Context) {
+		sub, ok := GetSubscriptionFromContext(c)
+		require.True(t, ok)
+		require.Equal(t, int64(55), sub.ID)
+		groupFromCtx, ok := c.Request.Context().Value(ctxkey.Group).(*service.Group)
+		require.True(t, ok)
+		require.Equal(t, group.ID, groupFromCtx.ID)
+		c.JSON(http.StatusOK, gin.H{"ok": true})
+	})
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", strings.NewReader(`{"model":"gpt-5"}`))
+	req.Header.Set("x-api-key", apiKey.Key)
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+}
+
+func TestAPIKeyAuthDoesNotAutoSubscribeManagedUser(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	group := &service.Group{
+		ID:               302,
+		Name:             "managed-sub",
+		Status:           service.StatusActive,
+		Platform:         service.PlatformOpenAI,
+		Hydrated:         true,
+		SubscriptionType: service.SubscriptionTypeSubscription,
+	}
+	user := &service.User{
+		ID:           7,
+		Role:         service.RoleUser,
+		Status:       service.StatusActive,
+		CustomerType: service.CustomerTypeManaged,
+		Balance:      0,
+		Concurrency:  3,
+	}
+	apiKey := &service.APIKey{
+		ID:     100,
+		UserID: user.ID,
+		Key:    "test-key",
+		Status: service.StatusActive,
+		User:   user,
+	}
+	apiKeyRepo := &stubApiKeyRepo{
+		getByKey: func(ctx context.Context, key string) (*service.APIKey, error) {
+			if key != apiKey.Key {
+				return nil, service.ErrAPIKeyNotFound
+			}
+			clone := *apiKey
+			return &clone, nil
+		},
+	}
+	subscriptionRepo := &stubUserSubscriptionRepo{
+		listActive: func(ctx context.Context, userID int64) ([]service.UserSubscription, error) {
+			t.Fatalf("managed user should not resolve automatic subscriptions")
+			return []service.UserSubscription{{Group: group}}, nil
+		},
+	}
+
+	cfg := &config.Config{RunMode: config.RunModeStandard}
+	apiKeyService := service.NewAPIKeyService(apiKeyRepo, nil, nil, nil, nil, nil, cfg)
+	subscriptionService := service.NewSubscriptionService(nil, subscriptionRepo, nil, nil, cfg)
+	router := newAuthTestRouter(apiKeyService, subscriptionService, cfg)
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/t", nil)
+	req.Header.Set("x-api-key", apiKey.Key)
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusForbidden, w.Code)
+	require.Contains(t, w.Body.String(), "INSUFFICIENT_BALANCE")
+}
+
+func TestAPIKeyAuthFallsBackToBalanceWhenQuotaDisabledSubscriptionLimited(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	limit := 1.0
+	group := &service.Group{
+		ID:               303,
+		Name:             "sub",
+		Status:           service.StatusActive,
+		Platform:         service.PlatformOpenAI,
+		Hydrated:         true,
+		SubscriptionType: service.SubscriptionTypeSubscription,
+		DailyLimitUSD:    &limit,
+	}
+	user := &service.User{
+		ID:          7,
+		Role:        service.RoleUser,
+		Status:      service.StatusActive,
+		Balance:     10,
+		Concurrency: 3,
+	}
+	apiKey := &service.APIKey{
+		ID:            100,
+		UserID:        user.ID,
+		Key:           "test-key",
+		Status:        service.StatusActive,
+		User:          user,
+		Group:         group,
+		QuotaDisabled: true,
+	}
+	apiKey.GroupID = &group.ID
+	apiKeyRepo := &stubApiKeyRepo{
+		getByKey: func(ctx context.Context, key string) (*service.APIKey, error) {
+			if key != apiKey.Key {
+				return nil, service.ErrAPIKeyNotFound
+			}
+			clone := *apiKey
+			return &clone, nil
+		},
+	}
+	now := time.Now()
+	subscriptionRepo := &stubUserSubscriptionRepo{
+		getActive: func(ctx context.Context, userID, groupID int64) (*service.UserSubscription, error) {
+			return &service.UserSubscription{
+				ID:               55,
+				UserID:           userID,
+				GroupID:          groupID,
+				Status:           service.SubscriptionStatusActive,
+				ExpiresAt:        now.Add(24 * time.Hour),
+				DailyWindowStart: &now,
+				DailyUsageUSD:    10,
+				Group:            group,
+			}, nil
+		},
+	}
+
+	cfg := &config.Config{RunMode: config.RunModeStandard}
+	apiKeyService := service.NewAPIKeyService(apiKeyRepo, nil, nil, nil, nil, nil, cfg)
+	subscriptionService := service.NewSubscriptionService(nil, subscriptionRepo, nil, nil, cfg)
+	router := newAuthTestRouter(apiKeyService, subscriptionService, cfg)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/t", nil)
@@ -1125,6 +1325,7 @@ func (r *stubApiKeyRepo) GetRateLimitData(ctx context.Context, id int64) (*servi
 
 type stubUserSubscriptionRepo struct {
 	getActive      func(ctx context.Context, userID, groupID int64) (*service.UserSubscription, error)
+	listActive     func(ctx context.Context, userID int64) ([]service.UserSubscription, error)
 	updateStatus   func(ctx context.Context, subscriptionID int64, status string) error
 	activateWindow func(ctx context.Context, id int64, start time.Time) error
 	resetDaily     func(ctx context.Context, id int64, start time.Time) error
@@ -1199,6 +1400,9 @@ func (r *stubUserSubscriptionRepo) ListByUserID(ctx context.Context, userID int6
 }
 
 func (r *stubUserSubscriptionRepo) ListActiveByUserID(ctx context.Context, userID int64) ([]service.UserSubscription, error) {
+	if r.listActive != nil {
+		return r.listActive(ctx, userID)
+	}
 	return nil, errors.New("not implemented")
 }
 

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand/v2"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -53,6 +54,21 @@ type SubscriptionService struct {
 	subCacheJitter int // 抖动百分比
 
 	maintenanceQueue *SubscriptionMaintenanceQueue
+}
+
+// EntitlementRequest describes just enough of the current API request to pick
+// an automatic subscription or balance group for an unbound API key.
+type EntitlementRequest struct {
+	Platform       string
+	RequestedModel string
+	RequiresImage  bool
+}
+
+// SubscriptionEntitlementCandidate pairs a currently usable subscription with
+// the group it grants for the current request.
+type SubscriptionEntitlementCandidate struct {
+	Subscription UserSubscription
+	Group        *Group
 }
 
 // NewSubscriptionService 创建订阅服务
@@ -673,6 +689,102 @@ func (s *SubscriptionService) ListActiveUserSubscriptions(ctx context.Context, u
 	}
 	normalizeExpiredWindows(subs)
 	return subs, nil
+}
+
+// ResolveAutomaticSubscription selects the best usable subscription for an
+// unbound user API key. Earlier expiry wins so short-lived grants are consumed
+// before longer subscriptions.
+func (s *SubscriptionService) ResolveAutomaticSubscription(ctx context.Context, userID int64) (*UserSubscription, *Group, error) {
+	return s.ResolveAutomaticSubscriptionForRequest(ctx, userID, EntitlementRequest{})
+}
+
+// ResolveAutomaticSubscriptionForRequest selects the best usable subscription,
+// filtered by request platform and group-level image-generation capability.
+func (s *SubscriptionService) ResolveAutomaticSubscriptionForRequest(ctx context.Context, userID int64, req EntitlementRequest) (*UserSubscription, *Group, error) {
+	candidates, err := s.ResolveAutomaticSubscriptionCandidatesForRequest(ctx, userID, req)
+	if err != nil || len(candidates) == 0 {
+		return nil, nil, err
+	}
+	selected := candidates[0]
+	selected.Subscription.Group = selected.Group
+	return &selected.Subscription, selected.Group, nil
+}
+
+// ResolveAutomaticSubscriptionCandidatesForRequest returns usable subscription
+// candidates sorted in the order billing should try them.
+func (s *SubscriptionService) ResolveAutomaticSubscriptionCandidatesForRequest(ctx context.Context, userID int64, req EntitlementRequest) ([]SubscriptionEntitlementCandidate, error) {
+	if s == nil {
+		return nil, nil
+	}
+	subs, err := s.ListActiveUserSubscriptions(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	candidates := make([]SubscriptionEntitlementCandidate, 0, len(subs))
+	for i := range subs {
+		sub := subs[i]
+		group := sub.Group
+		if group == nil {
+			if s.groupRepo == nil {
+				continue
+			}
+			loaded, err := s.groupRepo.GetByID(ctx, sub.GroupID)
+			if err != nil {
+				continue
+			}
+			group = loaded
+			sub.Group = loaded
+		}
+		if group == nil || !group.IsActive() || !group.IsSubscriptionType() {
+			continue
+		}
+		if !GroupMatchesEntitlementRequest(group, req) {
+			continue
+		}
+		checkCopy := sub
+		needsMaintenance, err := s.ValidateAndCheckLimits(&checkCopy, group)
+		if err != nil {
+			continue
+		}
+		if needsMaintenance {
+			maintenanceCopy := checkCopy
+			s.DoWindowMaintenance(&maintenanceCopy)
+		}
+		candidates = append(candidates, SubscriptionEntitlementCandidate{Subscription: checkCopy, Group: group})
+	}
+	if len(candidates) == 0 {
+		return nil, nil
+	}
+
+	sort.SliceStable(candidates, func(i, j int) bool {
+		left, right := candidates[i], candidates[j]
+		if !left.Subscription.ExpiresAt.Equal(right.Subscription.ExpiresAt) {
+			return left.Subscription.ExpiresAt.Before(right.Subscription.ExpiresAt)
+		}
+		if left.Group.SortOrder != right.Group.SortOrder {
+			return left.Group.SortOrder < right.Group.SortOrder
+		}
+		return left.Group.ID < right.Group.ID
+	})
+
+	return candidates, nil
+}
+
+// GroupMatchesEntitlementRequest checks request-level group constraints. Image
+// capability remains the upstream group-level switch; no key-level image flag is
+// consulted here.
+func GroupMatchesEntitlementRequest(group *Group, req EntitlementRequest) bool {
+	if group == nil {
+		return false
+	}
+	platform := strings.TrimSpace(req.Platform)
+	if platform != "" && strings.TrimSpace(group.Platform) != "" && group.Platform != platform {
+		return false
+	}
+	if req.RequiresImage && !GroupAllowsImageGeneration(group) {
+		return false
+	}
+	return true
 }
 
 // ListGroupSubscriptions 获取分组的所有订阅

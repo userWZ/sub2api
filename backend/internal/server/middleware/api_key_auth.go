@@ -1,9 +1,13 @@
 package middleware
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"log/slog"
+	"net/http"
 	"strings"
 
 	"github.com/Wei-Shaw/sub2api/internal/config"
@@ -12,6 +16,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/internal/service"
 
 	"github.com/gin-gonic/gin"
+	"github.com/tidwall/gjson"
 )
 
 // NewAPIKeyAuthMiddleware 创建 API Key 认证中间件
@@ -146,24 +151,45 @@ func apiKeyAuthWithSubscription(apiKeyService *service.APIKeyService, subscripti
 
 		// skipBilling: /v1/usage 只需鉴权，跳过所有计费执行
 		skipBilling := c.Request.URL.Path == "/v1/usage"
+		entitlementReq := requestEntitlementRequest(c)
+		setEntitlementRequestContext(c, entitlementReq)
 
 		var subscription *service.UserSubscription
+		automaticSubscriptionResolved := false
+		if apiKey.Group == nil || apiKey.GroupID == nil {
+			resolvedSub, resolveErr := resolveUnboundAPIKeyEntitlement(c.Request.Context(), apiKeyService, subscriptionService, apiKey, entitlementReq)
+			if resolveErr != nil {
+				abortEntitlementResolutionError(c, apiKey, entitlementReq, resolveErr, "Failed to resolve API key entitlement")
+				return
+			}
+			subscription = resolvedSub
+			automaticSubscriptionResolved = subscription != nil
+		}
 		isSubscriptionType := apiKey.Group != nil && apiKey.Group.IsSubscriptionType()
 
 		if isSubscriptionType && subscriptionService != nil {
-			sub, subErr := subscriptionService.GetActiveSubscription(
-				c.Request.Context(),
-				apiKey.User.ID,
-				apiKey.Group.ID,
-			)
-			if subErr != nil {
-				if !skipBilling {
-					AbortWithError(c, 403, "SUBSCRIPTION_NOT_FOUND", "No active subscription found for this group")
-					return
+			if subscription == nil {
+				sub, subErr := subscriptionService.GetActiveSubscription(
+					c.Request.Context(),
+					apiKey.User.ID,
+					apiKey.Group.ID,
+				)
+				if subErr != nil {
+					if !skipBilling {
+						if ok, fallbackErr := resolveExplicitBalanceFallbackEntitlement(c.Request.Context(), apiKeyService, apiKey, entitlementReq); fallbackErr != nil {
+							abortEntitlementResolutionError(c, apiKey, entitlementReq, fallbackErr, "Failed to resolve balance fallback entitlement")
+							return
+						} else if ok {
+							isSubscriptionType = false
+						} else {
+							AbortWithError(c, 403, "SUBSCRIPTION_NOT_FOUND", "No active subscription found for this group")
+							return
+						}
+					}
+					// skipBilling: 订阅不存在也放行，handler 会返回可用的数据
+				} else {
+					subscription = sub
 				}
-				// skipBilling: 订阅不存在也放行，handler 会返回可用的数据
-			} else {
-				subscription = sub
 			}
 		}
 
@@ -173,8 +199,10 @@ func apiKeyAuthWithSubscription(apiKeyService *service.APIKeyService, subscripti
 			// Key 状态检查
 			switch apiKey.Status {
 			case service.StatusAPIKeyQuotaExhausted:
-				AbortWithError(c, 429, "API_KEY_QUOTA_EXHAUSTED", "API key 额度已用完")
-				return
+				if !apiKey.QuotaDisabled {
+					AbortWithError(c, 429, "API_KEY_QUOTA_EXHAUSTED", "API key 额度已用完")
+					return
+				}
 			case service.StatusAPIKeyExpired:
 				AbortWithError(c, 403, "API_KEY_EXPIRED", "API key 已过期")
 				return
@@ -194,20 +222,42 @@ func apiKeyAuthWithSubscription(apiKeyService *service.APIKeyService, subscripti
 			if subscription != nil {
 				needsMaintenance, validateErr := subscriptionService.ValidateAndCheckLimits(subscription, apiKey.Group)
 				if validateErr != nil {
-					code := "SUBSCRIPTION_INVALID"
-					status := 403
-					if errors.Is(validateErr, service.ErrDailyLimitExceeded) ||
-						errors.Is(validateErr, service.ErrWeeklyLimitExceeded) ||
-						errors.Is(validateErr, service.ErrMonthlyLimitExceeded) {
-						code = "USAGE_LIMIT_EXCEEDED"
-						status = 429
+					if isSubscriptionLimitError(validateErr) {
+						if automaticSubscriptionResolved {
+							alternative, altErr := resolveAlternativeAutomaticSubscriptionEntitlement(c.Request.Context(), subscriptionService, apiKey, entitlementReq, subscription.ID)
+							if altErr != nil {
+								abortEntitlementResolutionError(c, apiKey, entitlementReq, altErr, "Failed to resolve alternative subscription entitlement")
+								return
+							}
+							if alternative != nil {
+								subscription = alternative
+								needsMaintenance = false
+								validateErr = nil
+							}
+						}
+						if validateErr != nil {
+							if ok, fallbackErr := resolveExplicitBalanceFallbackEntitlement(c.Request.Context(), apiKeyService, apiKey, entitlementReq); fallbackErr != nil {
+								abortEntitlementResolutionError(c, apiKey, entitlementReq, fallbackErr, "Failed to resolve balance fallback entitlement")
+								return
+							} else if ok {
+								subscription = nil
+								if apiKey.User.Balance <= 0 {
+									AbortWithError(c, 403, "INSUFFICIENT_BALANCE", "Insufficient account balance")
+									return
+								}
+							} else {
+								AbortWithError(c, 429, "USAGE_LIMIT_EXCEEDED", validateErr.Error())
+								return
+							}
+						}
+					} else {
+						AbortWithError(c, 403, "SUBSCRIPTION_INVALID", validateErr.Error())
+						return
 					}
-					AbortWithError(c, status, code, validateErr.Error())
-					return
 				}
 
 				// 窗口维护异步化（不阻塞请求）
-				if needsMaintenance {
+				if subscription != nil && needsMaintenance {
 					maintenanceCopy := *subscription
 					subscriptionService.DoWindowMaintenance(&maintenanceCopy)
 				}
@@ -276,6 +326,255 @@ func GetSubscriptionFromContext(c *gin.Context) (*service.UserSubscription, bool
 	}
 	subscription, ok := value.(*service.UserSubscription)
 	return subscription, ok
+}
+
+func resolveUnboundAPIKeyEntitlement(ctx context.Context, apiKeyService *service.APIKeyService, subscriptionService *service.SubscriptionService, apiKey *service.APIKey, req service.EntitlementRequest) (*service.UserSubscription, error) {
+	if apiKey == nil || apiKey.User == nil {
+		return nil, nil
+	}
+
+	if apiKey.User.CustomerType != service.CustomerTypeManaged && subscriptionService != nil {
+		sub, group, err := subscriptionService.ResolveAutomaticSubscriptionForRequest(ctx, apiKey.User.ID, req)
+		if err != nil {
+			return nil, err
+		}
+		if sub != nil && group != nil {
+			groupID := group.ID
+			apiKey.GroupID = &groupID
+			apiKey.Group = group
+			sub.Group = group
+			return sub, nil
+		}
+	}
+
+	if _, err := resolveBalanceFallbackEntitlement(ctx, apiKeyService, apiKey, req); err != nil {
+		return nil, err
+	}
+
+	return nil, nil
+}
+
+func resolveAlternativeAutomaticSubscriptionEntitlement(ctx context.Context, subscriptionService *service.SubscriptionService, apiKey *service.APIKey, req service.EntitlementRequest, currentSubscriptionID int64) (*service.UserSubscription, error) {
+	if subscriptionService == nil || apiKey == nil || apiKey.User == nil {
+		return nil, nil
+	}
+	candidates, err := subscriptionService.ResolveAutomaticSubscriptionCandidatesForRequest(ctx, apiKey.User.ID, req)
+	if err != nil {
+		return nil, err
+	}
+	for i := range candidates {
+		candidate := candidates[i]
+		if candidate.Subscription.ID == currentSubscriptionID || candidate.Group == nil {
+			continue
+		}
+		groupID := candidate.Group.ID
+		apiKey.GroupID = &groupID
+		apiKey.Group = candidate.Group
+		candidate.Subscription.Group = candidate.Group
+		return &candidate.Subscription, nil
+	}
+	return nil, nil
+}
+
+func resolveBalanceFallbackEntitlement(ctx context.Context, apiKeyService *service.APIKeyService, apiKey *service.APIKey, req service.EntitlementRequest) (bool, error) {
+	if apiKey == nil || apiKey.User == nil {
+		return false, nil
+	}
+	apiKey.GroupID = nil
+	apiKey.Group = nil
+	if apiKeyService != nil {
+		group, err := apiKeyService.ResolveDefaultStandardGroupForRequest(ctx, apiKey.User.ID, req)
+		if err != nil {
+			return false, err
+		}
+		if group != nil {
+			groupID := group.ID
+			apiKey.GroupID = &groupID
+			apiKey.Group = group
+		}
+	}
+	return true, nil
+}
+
+func resolveExplicitBalanceFallbackEntitlement(ctx context.Context, apiKeyService *service.APIKeyService, apiKey *service.APIKey, req service.EntitlementRequest) (bool, error) {
+	if apiKey == nil || !apiKey.QuotaDisabled {
+		return false, nil
+	}
+	return resolveBalanceFallbackEntitlement(ctx, apiKeyService, apiKey, req)
+}
+
+func isSubscriptionLimitError(err error) bool {
+	return errors.Is(err, service.ErrDailyLimitExceeded) ||
+		errors.Is(err, service.ErrWeeklyLimitExceeded) ||
+		errors.Is(err, service.ErrMonthlyLimitExceeded)
+}
+
+const entitlementRequestBodyPeekLimit = 128 * 1024
+
+func requestEntitlementRequest(c *gin.Context) service.EntitlementRequest {
+	if c == nil || c.Request == nil {
+		return service.EntitlementRequest{}
+	}
+	path := c.Request.URL.Path
+	body := peekRequestBody(c)
+	model := requestModelFromPathOrBody(path, body)
+	requiresImage := service.IsImageGenerationIntent(path, model, body)
+	if !requiresImage && bytes.Contains(body, []byte("image_generation")) {
+		requiresImage = true
+	}
+	return service.EntitlementRequest{
+		Platform:       inferRequestPlatform(path, model),
+		RequestedModel: model,
+		RequiresImage:  requiresImage,
+	}
+}
+
+func peekRequestBody(c *gin.Context) []byte {
+	if c == nil || c.Request == nil || c.Request.Body == nil {
+		return nil
+	}
+	switch c.Request.Method {
+	case http.MethodPost, http.MethodPut, http.MethodPatch:
+	default:
+		return nil
+	}
+	original := c.Request.Body
+	buf := make([]byte, entitlementRequestBodyPeekLimit)
+	n, err := original.Read(buf)
+	if n <= 0 {
+		c.Request.Body = original
+		return nil
+	}
+	body := append([]byte(nil), buf[:n]...)
+	c.Request.Body = replayReadCloser{
+		Reader: io.MultiReader(bytes.NewReader(body), original),
+		Closer: original,
+	}
+	if err != nil && !errors.Is(err, io.EOF) {
+		slog.Warn("failed to peek request body for entitlement selection", "path", c.Request.URL.Path, "error", err)
+	}
+	return body
+}
+
+func requestModelFromPathOrBody(path string, body []byte) string {
+	if model := geminiModelFromPath(path); model != "" {
+		return model
+	}
+	if len(body) == 0 {
+		return ""
+	}
+	if model := strings.TrimSpace(gjson.GetBytes(body, "model").String()); model != "" {
+		return model
+	}
+	return ""
+}
+
+func geminiModelFromPath(path string) string {
+	path = strings.TrimSpace(path)
+	marker := "/models/"
+	idx := strings.Index(path, marker)
+	if idx < 0 {
+		return ""
+	}
+	model := path[idx+len(marker):]
+	if cut := strings.IndexAny(model, ":/?"); cut >= 0 {
+		model = model[:cut]
+	}
+	return strings.TrimSpace(model)
+}
+
+func inferRequestPlatform(path, model string) string {
+	lowerPath := strings.ToLower(strings.TrimSpace(path))
+	lowerModel := strings.ToLower(strings.TrimSpace(model))
+	switch {
+	case strings.HasPrefix(lowerPath, "/antigravity/"):
+		return service.PlatformAntigravity
+	case strings.HasPrefix(lowerPath, "/v1beta/"):
+		return service.PlatformGemini
+	case strings.Contains(lowerPath, "/images/"),
+		strings.Contains(lowerPath, "/responses"),
+		strings.Contains(lowerPath, "/chat/completions"):
+		return service.PlatformOpenAI
+	case strings.HasPrefix(lowerModel, "claude-"):
+		return service.PlatformAnthropic
+	case strings.HasPrefix(lowerModel, "gemini-"):
+		return service.PlatformGemini
+	case strings.Contains(lowerModel, "codex"),
+		strings.HasPrefix(lowerModel, "gpt-"),
+		strings.HasPrefix(lowerModel, "o1"),
+		strings.HasPrefix(lowerModel, "o3"),
+		strings.HasPrefix(lowerModel, "o4"):
+		return service.PlatformOpenAI
+	default:
+		return ""
+	}
+}
+
+type replayReadCloser struct {
+	io.Reader
+	io.Closer
+}
+
+func setEntitlementRequestContext(c *gin.Context, req service.EntitlementRequest) {
+	if c == nil || c.Request == nil {
+		return
+	}
+	ctx := c.Request.Context()
+	if strings.TrimSpace(req.Platform) != "" {
+		ctx = context.WithValue(ctx, ctxkey.Platform, req.Platform)
+	}
+	if strings.TrimSpace(req.RequestedModel) != "" {
+		ctx = context.WithValue(ctx, ctxkey.Model, req.RequestedModel)
+	}
+	c.Request = c.Request.WithContext(ctx)
+}
+
+func abortEntitlementResolutionError(c *gin.Context, apiKey *service.APIKey, req service.EntitlementRequest, err error, message string) {
+	status, code, responseMessage := classifyEntitlementResolutionError(c, err, message)
+	logEntitlementResolutionError(c, apiKey, req, err, status, message)
+	AbortWithError(c, status, code, responseMessage)
+}
+
+func classifyEntitlementResolutionError(c *gin.Context, err error, message string) (int, string, string) {
+	if requestContextDone(c, err) {
+		return 499, "CLIENT_CLOSED_REQUEST", "Client closed request"
+	}
+	return http.StatusInternalServerError, "INTERNAL_ERROR", message
+}
+
+func requestContextDone(c *gin.Context, err error) bool {
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return true
+	}
+	if c == nil || c.Request == nil {
+		return false
+	}
+	ctxErr := c.Request.Context().Err()
+	return errors.Is(ctxErr, context.Canceled) || errors.Is(ctxErr, context.DeadlineExceeded)
+}
+
+func logEntitlementResolutionError(c *gin.Context, apiKey *service.APIKey, req service.EntitlementRequest, err error, status int, message string) {
+	attrs := []any{
+		"status", status,
+		"message", message,
+		"error", err,
+		"platform", req.Platform,
+		"requested_model", req.RequestedModel,
+		"requires_image", req.RequiresImage,
+	}
+	if c != nil && c.Request != nil {
+		attrs = append(attrs, "path", c.Request.URL.Path, "request_context_error", c.Request.Context().Err())
+	}
+	if apiKey != nil {
+		attrs = append(attrs, "api_key_id", apiKey.ID)
+		if apiKey.GroupID != nil {
+			attrs = append(attrs, "group_id", *apiKey.GroupID)
+		}
+		if apiKey.User != nil {
+			attrs = append(attrs, "user_id", apiKey.User.ID)
+		}
+	}
+	slog.Warn("api_key_entitlement_resolution_failed", attrs...)
 }
 
 func setGroupContext(c *gin.Context, group *service.Group) {

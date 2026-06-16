@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"html"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -787,6 +788,42 @@ func (s *APIKeyService) GetAvailableGroups(ctx context.Context, userID int64) ([
 	}
 
 	return availableGroups, nil
+}
+
+// ResolveDefaultStandardGroup returns the first usable standard group for a
+// user's balance-based traffic.
+func (s *APIKeyService) ResolveDefaultStandardGroup(ctx context.Context, userID int64) (*Group, error) {
+	return s.ResolveDefaultStandardGroupForRequest(ctx, userID, EntitlementRequest{})
+}
+
+// ResolveDefaultStandardGroupForRequest returns the first usable standard group
+// for balance fallback, filtered by request platform and group-level image
+// capability.
+func (s *APIKeyService) ResolveDefaultStandardGroupForRequest(ctx context.Context, userID int64, req EntitlementRequest) (*Group, error) {
+	if s == nil || s.userRepo == nil || s.groupRepo == nil {
+		return nil, nil
+	}
+	groups, err := s.GetAvailableGroups(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	standardGroups := make([]Group, 0, len(groups))
+	for _, group := range groups {
+		if group.IsActive() && !group.IsSubscriptionType() && GroupMatchesEntitlementRequest(&group, req) {
+			standardGroups = append(standardGroups, group)
+		}
+	}
+	if len(standardGroups) == 0 {
+		return nil, nil
+	}
+	sort.SliceStable(standardGroups, func(i, j int) bool {
+		if standardGroups[i].SortOrder != standardGroups[j].SortOrder {
+			return standardGroups[i].SortOrder < standardGroups[j].SortOrder
+		}
+		return standardGroups[i].ID < standardGroups[j].ID
+	})
+	selected := standardGroups[0]
+	return &selected, nil
 }
 
 // canUserBindGroupInternal 内部方法，检查用户是否可以绑定分组（使用预加载的订阅数据）

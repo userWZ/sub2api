@@ -14,7 +14,7 @@ import (
 	"github.com/dgraph-io/ristretto"
 )
 
-const apiKeyAuthSnapshotVersion = 13 // v13: include API-key quota_disabled flag
+const apiKeyAuthSnapshotVersion = 14 // v14: include user customer_type for managed-key billing
 
 type apiKeyAuthCacheConfig struct {
 	l1Size        int
@@ -225,6 +225,7 @@ func (s *APIKeyService) snapshotFromAPIKey(ctx context.Context, apiKey *APIKey) 
 			ID:                         apiKey.User.ID,
 			Status:                     apiKey.User.Status,
 			Role:                       apiKey.User.Role,
+			CustomerType:               apiKey.User.CustomerType,
 			Balance:                    apiKey.User.Balance,
 			Concurrency:                apiKey.User.Concurrency,
 			AllowedGroups:              apiKey.User.AllowedGroups,
@@ -306,6 +307,7 @@ func (s *APIKeyService) snapshotToAPIKey(key string, snapshot *APIKeyAuthSnapsho
 			ID:                         snapshot.User.ID,
 			Status:                     snapshot.User.Status,
 			Role:                       snapshot.User.Role,
+			CustomerType:               snapshot.User.CustomerType,
 			Balance:                    snapshot.User.Balance,
 			Concurrency:                snapshot.User.Concurrency,
 			AllowedGroups:              snapshot.User.AllowedGroups,
