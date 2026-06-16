@@ -7,6 +7,8 @@ import (
 	"fmt"
 )
 
+type imageWorkbenchRequestContextKey struct{}
+
 const (
 	ContextKeyImageWorkbenchRequest  = "image_workbench_request"
 	SettingKeyImageWorkbenchAccounts = "image_workbench_accounts"
@@ -15,6 +17,18 @@ const (
 type ImageWorkbenchAccountSettings struct {
 	Enabled    bool    `json:"enabled"`
 	AccountIDs []int64 `json:"account_ids"`
+}
+
+func WithImageWorkbenchRequestContext(ctx context.Context) context.Context {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	return context.WithValue(ctx, imageWorkbenchRequestContextKey{}, true)
+}
+
+func IsImageWorkbenchRequestContext(ctx context.Context) bool {
+	value, _ := ctx.Value(imageWorkbenchRequestContextKey{}).(bool)
+	return value
 }
 
 func DefaultImageWorkbenchAccountSettings() *ImageWorkbenchAccountSettings {
@@ -82,4 +96,32 @@ func normalizeImageWorkbenchAccountIDs(accountIDs []int64) []int64 {
 		normalized = append(normalized, id)
 	}
 	return normalized
+}
+
+func imageWorkbenchAccountAllowed(allowlist map[int64]struct{}, accountID int64) bool {
+	if len(allowlist) == 0 {
+		return true
+	}
+	_, ok := allowlist[accountID]
+	return ok
+}
+
+func (s *OpenAIGatewayService) imageWorkbenchAccountAllowlist(ctx context.Context) map[int64]struct{} {
+	if !IsImageWorkbenchRequestContext(ctx) || s == nil || s.settingService == nil {
+		return nil
+	}
+	settings, err := s.settingService.GetImageWorkbenchAccountSettings(ctx)
+	if err != nil || settings == nil || !settings.Enabled || len(settings.AccountIDs) == 0 {
+		return nil
+	}
+	allowlist := make(map[int64]struct{}, len(settings.AccountIDs))
+	for _, id := range settings.AccountIDs {
+		if id > 0 {
+			allowlist[id] = struct{}{}
+		}
+	}
+	if len(allowlist) == 0 {
+		return nil
+	}
+	return allowlist
 }

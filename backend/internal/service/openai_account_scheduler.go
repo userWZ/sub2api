@@ -49,6 +49,7 @@ type OpenAIAccountScheduleRequest struct {
 	RequiredImageCapability OpenAIImagesCapability
 	RequireCompact          bool
 	ExcludedIDs             map[int64]struct{}
+	AccountAllowlist        map[int64]struct{}
 }
 
 type OpenAIAccountScheduleDecision struct {
@@ -284,6 +285,14 @@ func (s *defaultOpenAIAccountScheduler) Select(
 			return nil, decision, err
 		}
 		if selection != nil && selection.Account != nil {
+			if !req.accountAllowed(selection.Account.ID) {
+				if selection.ReleaseFunc != nil {
+					selection.ReleaseFunc()
+				}
+				selection = nil
+			}
+		}
+		if selection != nil && selection.Account != nil {
 			if !s.isAccountTransportCompatible(selection.Account, req.RequiredTransport) {
 				if selection.ReleaseFunc != nil {
 					selection.ReleaseFunc()
@@ -357,6 +366,10 @@ func (s *defaultOpenAIAccountScheduler) selectBySessionHash(
 		if _, excluded := req.ExcludedIDs[accountID]; excluded {
 			return nil, false, nil
 		}
+	}
+	if !req.accountAllowed(accountID) {
+		_ = s.service.deleteStickySessionAccountID(ctx, req.GroupID, sessionHash)
+		return nil, false, nil
 	}
 
 	account, err := s.service.getSchedulableAccount(ctx, accountID)
@@ -913,6 +926,9 @@ func (s *defaultOpenAIAccountScheduler) selectByLoadBalance(
 				continue
 			}
 		}
+		if !req.accountAllowed(account.ID) {
+			continue
+		}
 		if !account.IsSchedulable() || !account.IsOpenAI() {
 			continue
 		}
@@ -1035,6 +1051,9 @@ func (s *defaultOpenAIAccountScheduler) isAccountRequestCompatible(ctx context.C
 	if account == nil {
 		return false
 	}
+	if !req.accountAllowed(account.ID) {
+		return false
+	}
 	if s != nil && s.service != nil && s.service.isOpenAIAccountRuntimeBlocked(account) {
 		return false
 	}
@@ -1054,6 +1073,10 @@ func (s *defaultOpenAIAccountScheduler) isAccountRequestCompatible(ctx context.C
 		return false
 	}
 	return accountSupportsOpenAICapabilities(account, req.RequiredCapability, req.RequiredImageCapability)
+}
+
+func (req OpenAIAccountScheduleRequest) accountAllowed(accountID int64) bool {
+	return imageWorkbenchAccountAllowed(req.AccountAllowlist, accountID)
 }
 
 func (s *defaultOpenAIAccountScheduler) ReportResult(accountID int64, success bool, firstTokenMs *int) {
@@ -1287,6 +1310,7 @@ func (s *OpenAIGatewayService) selectAccountWithScheduler(
 			"model", requestedModel)
 		return nil, decision, fmt.Errorf("%w supporting model: %s (channel pricing restriction)", ErrNoAvailableAccounts, requestedModel)
 	}
+	accountAllowlist := s.imageWorkbenchAccountAllowlist(ctx)
 
 	var stickyAccountID int64
 	if sessionHash != "" && s.cache != nil {
@@ -1306,6 +1330,7 @@ func (s *OpenAIGatewayService) selectAccountWithScheduler(
 		RequiredImageCapability: requiredImageCapability,
 		RequireCompact:          requireCompact,
 		ExcludedIDs:             excludedIDs,
+		AccountAllowlist:        accountAllowlist,
 	})
 }
 

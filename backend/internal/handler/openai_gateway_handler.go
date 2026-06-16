@@ -166,6 +166,7 @@ func (h *OpenAIGatewayHandler) BindImageWorkbenchDefaultKey(c *gin.Context) {
 
 	c.Request.Header.Set("Authorization", "Bearer "+apiKey.Key)
 	c.Set(service.ContextKeyImageWorkbenchRequest, true)
+	c.Request = c.Request.WithContext(service.WithImageWorkbenchRequestContext(c.Request.Context()))
 	c.Next()
 }
 
