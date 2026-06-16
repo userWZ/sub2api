@@ -135,6 +135,7 @@ type CreateUserInput struct {
 	Password      string
 	Username      string
 	Notes         string
+	CustomerType  string
 	Balance       *float64
 	Concurrency   int
 	RPMLimit      int
@@ -710,6 +711,7 @@ func (s *adminServiceImpl) CreateUser(ctx context.Context, input *CreateUserInpu
 		Concurrency:   input.Concurrency,
 		RPMLimit:      input.RPMLimit,
 		Status:        StatusActive,
+		CustomerType:  normalizeCustomerType(input.CustomerType),
 		AllowedGroups: input.AllowedGroups,
 	}
 	if err := user.SetPassword(input.Password); err != nil {
@@ -720,6 +722,17 @@ func (s *adminServiceImpl) CreateUser(ctx context.Context, input *CreateUserInpu
 	}
 	s.assignDefaultSubscriptions(ctx, user.ID)
 	return user, nil
+}
+
+func normalizeCustomerType(value string) string {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "", CustomerTypeDirect:
+		return CustomerTypeDirect
+	case CustomerTypeManaged:
+		return CustomerTypeManaged
+	default:
+		return CustomerTypeDirect
+	}
 }
 
 func (s *adminServiceImpl) assignDefaultSubscriptions(ctx context.Context, userID int64) {

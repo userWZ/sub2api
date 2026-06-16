@@ -144,6 +144,20 @@ func (_c *UserCreate) SetNillableStatus(v *string) *UserCreate {
 	return _c
 }
 
+// SetCustomerType sets the "customer_type" field.
+func (_c *UserCreate) SetCustomerType(v string) *UserCreate {
+	_c.mutation.SetCustomerType(v)
+	return _c
+}
+
+// SetNillableCustomerType sets the "customer_type" field if the given value is not nil.
+func (_c *UserCreate) SetNillableCustomerType(v *string) *UserCreate {
+	if v != nil {
+		_c.SetCustomerType(*v)
+	}
+	return _c
+}
+
 // SetUsername sets the "username" field.
 func (_c *UserCreate) SetUsername(v string) *UserCreate {
 	_c.mutation.SetUsername(v)
@@ -602,6 +616,10 @@ func (_c *UserCreate) defaults() error {
 		v := user.DefaultStatus
 		_c.mutation.SetStatus(v)
 	}
+	if _, ok := _c.mutation.CustomerType(); !ok {
+		v := user.DefaultCustomerType
+		_c.mutation.SetCustomerType(v)
+	}
 	if _, ok := _c.mutation.Username(); !ok {
 		v := user.DefaultUsername
 		_c.mutation.SetUsername(v)
@@ -685,6 +703,14 @@ func (_c *UserCreate) check() error {
 	if v, ok := _c.mutation.Status(); ok {
 		if err := user.StatusValidator(v); err != nil {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "User.status": %w`, err)}
+		}
+	}
+	if _, ok := _c.mutation.CustomerType(); !ok {
+		return &ValidationError{Name: "customer_type", err: errors.New(`ent: missing required field "User.customer_type"`)}
+	}
+	if v, ok := _c.mutation.CustomerType(); ok {
+		if err := user.CustomerTypeValidator(v); err != nil {
+			return &ValidationError{Name: "customer_type", err: fmt.Errorf(`ent: validator failed for field "User.customer_type": %w`, err)}
 		}
 	}
 	if _, ok := _c.mutation.Username(); !ok {
@@ -786,6 +812,10 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Status(); ok {
 		_spec.SetField(user.FieldStatus, field.TypeString, value)
 		_node.Status = value
+	}
+	if value, ok := _c.mutation.CustomerType(); ok {
+		_spec.SetField(user.FieldCustomerType, field.TypeString, value)
+		_node.CustomerType = value
 	}
 	if value, ok := _c.mutation.Username(); ok {
 		_spec.SetField(user.FieldUsername, field.TypeString, value)
@@ -1221,6 +1251,18 @@ func (u *UserUpsert) UpdateStatus() *UserUpsert {
 	return u
 }
 
+// SetCustomerType sets the "customer_type" field.
+func (u *UserUpsert) SetCustomerType(v string) *UserUpsert {
+	u.Set(user.FieldCustomerType, v)
+	return u
+}
+
+// UpdateCustomerType sets the "customer_type" field to the value that was provided on create.
+func (u *UserUpsert) UpdateCustomerType() *UserUpsert {
+	u.SetExcluded(user.FieldCustomerType)
+	return u
+}
+
 // SetUsername sets the "username" field.
 func (u *UserUpsert) SetUsername(v string) *UserUpsert {
 	u.Set(user.FieldUsername, v)
@@ -1612,6 +1654,20 @@ func (u *UserUpsertOne) SetStatus(v string) *UserUpsertOne {
 func (u *UserUpsertOne) UpdateStatus() *UserUpsertOne {
 	return u.Update(func(s *UserUpsert) {
 		s.UpdateStatus()
+	})
+}
+
+// SetCustomerType sets the "customer_type" field.
+func (u *UserUpsertOne) SetCustomerType(v string) *UserUpsertOne {
+	return u.Update(func(s *UserUpsert) {
+		s.SetCustomerType(v)
+	})
+}
+
+// UpdateCustomerType sets the "customer_type" field to the value that was provided on create.
+func (u *UserUpsertOne) UpdateCustomerType() *UserUpsertOne {
+	return u.Update(func(s *UserUpsert) {
+		s.UpdateCustomerType()
 	})
 }
 
@@ -2208,6 +2264,20 @@ func (u *UserUpsertBulk) SetStatus(v string) *UserUpsertBulk {
 func (u *UserUpsertBulk) UpdateStatus() *UserUpsertBulk {
 	return u.Update(func(s *UserUpsert) {
 		s.UpdateStatus()
+	})
+}
+
+// SetCustomerType sets the "customer_type" field.
+func (u *UserUpsertBulk) SetCustomerType(v string) *UserUpsertBulk {
+	return u.Update(func(s *UserUpsert) {
+		s.SetCustomerType(v)
+	})
+}
+
+// UpdateCustomerType sets the "customer_type" field to the value that was provided on create.
+func (u *UserUpsertBulk) UpdateCustomerType() *UserUpsertBulk {
+	return u.Update(func(s *UserUpsert) {
+		s.UpdateCustomerType()
 	})
 }
 

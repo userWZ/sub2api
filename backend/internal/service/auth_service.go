@@ -470,6 +470,9 @@ func (s *AuthService) Login(ctx context.Context, email, password string) (string
 	if !user.IsActive() {
 		return "", nil, ErrUserNotActive
 	}
+	if user.CustomerType == CustomerTypeManaged {
+		return "", nil, ErrInvalidCredentials
+	}
 
 	// 生成JWT token
 	token, err := s.GenerateToken(user)

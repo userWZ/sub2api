@@ -100,6 +100,11 @@ func Status(v string) predicate.User {
 	return predicate.User(sql.FieldEQ(FieldStatus, v))
 }
 
+// CustomerType applies equality check predicate on the "customer_type" field. It's identical to CustomerTypeEQ.
+func CustomerType(v string) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldCustomerType, v))
+}
+
 // Username applies equality check predicate on the "username" field. It's identical to UsernameEQ.
 func Username(v string) predicate.User {
 	return predicate.User(sql.FieldEQ(FieldUsername, v))
@@ -638,6 +643,71 @@ func StatusEqualFold(v string) predicate.User {
 // StatusContainsFold applies the ContainsFold predicate on the "status" field.
 func StatusContainsFold(v string) predicate.User {
 	return predicate.User(sql.FieldContainsFold(FieldStatus, v))
+}
+
+// CustomerTypeEQ applies the EQ predicate on the "customer_type" field.
+func CustomerTypeEQ(v string) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldCustomerType, v))
+}
+
+// CustomerTypeNEQ applies the NEQ predicate on the "customer_type" field.
+func CustomerTypeNEQ(v string) predicate.User {
+	return predicate.User(sql.FieldNEQ(FieldCustomerType, v))
+}
+
+// CustomerTypeIn applies the In predicate on the "customer_type" field.
+func CustomerTypeIn(vs ...string) predicate.User {
+	return predicate.User(sql.FieldIn(FieldCustomerType, vs...))
+}
+
+// CustomerTypeNotIn applies the NotIn predicate on the "customer_type" field.
+func CustomerTypeNotIn(vs ...string) predicate.User {
+	return predicate.User(sql.FieldNotIn(FieldCustomerType, vs...))
+}
+
+// CustomerTypeGT applies the GT predicate on the "customer_type" field.
+func CustomerTypeGT(v string) predicate.User {
+	return predicate.User(sql.FieldGT(FieldCustomerType, v))
+}
+
+// CustomerTypeGTE applies the GTE predicate on the "customer_type" field.
+func CustomerTypeGTE(v string) predicate.User {
+	return predicate.User(sql.FieldGTE(FieldCustomerType, v))
+}
+
+// CustomerTypeLT applies the LT predicate on the "customer_type" field.
+func CustomerTypeLT(v string) predicate.User {
+	return predicate.User(sql.FieldLT(FieldCustomerType, v))
+}
+
+// CustomerTypeLTE applies the LTE predicate on the "customer_type" field.
+func CustomerTypeLTE(v string) predicate.User {
+	return predicate.User(sql.FieldLTE(FieldCustomerType, v))
+}
+
+// CustomerTypeContains applies the Contains predicate on the "customer_type" field.
+func CustomerTypeContains(v string) predicate.User {
+	return predicate.User(sql.FieldContains(FieldCustomerType, v))
+}
+
+// CustomerTypeHasPrefix applies the HasPrefix predicate on the "customer_type" field.
+func CustomerTypeHasPrefix(v string) predicate.User {
+	return predicate.User(sql.FieldHasPrefix(FieldCustomerType, v))
+}
+
+// CustomerTypeHasSuffix applies the HasSuffix predicate on the "customer_type" field.
+func CustomerTypeHasSuffix(v string) predicate.User {
+	return predicate.User(sql.FieldHasSuffix(FieldCustomerType, v))
+}
+
+// CustomerTypeEqualFold applies the EqualFold predicate on the "customer_type" field.
+func CustomerTypeEqualFold(v string) predicate.User {
+	return predicate.User(sql.FieldEqualFold(FieldCustomerType, v))
+}
+
+// CustomerTypeContainsFold applies the ContainsFold predicate on the "customer_type" field.
+func CustomerTypeContainsFold(v string) predicate.User {
+	return predicate.User(sql.FieldContainsFold(FieldCustomerType, v))
 }
 
 // UsernameEQ applies the EQ predicate on the "username" field.

@@ -91,6 +91,7 @@ func (r *userRepository) Create(ctx context.Context, userIn *service.User) error
 		SetBalance(userIn.Balance).
 		SetConcurrency(userIn.Concurrency).
 		SetStatus(userIn.Status).
+		SetCustomerType(customerTypeOrDefault(userIn.CustomerType)).
 		SetSignupSource(userSignupSourceOrDefault(userIn.SignupSource)).
 		SetNillableLastLoginAt(userIn.LastLoginAt).
 		SetNillableLastActiveAt(userIn.LastActiveAt).
@@ -444,6 +445,9 @@ func (r *userRepository) ListWithFilters(ctx context.Context, params pagination.
 	}
 	if filters.Role != "" {
 		q = q.Where(dbuser.RoleEQ(filters.Role))
+	}
+	if filters.CustomerType != "" {
+		q = q.Where(dbuser.CustomerTypeEQ(filters.CustomerType))
 	}
 	if filters.Search != "" {
 		q = q.Where(
@@ -989,11 +993,21 @@ func applyUserEntityToService(dst *service.User, src *dbent.User) {
 		return
 	}
 	dst.ID = src.ID
+	dst.CustomerType = customerTypeOrDefault(src.CustomerType)
 	dst.SignupSource = src.SignupSource
 	dst.LastLoginAt = src.LastLoginAt
 	dst.LastActiveAt = src.LastActiveAt
 	dst.CreatedAt = src.CreatedAt
 	dst.UpdatedAt = src.UpdatedAt
+}
+
+func customerTypeOrDefault(customerType string) string {
+	switch strings.TrimSpace(strings.ToLower(customerType)) {
+	case service.CustomerTypeManaged:
+		return service.CustomerTypeManaged
+	default:
+		return service.CustomerTypeDirect
+	}
 }
 
 func userSignupSourceOrDefault(signupSource string) string {

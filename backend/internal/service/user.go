@@ -21,6 +21,7 @@ type User struct {
 	Balance        float64
 	Concurrency    int
 	Status         string
+	CustomerType   string
 	AllowedGroups  []int64
 	TokenVersion   int64 // Incremented on password change to invalidate existing tokens
 	// TokenVersionResolved indicates TokenVersion already contains the fingerprint-derived
@@ -62,6 +63,11 @@ type User struct {
 	APIKeys       []APIKey
 	Subscriptions []UserSubscription
 }
+
+const (
+	CustomerTypeDirect  = "direct"
+	CustomerTypeManaged = "managed"
+)
 
 func (u *User) IsAdmin() bool {
 	return u.Role == RoleAdmin

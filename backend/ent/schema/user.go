@@ -54,6 +54,10 @@ func (User) Fields() []ent.Field {
 		field.String("status").
 			MaxLen(20).
 			Default(domain.StatusActive),
+		field.String("customer_type").
+			MaxLen(20).
+			Default("direct").
+			Comment("Customer type: direct or managed"),
 
 		// Optional profile fields (added later; default '' in DB migration)
 		field.String("username").
