@@ -59,6 +59,17 @@ describe('getVisibleMethods', () => {
     expect(visible.alipay.single_min).toBe(2)
     expect(visible.wxpay.fee_rate).toBe(1.2)
   })
+
+  it('treats legacy method limits without an available flag as available', () => {
+    const legacyLimit = methodLimit({ single_min: 1 }) as Partial<MethodLimit>
+    delete legacyLimit.available
+
+    const visible = getVisibleMethods({
+      alipay: legacyLimit as MethodLimit,
+    })
+
+    expect(visible.alipay.available).toBe(true)
+  })
 })
 
 describe('decidePaymentLaunch', () => {

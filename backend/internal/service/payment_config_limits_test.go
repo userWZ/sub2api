@@ -445,6 +445,9 @@ func TestGetAvailableMethodLimitsUsesConfiguredVisibleMethodSource(t *testing.T)
 			if alipayLimits.SingleMin != tt.wantAlipaySingleMin || alipayLimits.SingleMax != tt.wantAlipaySingleMax {
 				t.Fatalf("alipay limits = %+v, want min=%v max=%v", alipayLimits, tt.wantAlipaySingleMin, tt.wantAlipaySingleMax)
 			}
+			if !alipayLimits.Available {
+				t.Fatalf("alipay limits should be available: %+v", alipayLimits)
+			}
 
 			wxpayLimits, ok := resp.Methods[payment.TypeWxpay]
 			if !ok {
@@ -452,6 +455,9 @@ func TestGetAvailableMethodLimitsUsesConfiguredVisibleMethodSource(t *testing.T)
 			}
 			if wxpayLimits.SingleMin != 30 || wxpayLimits.SingleMax != 300 {
 				t.Fatalf("wxpay limits = %+v, want official-only min=30 max=300", wxpayLimits)
+			}
+			if !wxpayLimits.Available {
+				t.Fatalf("wxpay limits should be available: %+v", wxpayLimits)
 			}
 			if resp.GlobalMin != tt.wantGlobalMin || resp.GlobalMax != tt.wantGlobalMax {
 				t.Fatalf("global range = (%v, %v), want (%v, %v)", resp.GlobalMin, resp.GlobalMax, tt.wantGlobalMin, tt.wantGlobalMax)
@@ -506,11 +512,13 @@ func TestGetAvailableMethodLimitsPreservesLegacyCrossProviderBehaviorWhenVisible
 	require.True(t, ok, "expected alipay limits to remain visible")
 	require.Equal(t, 10.0, alipayLimits.SingleMin)
 	require.Equal(t, 200.0, alipayLimits.SingleMax)
+	require.True(t, alipayLimits.Available)
 
 	wxpayLimits, ok := resp.Methods[payment.TypeWxpay]
 	require.True(t, ok, "expected wxpay limits to remain visible")
 	require.Equal(t, 30.0, wxpayLimits.SingleMin)
 	require.Equal(t, 400.0, wxpayLimits.SingleMax)
+	require.True(t, wxpayLimits.Available)
 
 	require.Equal(t, 10.0, resp.GlobalMin)
 	require.Equal(t, 400.0, resp.GlobalMax)

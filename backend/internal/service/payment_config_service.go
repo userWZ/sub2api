@@ -113,8 +113,11 @@ type MethodLimits struct {
 	Currency    string  `json:"currency"`
 	FeeRate     float64 `json:"fee_rate"`
 	DailyLimit  float64 `json:"daily_limit"`
+	DailyUsed   float64 `json:"daily_used"`
+	DailyRemain float64 `json:"daily_remaining"`
 	SingleMin   float64 `json:"single_min"`
 	SingleMax   float64 `json:"single_max"`
+	Available   bool    `json:"available"`
 }
 
 // MethodLimitsResponse is the full response for the user-facing /limits API.

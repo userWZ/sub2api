@@ -105,7 +105,10 @@ export function getVisibleMethods(methods: Record<string, MethodLimit>): Record<
     const isCanonical = type === normalized
     const existing = visible[normalized]
     if (!existing || isCanonical) {
-      visible[normalized] = { ...limit }
+      visible[normalized] = {
+        ...limit,
+        available: limit.available !== false,
+      }
     }
   })
 
