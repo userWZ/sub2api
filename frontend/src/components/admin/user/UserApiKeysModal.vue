@@ -40,6 +40,29 @@
             </div>
             <div class="flex items-center gap-1"><span>{{ t('admin.users.columns.created') }}: {{ formatDateTime(key.created_at) }}</span></div>
           </div>
+          <div class="mt-3 flex flex-wrap items-center gap-2">
+            <span :class="['badge text-xs', key.status === 'active' ? 'badge-success' : 'badge-gray']">
+              {{ key.status === 'active' ? t('common.active') : t('common.inactive') }}
+            </span>
+            <span v-if="!isManagedUser" :class="['badge text-xs', key.quota_disabled ? 'badge-gray' : 'badge-warning']">
+              {{ key.quota_disabled ? t('admin.users.keyQuotaDisabled') : t('admin.users.keyQuotaEnabled') }}
+            </span>
+            <button
+              class="btn btn-ghost btn-sm px-2"
+              :disabled="updatingKeyIds.has(key.id)"
+              @click="toggleKeyPolicy(key, { status: key.status === 'active' ? 'inactive' : 'active' })"
+            >
+              {{ key.status === 'active' ? t('admin.users.disableKey') : t('admin.users.enableKey') }}
+            </button>
+            <button
+              v-if="!isManagedUser"
+              class="btn btn-ghost btn-sm px-2"
+              :disabled="updatingKeyIds.has(key.id)"
+              @click="toggleKeyPolicy(key, { quota_disabled: !key.quota_disabled })"
+            >
+              {{ key.quota_disabled ? t('admin.users.enableKeyQuota') : t('admin.users.disableKeyQuota') }}
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -127,6 +150,7 @@ const selectedKeyForGroup = computed(() => {
   if (groupSelectorKeyId.value === null) return null
   return apiKeys.value.find((k) => k.id === groupSelectorKeyId.value) || null
 })
+const isManagedUser = computed(() => props.user?.customer_type === 'managed')
 
 const setGroupButtonRef = (keyId: number, el: Element | ComponentPublicInstance | null) => {
   if (el instanceof HTMLElement) {
@@ -213,6 +237,25 @@ const changeGroup = async (key: ApiKey, newGroupId: number | null) => {
     }
   } catch (error: any) {
     appStore.showError(error?.message || t('admin.users.groupChangeFailed'))
+  } finally {
+    updatingKeyIds.value.delete(key.id)
+  }
+}
+
+const toggleKeyPolicy = async (
+  key: ApiKey,
+  patch: { status?: 'active' | 'inactive'; quota_disabled?: boolean }
+) => {
+  updatingKeyIds.value.add(key.id)
+  try {
+    const result = await adminAPI.apiKeys.updateApiKeyPolicy(key.id, patch)
+    const idx = apiKeys.value.findIndex((k) => k.id === key.id)
+    if (idx !== -1) {
+      apiKeys.value[idx] = result.api_key
+    }
+    appStore.showSuccess(t('admin.users.keyPolicyUpdated'))
+  } catch (error: any) {
+    appStore.showError(error?.message || t('admin.users.keyPolicyUpdateFailed'))
   } finally {
     updatingKeyIds.value.delete(key.id)
   }

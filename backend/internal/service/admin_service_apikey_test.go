@@ -546,3 +546,50 @@ func TestAdminService_AdminUpdateAPIKeyGroupID_Unbind_NoAllowedGroupUpdate(t *te
 	require.False(t, userRepo.addGroupCalled)
 	require.False(t, got.AutoGrantedGroupAccess)
 }
+
+func TestAdminService_AdminUpdateAPIKeyPolicy_StatusAndQuotaDisabled(t *testing.T) {
+	apiKeyRepo := &apiKeyRepoStubForGroupUpdate{key: &APIKey{
+		ID:            1,
+		UserID:        2,
+		Key:           "sk-test",
+		Status:        StatusAPIKeyQuotaExhausted,
+		QuotaDisabled: false,
+	}}
+	cache := &authCacheInvalidatorStub{}
+	svc := &adminServiceImpl{apiKeyRepo: apiKeyRepo, authCacheInvalidator: cache}
+
+	status := "inactive"
+	quotaDisabled := true
+	got, err := svc.AdminUpdateAPIKeyPolicy(context.Background(), 1, AdminUpdateAPIKeyPolicyInput{
+		Status:        &status,
+		QuotaDisabled: &quotaDisabled,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, "inactive", got.Status)
+	require.True(t, got.QuotaDisabled)
+	require.NotNil(t, apiKeyRepo.updated)
+	require.Equal(t, "inactive", apiKeyRepo.updated.Status)
+	require.True(t, apiKeyRepo.updated.QuotaDisabled)
+	require.Equal(t, []string{"sk-test"}, cache.keys)
+}
+
+func TestAdminService_AdminUpdateAPIKeyPolicy_QuotaDisabledReactivatesExhaustedKey(t *testing.T) {
+	apiKeyRepo := &apiKeyRepoStubForGroupUpdate{key: &APIKey{
+		ID:            1,
+		UserID:        2,
+		Key:           "sk-test",
+		Status:        StatusAPIKeyQuotaExhausted,
+		QuotaDisabled: false,
+	}}
+	svc := &adminServiceImpl{apiKeyRepo: apiKeyRepo}
+
+	quotaDisabled := true
+	got, err := svc.AdminUpdateAPIKeyPolicy(context.Background(), 1, AdminUpdateAPIKeyPolicyInput{
+		QuotaDisabled: &quotaDisabled,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, StatusAPIKeyActive, got.Status)
+	require.True(t, got.QuotaDisabled)
+}

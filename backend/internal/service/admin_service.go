@@ -70,6 +70,7 @@ type AdminService interface {
 
 	// API Key management (admin)
 	AdminUpdateAPIKeyGroupID(ctx context.Context, keyID int64, groupID *int64) (*AdminUpdateAPIKeyGroupIDResult, error)
+	AdminUpdateAPIKeyPolicy(ctx context.Context, keyID int64, input AdminUpdateAPIKeyPolicyInput) (*APIKey, error)
 	AdminResetAPIKeyRateLimitUsage(ctx context.Context, keyID int64) (*APIKey, error)
 
 	// ReplaceUserGroup 替换用户的专属分组：授予新分组权限、迁移 Key、移除旧分组权限
@@ -358,6 +359,12 @@ type AdminUpdateAPIKeyGroupIDResult struct {
 	AutoGrantedGroupAccess bool   // true if a new exclusive group permission was auto-added
 	GrantedGroupID         *int64 // the group ID that was auto-granted
 	GrantedGroupName       string // the group name that was auto-granted
+}
+
+// AdminUpdateAPIKeyPolicyInput contains admin-controlled user-visible key settings.
+type AdminUpdateAPIKeyPolicyInput struct {
+	Status        *string
+	QuotaDisabled *bool
 }
 
 // ReplaceUserGroupResult 分组替换操作的结果
@@ -2464,6 +2471,34 @@ func (s *adminServiceImpl) AdminUpdateAPIKeyGroupID(ctx context.Context, keyID i
 
 	result.APIKey = apiKey
 	return result, nil
+}
+
+// AdminUpdateAPIKeyPolicy updates admin-controlled API key settings.
+func (s *adminServiceImpl) AdminUpdateAPIKeyPolicy(ctx context.Context, keyID int64, input AdminUpdateAPIKeyPolicyInput) (*APIKey, error) {
+	apiKey, err := s.apiKeyRepo.GetByID(ctx, keyID)
+	if err != nil {
+		return nil, err
+	}
+	if input.Status != nil {
+		status := strings.TrimSpace(*input.Status)
+		if status != StatusAPIKeyActive && status != "inactive" {
+			return nil, infraerrors.BadRequest("INVALID_API_KEY_STATUS", "status must be active or inactive")
+		}
+		apiKey.Status = status
+	}
+	if input.QuotaDisabled != nil {
+		apiKey.QuotaDisabled = *input.QuotaDisabled
+		if *input.QuotaDisabled && apiKey.Status == StatusAPIKeyQuotaExhausted {
+			apiKey.Status = StatusAPIKeyActive
+		}
+	}
+	if err := s.apiKeyRepo.Update(ctx, apiKey); err != nil {
+		return nil, fmt.Errorf("update api key policy: %w", err)
+	}
+	if s.authCacheInvalidator != nil {
+		s.authCacheInvalidator.InvalidateAuthCacheByKey(ctx, apiKey.Key)
+	}
+	return apiKey, nil
 }
 
 // AdminResetAPIKeyRateLimitUsage resets all API key rate-limit usage windows.

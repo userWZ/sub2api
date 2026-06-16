@@ -157,6 +157,31 @@ func TestAdminAPIKeyHandler_ResetRateLimitUsage(t *testing.T) {
 	require.Nil(t, resp.Data.APIKey.Window7dStart)
 }
 
+func TestAdminAPIKeyHandler_UpdatePolicyStatusAndQuotaDisabled(t *testing.T) {
+	svc := newStubAdminService()
+	svc.apiKeys[0].Status = service.StatusAPIKeyQuotaExhausted
+	router := setupAPIKeyHandler(svc)
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/admin/api-keys/10", bytes.NewBufferString(`{"status":"inactive","quota_disabled":true}`))
+	req.Header.Set("Content-Type", "application/json")
+	router.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	var resp struct {
+		Data struct {
+			APIKey struct {
+				Status        string `json:"status"`
+				QuotaDisabled bool   `json:"quota_disabled"`
+			} `json:"api_key"`
+		} `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
+	require.Equal(t, "inactive", resp.Data.APIKey.Status)
+	require.True(t, resp.Data.APIKey.QuotaDisabled)
+}
+
 func TestAdminAPIKeyHandler_UpdateGroup_ServiceError(t *testing.T) {
 	svc := &failingUpdateGroupService{
 		stubAdminService: newStubAdminService(),
