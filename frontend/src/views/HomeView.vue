@@ -51,17 +51,22 @@
           <!-- Language Switcher -->
           <LocaleSwitcher />
 
+          <router-link
+            to="/agents"
+            class="hidden rounded-lg px-2 py-2 text-sm font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-dark-400 dark:hover:bg-dark-800 dark:hover:text-white sm:inline-flex"
+          >
+            Agents
+          </router-link>
+
           <!-- Doc Link -->
-          <a
-            v-if="docUrl"
-            :href="docUrl"
-            target="_blank"
-            rel="noopener noreferrer"
+          <component
+            :is="docUrl ? 'a' : 'router-link'"
+            v-bind="docLinkProps"
             class="rounded-lg p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-dark-400 dark:hover:bg-dark-800 dark:hover:text-white"
             :title="t('home.viewDocs')"
           >
             <Icon name="book" size="md" />
-          </a>
+          </component>
 
           <!-- Theme Toggle -->
           <button
@@ -382,14 +387,19 @@
         </p>
         <div class="flex items-center gap-4">
           <a
-            v-if="docUrl"
-            :href="docUrl"
-            target="_blank"
-            rel="noopener noreferrer"
+            :href="docHref"
+            :target="docUrl ? '_blank' : undefined"
+            :rel="docUrl ? 'noopener noreferrer' : undefined"
             class="text-sm text-gray-500 transition-colors hover:text-gray-700 dark:text-dark-400 dark:hover:text-white"
           >
             {{ t('home.docs') }}
           </a>
+          <router-link
+            to="/agents"
+            class="text-sm text-gray-500 transition-colors hover:text-gray-700 dark:text-dark-400 dark:hover:text-white"
+          >
+            Agents
+          </router-link>
           <a
             :href="githubUrl"
             target="_blank"
@@ -406,22 +416,31 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore, useAppStore } from '@/stores'
 import LocaleSwitcher from '@/components/common/LocaleSwitcher.vue'
 import Icon from '@/components/icons/Icon.vue'
+import { INTERNAL_HOME_PATH } from '@/utils/homeDomain'
 
 const { t } = useI18n()
 
 const authStore = useAuthStore()
 const appStore = useAppStore()
+const route = useRoute()
 
 // Site settings - directly from appStore (already initialized from injected config)
 const siteName = computed(() => appStore.cachedPublicSettings?.site_name || appStore.siteName || 'Sub2API')
 const siteLogo = computed(() => appStore.cachedPublicSettings?.site_logo || appStore.siteLogo || '')
 const siteSubtitle = computed(() => appStore.cachedPublicSettings?.site_subtitle || 'AI API Gateway Platform')
 const docUrl = computed(() => appStore.cachedPublicSettings?.doc_url || appStore.docUrl || '')
-const homeContent = computed(() => appStore.cachedPublicSettings?.home_content || '')
+const docHref = computed(() => docUrl.value || '/docs')
+const docLinkProps = computed(() => docUrl.value
+  ? { href: docUrl.value, target: '_blank', rel: 'noopener noreferrer' }
+  : { to: '/docs' }
+)
+const isInternalHome = computed(() => route.path === INTERNAL_HOME_PATH)
+const homeContent = computed(() => isInternalHome.value ? '' : appStore.cachedPublicSettings?.home_content || '')
 
 // Check if homeContent is a URL (for iframe display)
 const isHomeContentUrl = computed(() => {
