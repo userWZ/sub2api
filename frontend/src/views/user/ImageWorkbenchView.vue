@@ -70,8 +70,11 @@
               <div class="result-row">
                 <div class="result-bubble">
                   <div v-if="turn.status === 'generating'" class="loading-result">
-                    <LoadingSpinner />
-                    <span>{{ copy.waiting }}</span>
+                    <div class="loading-line">
+                      <LoadingSpinner />
+                      <span>{{ copy.waiting }}</span>
+                    </div>
+                    <span class="loading-elapsed">{{ copy.elapsed }} {{ formatElapsed(turn.createdAt) }}</span>
                   </div>
                   <div v-else-if="turn.status === 'error'" class="error-result">
                     <strong>{{ copy.failed }}</strong>
@@ -222,7 +225,9 @@ const conversations = ref<WorkbenchConversation[]>([])
 const activeConversationId = ref<string | null>(null)
 const previewImage = ref('')
 const resultsEl = ref<HTMLElement | null>(null)
+const elapsedNow = ref(Date.now())
 let controller: AbortController | null = null
+let elapsedTimer: number | undefined
 
 const form = reactive<{
   prompt: string
@@ -510,6 +515,15 @@ function formatTime(value: string): string {
   }).format(date)
 }
 
+function formatElapsed(value: string): string {
+  const startedAt = new Date(value).getTime()
+  if (!Number.isFinite(startedAt)) return '00:00'
+  const totalSeconds = Math.max(0, Math.floor((elapsedNow.value - startedAt) / 1000))
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+}
+
 function maskKey(value: string): string {
   if (!value) return ''
   if (value.length <= 14) return value
@@ -604,10 +618,16 @@ async function clearConversations(): Promise<void> {
 onMounted(() => {
   void loadKeys()
   void loadHistory()
+  elapsedTimer = window.setInterval(() => {
+    elapsedNow.value = Date.now()
+  }, 1000)
 })
 
 onBeforeUnmount(() => {
   controller?.abort()
+  if (elapsedTimer) {
+    window.clearInterval(elapsedTimer)
+  }
 })
 
 const zhCopy = {
@@ -627,7 +647,8 @@ const zhCopy = {
   round: '第',
   reuse: '复用配置',
   delete: '删除',
-  waiting: '正在等待上游图片返回...',
+  waiting: '图片正在生成',
+  elapsed: '生成时间',
   failed: '失败',
   retry: '重试',
   result: '结果',
@@ -679,7 +700,8 @@ const enCopy = {
   round: 'Turn',
   reuse: 'Reuse config',
   delete: 'Delete',
-  waiting: 'Waiting for the upstream image response...',
+  waiting: 'Image generation in progress',
+  elapsed: 'Elapsed',
   failed: 'Failed',
   retry: 'Retry',
   result: 'Result',
@@ -1029,13 +1051,30 @@ const enCopy = {
 .loading-result,
 .error-result {
   display: inline-flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.6rem;
   border-radius: 999px;
   background: #ffffff;
   color: #78716c;
   font-size: 0.9rem;
   padding: 0.65rem 0.9rem;
+}
+
+.loading-result {
+  flex-direction: column;
+  gap: 0.28rem;
+}
+
+.loading-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.loading-elapsed {
+  color: #a8a29e;
+  font-size: 0.78rem;
+  padding-left: 1.65rem;
 }
 
 .error-result {
