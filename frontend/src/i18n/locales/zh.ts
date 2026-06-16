@@ -377,6 +377,7 @@ export default {
     dashboard: '仪表盘',
     announcements: '公告',
     apiKeys: 'API 密钥',
+    imageWorkbench: '生图工作台',
     usage: '使用记录',
     redeem: '兑换',
     affiliate: '邀请返利',
