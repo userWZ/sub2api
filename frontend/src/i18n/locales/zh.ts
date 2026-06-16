@@ -387,6 +387,7 @@ export default {
     affiliateTransferRecords: '提取记录',
     profile: '个人资料',
     users: '用户管理',
+    managedKeys: '托管用户',
     groups: '分组管理',
     channels: '渠道管理',
     availableChannels: '可用服务',
@@ -1851,6 +1852,11 @@ export default {
         availableQuota: '可提余额',
         historyQuota: '历史返利'
       }
+    },
+
+    managedKeys: {
+      title: '托管用户',
+      description: '管理内部托管用户和可交付使用的 API Key'
     },
 
     // Users Management

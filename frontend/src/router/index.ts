@@ -459,6 +459,19 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/admin/managed-users',
+    alias: '/admin/managed-keys',
+    name: 'AdminManagedKeys',
+    component: () => import('@/views/admin/ManagedKeysView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      title: 'Managed Users',
+      titleKey: 'admin.managedKeys.title',
+      descriptionKey: 'admin.managedKeys.description'
+    }
+  },
+  {
     path: '/admin/groups',
     name: 'AdminGroups',
     component: () => import('@/views/admin/GroupsView.vue'),

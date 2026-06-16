@@ -387,6 +387,7 @@ export default {
     affiliateTransferRecords: 'Transfer Records',
     profile: 'Profile',
     users: 'Users',
+    managedKeys: 'Managed Users',
     groups: 'Groups',
     channels: 'Channels',
     availableChannels: 'Available Services',
@@ -1830,6 +1831,11 @@ export default {
         availableQuota: 'Available Quota',
         historyQuota: 'Historical Rebate'
       }
+    },
+
+    managedKeys: {
+      title: 'Managed Users',
+      description: 'Manage internal managed users and customer-facing API keys'
     },
 
     // Users
