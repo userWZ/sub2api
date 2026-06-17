@@ -1230,6 +1230,20 @@ watch(openAIUsageRefreshKey, (nextKey, prevKey) => {
 })
 
 watch(
+  () => [props.account.id, props.account.updated_at] as const,
+  ([nextId, nextUpdatedAt], [prevId, prevUpdatedAt]) => {
+    if (nextId === prevId && nextUpdatedAt === prevUpdatedAt) return
+    if (!shouldFetchUsage.value) return
+
+    const source = isAnthropicOAuthOrSetupToken.value ? 'passive' : undefined
+    _usageCache.delete(props.account.id)
+    loadUsage({ source, bypassCache: true }).catch((e) => {
+      console.error('Failed to refresh usage after account row update:', e)
+    })
+  }
+)
+
+watch(
   () => props.manualRefreshToken,
   (nextToken, prevToken) => {
     if (nextToken === prevToken) return

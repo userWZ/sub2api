@@ -457,6 +457,37 @@ const showDatePicker = ref(false)
 const resultData = ref<any>(null)
 const now = ref(new Date())
 let resetTimer: ReturnType<typeof setInterval> | null = null
+let ringAnimationDelayTimer: ReturnType<typeof setTimeout> | null = null
+let ringAnimationFrame: number | null = null
+let ringAnimationTickFrame: number | null = null
+let unmounted = false
+
+const queueAnimationFrame = (callback: (time: number) => void): number => {
+  if (typeof window.requestAnimationFrame === 'function') {
+    return window.requestAnimationFrame(callback)
+  }
+  return window.setTimeout(() => callback(performance.now()), 16)
+}
+
+const cancelQueuedAnimationFrame = (frameId: number | null) => {
+  if (frameId === null) return
+  if (typeof window.cancelAnimationFrame === 'function') {
+    window.cancelAnimationFrame(frameId)
+    return
+  }
+  window.clearTimeout(frameId)
+}
+
+const cancelRingAnimation = () => {
+  if (ringAnimationDelayTimer) {
+    clearTimeout(ringAnimationDelayTimer)
+    ringAnimationDelayTimer = null
+  }
+  cancelQueuedAnimationFrame(ringAnimationFrame)
+  cancelQueuedAnimationFrame(ringAnimationTickFrame)
+  ringAnimationFrame = null
+  ringAnimationTickFrame = null
+}
 
 // ==================== Date Range State ====================
 
@@ -552,12 +583,17 @@ function getRingOffset(ring: RingItem): number {
 }
 
 function triggerRingAnimation(items: RingItem[]) {
+  cancelRingAnimation()
   ringAnimated.value = false
   displayPcts.value = items.map(() => 0)
 
   nextTick(() => {
-    requestAnimationFrame(() => {
-      setTimeout(() => {
+    if (unmounted) return
+    ringAnimationFrame = queueAnimationFrame(() => {
+      if (unmounted) return
+      ringAnimationDelayTimer = setTimeout(() => {
+        ringAnimationDelayTimer = null
+        if (unmounted) return
         ringAnimated.value = true
 
         // Animate percentage numbers
@@ -566,13 +602,14 @@ function triggerRingAnimation(items: RingItem[]) {
         const targets = items.map(item => item.isBalance ? 0 : item.pct)
 
         function tick() {
+          if (unmounted) return
           const elapsed = performance.now() - startTime
           const p = Math.min(elapsed / duration, 1)
           const ease = 1 - Math.pow(1 - p, 3)
           displayPcts.value = targets.map(target => Math.round(ease * target))
-          if (p < 1) requestAnimationFrame(tick)
+          if (p < 1) ringAnimationTickFrame = queueAnimationFrame(tick)
         }
-        requestAnimationFrame(tick)
+        ringAnimationTickFrame = queueAnimationFrame(tick)
       }, 50)
     })
   })
@@ -925,6 +962,7 @@ function formatResetTime(resetAt: string | null | undefined): string {
 }
 
 onMounted(() => {
+  unmounted = false
   initTheme()
   if (!appStore.publicSettingsLoaded) {
     appStore.fetchPublicSettings()
@@ -933,7 +971,9 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  unmounted = true
   if (resetTimer) clearInterval(resetTimer)
+  cancelRingAnimation()
 })
 </script>
 
