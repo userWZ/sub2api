@@ -43,7 +43,6 @@
                 {{ copy.copyBaseUrl }}
               </button>
               <RouterLink class="btn btn-secondary" to="/purchase">{{ copy.recharge }}</RouterLink>
-              <RouterLink class="btn btn-secondary" to="/available-channels">{{ copy.viewServices }}</RouterLink>
             </div>
           </div>
 
@@ -256,7 +255,6 @@ const zhCopy = {
   copyDefaultKey: '复制默认 Key',
   copyBaseUrl: '复制 Base URL',
   recharge: '充值/购买订阅',
-  viewServices: '查看可用服务',
   quickStart: '开始使用',
   noDefaultKey: '默认 Key 未创建',
   manageKeys: '管理密钥',
@@ -302,7 +300,6 @@ const enCopy = {
   copyDefaultKey: 'Copy Default Key',
   copyBaseUrl: 'Copy Base URL',
   recharge: 'Recharge / Subscription',
-  viewServices: 'View Services',
   quickStart: 'Start',
   noDefaultKey: 'Default key not created',
   manageKeys: 'Manage Keys',
