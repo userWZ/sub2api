@@ -684,6 +684,7 @@ export default {
     input: '输入',
     output: '输出',
     cache: '缓存',
+    cacheCreate: '缓存创建',
     recentUsage: '最近使用',
     last7Days: '近 7 天',
     noUsageRecords: '暂无使用记录',

@@ -685,6 +685,7 @@ export default {
     input: 'Input',
     output: 'Output',
     cache: 'Cache',
+    cacheCreate: 'Cache Write',
     recentUsage: 'Recent Usage',
     last7Days: 'Last 7 days',
     noUsageRecords: 'No usage records',

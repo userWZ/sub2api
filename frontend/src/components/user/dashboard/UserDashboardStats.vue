@@ -75,10 +75,20 @@
         <div class="rounded-lg bg-amber-100 p-2 dark:bg-amber-900/30">
           <Icon name="cube" size="md" class="text-amber-600 dark:text-amber-400" :stroke-width="2" />
         </div>
-        <div>
+        <div class="min-w-0 flex-1">
           <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ t('dashboard.todayTokens') }}</p>
           <p class="text-xl font-bold text-gray-900 dark:text-white">{{ formatTokens(stats?.today_tokens || 0) }}</p>
-          <p class="text-xs text-gray-500 dark:text-gray-400">{{ t('dashboard.input') }}: {{ formatTokens(stats?.today_input_tokens || 0) }} / {{ t('dashboard.output') }}: {{ formatTokens(stats?.today_output_tokens || 0) }}</p>
+          <p class="text-xs text-gray-500 dark:text-gray-400">
+            <span>{{ t('dashboard.input') }}: {{ formatTokens(stats?.today_input_tokens || 0) }}</span>
+            <span> / </span>
+            <span>{{ t('dashboard.output') }}: {{ formatTokens(stats?.today_output_tokens || 0) }}</span>
+            <span> / </span>
+            <span class="text-sky-600 dark:text-sky-400">{{ t('dashboard.cache') }}: {{ formatTokens(stats?.today_cache_read_tokens || 0) }}</span>
+            <span v-if="(stats?.today_cache_creation_tokens || 0) > 0">
+              <span> / </span>
+              <span class="text-amber-600 dark:text-amber-400">{{ t('dashboard.cacheCreate') }}: {{ formatTokens(stats?.today_cache_creation_tokens || 0) }}</span>
+            </span>
+          </p>
         </div>
       </div>
     </div>
@@ -89,10 +99,20 @@
         <div class="rounded-lg bg-indigo-100 p-2 dark:bg-indigo-900/30">
           <Icon name="database" size="md" class="text-indigo-600 dark:text-indigo-400" :stroke-width="2" />
         </div>
-        <div>
+        <div class="min-w-0 flex-1">
           <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ t('dashboard.totalTokens') }}</p>
           <p class="text-xl font-bold text-gray-900 dark:text-white">{{ formatTokens(stats?.total_tokens || 0) }}</p>
-          <p class="text-xs text-gray-500 dark:text-gray-400">{{ t('dashboard.input') }}: {{ formatTokens(stats?.total_input_tokens || 0) }} / {{ t('dashboard.output') }}: {{ formatTokens(stats?.total_output_tokens || 0) }}</p>
+          <p class="text-xs text-gray-500 dark:text-gray-400">
+            <span>{{ t('dashboard.input') }}: {{ formatTokens(stats?.total_input_tokens || 0) }}</span>
+            <span> / </span>
+            <span>{{ t('dashboard.output') }}: {{ formatTokens(stats?.total_output_tokens || 0) }}</span>
+            <span> / </span>
+            <span class="text-sky-600 dark:text-sky-400">{{ t('dashboard.cache') }}: {{ formatTokens(stats?.total_cache_read_tokens || 0) }}</span>
+            <span v-if="(stats?.total_cache_creation_tokens || 0) > 0">
+              <span> / </span>
+              <span class="text-amber-600 dark:text-amber-400">{{ t('dashboard.cacheCreate') }}: {{ formatTokens(stats?.total_cache_creation_tokens || 0) }}</span>
+            </span>
+          </p>
         </div>
       </div>
     </div>
