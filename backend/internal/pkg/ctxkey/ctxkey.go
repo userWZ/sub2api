@@ -20,6 +20,12 @@ const (
 	// Platform 当前请求最终命中的平台（用于统一请求链路日志字段）。
 	Platform Key = "ctx_platform"
 
+	// SubscriptionEntitlementRequest 记录本次请求的订阅/余额分组选取约束。
+	SubscriptionEntitlementRequest Key = "ctx_subscription_entitlement_request"
+
+	// AutomaticSubscriptionResolved 标识 API Key 未绑定分组时已自动解析到订阅。
+	AutomaticSubscriptionResolved Key = "ctx_automatic_subscription_resolved"
+
 	// AccountID 当前请求最终命中的账号 ID（用于统一请求链路日志字段）。
 	AccountID Key = "ctx_account_id"
 

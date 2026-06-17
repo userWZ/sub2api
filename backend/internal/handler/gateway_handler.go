@@ -45,6 +45,7 @@ type GatewayHandler struct {
 	billingCacheService       *service.BillingCacheService
 	usageService              *service.UsageService
 	apiKeyService             *service.APIKeyService
+	subscriptionService       *service.SubscriptionService
 	usageRecordWorkerPool     *service.UsageRecordWorkerPool
 	errorPassthroughService   *service.ErrorPassthroughService
 	contentModerationService  *service.ContentModerationService
@@ -66,6 +67,7 @@ func NewGatewayHandler(
 	billingCacheService *service.BillingCacheService,
 	usageService *service.UsageService,
 	apiKeyService *service.APIKeyService,
+	subscriptionService *service.SubscriptionService,
 	usageRecordWorkerPool *service.UsageRecordWorkerPool,
 	errorPassthroughService *service.ErrorPassthroughService,
 	contentModerationService *service.ContentModerationService,
@@ -100,6 +102,7 @@ func NewGatewayHandler(
 		billingCacheService:       billingCacheService,
 		usageService:              usageService,
 		apiKeyService:             apiKeyService,
+		subscriptionService:       subscriptionService,
 		usageRecordWorkerPool:     usageRecordWorkerPool,
 		errorPassthroughService:   errorPassthroughService,
 		contentModerationService:  contentModerationService,
@@ -225,9 +228,11 @@ func (h *GatewayHandler) Messages(c *gin.Context) {
 	}
 
 	// 2. 【新增】Wait后二次检查余额/订阅
-	if err := h.billingCacheService.CheckBillingEligibility(c.Request.Context(), apiKey.User, apiKey, apiKey.Group, subscription, service.QuotaPlatform(c.Request.Context(), apiKey)); err != nil {
-		reqLog.Info("gateway.billing_eligibility_check_failed", zap.Error(err))
-		status, code, message, retryAfter := billingErrorDetails(err)
+	var billingErr error
+	subscription, billingErr = checkBillingEligibilityWithBalanceFallback(c.Request.Context(), h.billingCacheService, h.apiKeyService, h.subscriptionService, apiKey, subscription, service.QuotaPlatform(c.Request.Context(), apiKey))
+	if billingErr != nil {
+		reqLog.Info("gateway.billing_eligibility_check_failed", zap.Error(billingErr))
+		status, code, message, retryAfter := billingErrorDetails(billingErr)
 		if retryAfter > 0 {
 			c.Header("Retry-After", strconv.Itoa(retryAfter))
 		}
@@ -1764,8 +1769,10 @@ func (h *GatewayHandler) CountTokens(c *gin.Context) {
 
 	// 校验 billing eligibility（订阅/余额）
 	// 【注意】不计算并发，但需要校验订阅/余额
-	if err := h.billingCacheService.CheckBillingEligibility(c.Request.Context(), apiKey.User, apiKey, apiKey.Group, subscription, service.QuotaPlatform(c.Request.Context(), apiKey)); err != nil {
-		status, code, message, retryAfter := billingErrorDetails(err)
+	var billingErr error
+	subscription, billingErr = checkBillingEligibilityWithBalanceFallback(c.Request.Context(), h.billingCacheService, h.apiKeyService, h.subscriptionService, apiKey, subscription, service.QuotaPlatform(c.Request.Context(), apiKey))
+	if billingErr != nil {
+		status, code, message, retryAfter := billingErrorDetails(billingErr)
 		if retryAfter > 0 {
 			c.Header("Retry-After", strconv.Itoa(retryAfter))
 		}

@@ -130,9 +130,11 @@ func (h *GatewayHandler) Responses(c *gin.Context) {
 	}
 
 	// 2. Re-check billing
-	if err := h.billingCacheService.CheckBillingEligibility(requestCtx, apiKey.User, apiKey, apiKey.Group, subscription, service.QuotaPlatform(requestCtx, apiKey)); err != nil {
-		reqLog.Info("gateway.responses.billing_check_failed", zap.Error(err))
-		status, code, message, retryAfter := billingErrorDetails(err)
+	var billingErr error
+	subscription, billingErr = checkBillingEligibilityWithBalanceFallback(requestCtx, h.billingCacheService, h.apiKeyService, h.subscriptionService, apiKey, subscription, service.QuotaPlatform(requestCtx, apiKey))
+	if billingErr != nil {
+		reqLog.Info("gateway.responses.billing_check_failed", zap.Error(billingErr))
+		status, code, message, retryAfter := billingErrorDetails(billingErr)
 		if retryAfter > 0 {
 			c.Header("Retry-After", strconv.Itoa(retryAfter))
 		}

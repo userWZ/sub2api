@@ -272,6 +272,7 @@ func apiKeyAuthWithSubscription(apiKeyService *service.APIKeyService, subscripti
 
 		// ── 7. 设置上下文 → Next ─────────────────────────────────────
 
+		setAutomaticSubscriptionResolvedContext(c, automaticSubscriptionResolved)
 		if subscription != nil {
 			c.Set(string(ContextKeySubscription), subscription)
 		}
@@ -519,13 +520,21 @@ func setEntitlementRequestContext(c *gin.Context, req service.EntitlementRequest
 	if c == nil || c.Request == nil {
 		return
 	}
-	ctx := c.Request.Context()
+	ctx := context.WithValue(c.Request.Context(), ctxkey.SubscriptionEntitlementRequest, req)
 	if strings.TrimSpace(req.Platform) != "" {
 		ctx = context.WithValue(ctx, ctxkey.Platform, req.Platform)
 	}
 	if strings.TrimSpace(req.RequestedModel) != "" {
 		ctx = context.WithValue(ctx, ctxkey.Model, req.RequestedModel)
 	}
+	c.Request = c.Request.WithContext(ctx)
+}
+
+func setAutomaticSubscriptionResolvedContext(c *gin.Context, resolved bool) {
+	if c == nil || c.Request == nil {
+		return
+	}
+	ctx := context.WithValue(c.Request.Context(), ctxkey.AutomaticSubscriptionResolved, resolved)
 	c.Request = c.Request.WithContext(ctx)
 }
 
