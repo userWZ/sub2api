@@ -15,8 +15,17 @@ export interface UpdateApiKeyGroupResult {
 
 export interface UpdateApiKeyPolicyRequest {
   group_id?: number | null
+  name?: string
   status?: 'active' | 'inactive'
   quota_disabled?: boolean
+  quota?: number
+  expires_at?: string | null
+  reset_quota?: boolean
+  ip_whitelist?: string[]
+  ip_blacklist?: string[]
+  rate_limit_5h?: number
+  rate_limit_1d?: number
+  rate_limit_7d?: number
   reset_rate_limit_usage?: boolean
 }
 

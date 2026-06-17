@@ -593,3 +593,59 @@ func TestAdminService_AdminUpdateAPIKeyPolicy_QuotaDisabledReactivatesExhaustedK
 	require.Equal(t, StatusAPIKeyActive, got.Status)
 	require.True(t, got.QuotaDisabled)
 }
+
+func TestAdminService_AdminUpdateAPIKeyPolicy_DetailedFields(t *testing.T) {
+	now := time.Now().Add(24 * time.Hour).UTC().Truncate(time.Second)
+	apiKeyRepo := &apiKeyRepoStubForGroupUpdate{key: &APIKey{
+		ID:            1,
+		UserID:        2,
+		Key:           "sk-test",
+		Name:          "old",
+		Status:        StatusAPIKeyQuotaExhausted,
+		Quota:         10,
+		QuotaUsed:     8,
+		RateLimit5h:   1,
+		RateLimit1d:   2,
+		RateLimit7d:   3,
+		IPWhitelist:   []string{"127.0.0.1"},
+		IPBlacklist:   []string{"10.0.0.1"},
+		QuotaDisabled: false,
+	}}
+	svc := &adminServiceImpl{apiKeyRepo: apiKeyRepo}
+
+	name := "managed key"
+	quota := 20.0
+	resetQuota := true
+	allowQuota := false
+	whitelist := []string{"192.168.1.0/24"}
+	blacklist := []string{"203.0.113.10"}
+	rateLimit5h := 5.0
+	rateLimit1d := 10.0
+	rateLimit7d := 30.0
+	got, err := svc.AdminUpdateAPIKeyPolicy(context.Background(), 1, AdminUpdateAPIKeyPolicyInput{
+		Name:          &name,
+		Quota:         &quota,
+		ResetQuota:    &resetQuota,
+		QuotaDisabled: &allowQuota,
+		ExpiresAt:     &now,
+		IPWhitelist:   &whitelist,
+		IPBlacklist:   &blacklist,
+		RateLimit5h:   &rateLimit5h,
+		RateLimit1d:   &rateLimit1d,
+		RateLimit7d:   &rateLimit7d,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, "managed key", got.Name)
+	require.Equal(t, 20.0, got.Quota)
+	require.Zero(t, got.QuotaUsed)
+	require.False(t, got.QuotaDisabled)
+	require.Equal(t, StatusAPIKeyActive, got.Status)
+	require.Equal(t, now, *got.ExpiresAt)
+	require.Equal(t, whitelist, got.IPWhitelist)
+	require.Equal(t, blacklist, got.IPBlacklist)
+	require.Equal(t, 5.0, got.RateLimit5h)
+	require.Equal(t, 10.0, got.RateLimit1d)
+	require.Equal(t, 30.0, got.RateLimit7d)
+	require.NotNil(t, apiKeyRepo.updated)
+}

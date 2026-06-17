@@ -36,6 +36,9 @@
               <div class="mt-1 max-w-72 truncate text-xs text-gray-500 dark:text-dark-400">
                 {{ managedContact(item) || item.user.email }}
               </div>
+              <div class="mt-1 text-xs text-gray-500 dark:text-dark-400">
+                账户总额度 {{ formatPoints(item.user.balance) }}
+              </div>
             </div>
           </template>
 
@@ -284,18 +287,70 @@
       @close="closeEditDialog"
     >
       <form class="space-y-4" @submit.prevent="submitEdit">
-        <label class="block">
-          <span class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-dark-200">优质额度分组</span>
-          <Select v-model="editForm.group_id" :options="groupOptions" searchable />
-        </label>
-        <label class="block">
-          <span class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-dark-200">状态</span>
-          <Select v-model="editForm.status" :options="statusOptions" />
-        </label>
+        <section class="grid gap-4 md:grid-cols-2">
+          <label class="block">
+            <span class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-dark-200">Key 名称</span>
+            <input v-model.trim="editForm.name" class="input" />
+          </label>
+          <label class="block">
+            <span class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-dark-200">账户总额度</span>
+            <input v-model.number="editForm.balance" type="number" min="0.01" step="0.01" class="input" />
+          </label>
+          <label class="block">
+            <span class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-dark-200">优质额度分组</span>
+            <Select v-model="editForm.group_id" :options="groupOptions" searchable />
+          </label>
+          <label class="block">
+            <span class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-dark-200">状态</span>
+            <Select v-model="editForm.status" :options="statusOptions" />
+          </label>
+        </section>
+
+        <section class="grid gap-4 md:grid-cols-2">
+          <label class="block">
+            <span class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-dark-200">Key 总额度</span>
+            <input v-model.number="editForm.quota" type="number" min="0" step="0.01" class="input" placeholder="0 = 不限" />
+          </label>
+          <label class="block">
+            <span class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-dark-200">有效期</span>
+            <input v-model="editForm.expires_at" type="datetime-local" class="input" />
+          </label>
+        </section>
+
         <label class="flex items-center justify-between rounded-lg border border-gray-200 px-3 py-2 dark:border-dark-700">
           <span class="text-sm font-medium text-gray-700 dark:text-dark-200">启用 Key 自身额度</span>
           <input v-model="editForm.quota_enabled" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
         </label>
+        <label class="flex items-center justify-between rounded-lg border border-gray-200 px-3 py-2 dark:border-dark-700">
+          <span class="text-sm font-medium text-gray-700 dark:text-dark-200">保存时重置 Key 已用额度</span>
+          <input v-model="editForm.reset_quota" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
+        </label>
+
+        <section class="grid gap-4 md:grid-cols-3">
+          <label class="block">
+            <span class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-dark-200">5 小时限额</span>
+            <input v-model.number="editForm.rate_limit_5h" type="number" min="0" step="0.01" class="input" placeholder="0 = 不限" />
+          </label>
+          <label class="block">
+            <span class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-dark-200">每日限额</span>
+            <input v-model.number="editForm.rate_limit_1d" type="number" min="0" step="0.01" class="input" placeholder="0 = 不限" />
+          </label>
+          <label class="block">
+            <span class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-dark-200">7 日限额</span>
+            <input v-model.number="editForm.rate_limit_7d" type="number" min="0" step="0.01" class="input" placeholder="0 = 不限" />
+          </label>
+        </section>
+
+        <section class="grid gap-4 md:grid-cols-2">
+          <label class="block">
+            <span class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-dark-200">IP 白名单</span>
+            <textarea v-model="editForm.ip_whitelist" rows="3" class="input resize-none" placeholder="每行一个 IP 或 CIDR"></textarea>
+          </label>
+          <label class="block">
+            <span class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-dark-200">IP 黑名单</span>
+            <textarea v-model="editForm.ip_blacklist" rows="3" class="input resize-none" placeholder="每行一个 IP 或 CIDR"></textarea>
+          </label>
+        </section>
         <div v-if="editError" class="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-900/20 dark:text-red-300">
           {{ editError }}
         </div>
@@ -433,9 +488,19 @@ const form = reactive(createEmptyForm())
 
 function createEmptyEditForm() {
   return {
+    name: '',
+    balance: 1000,
     group_id: null as number | null,
     status: 'active' as 'active' | 'inactive',
-    quota_enabled: true
+    quota: 0,
+    expires_at: '',
+    quota_enabled: true,
+    reset_quota: false,
+    rate_limit_5h: 0,
+    rate_limit_1d: 0,
+    rate_limit_7d: 0,
+    ip_whitelist: '',
+    ip_blacklist: ''
   }
 }
 
@@ -525,9 +590,19 @@ function openEditDialog(item: ManagedKey) {
   if (!item.api_key) return
   editingItem.value = item
   Object.assign(editForm, createEmptyEditForm(), {
+    name: item.api_key.name || '',
+    balance: Math.max(0, Number(item.user.balance || 0)),
     group_id: item.api_key.group_id ?? defaultManagedGroup.value?.id ?? null,
     status: item.api_key.status === 'active' ? 'active' : 'inactive',
-    quota_enabled: !item.api_key.quota_disabled
+    quota: Math.max(0, Number(item.api_key.quota || 0)),
+    expires_at: formatDateTimeLocalValue(item.api_key.expires_at),
+    quota_enabled: !item.api_key.quota_disabled,
+    reset_quota: false,
+    rate_limit_5h: Math.max(0, Number(item.api_key.rate_limit_5h || 0)),
+    rate_limit_1d: Math.max(0, Number(item.api_key.rate_limit_1d || 0)),
+    rate_limit_7d: Math.max(0, Number(item.api_key.rate_limit_7d || 0)),
+    ip_whitelist: (item.api_key.ip_whitelist || []).join('\n'),
+    ip_blacklist: (item.api_key.ip_blacklist || []).join('\n')
   })
   editError.value = ''
   showEditDialog.value = true
@@ -569,6 +644,23 @@ function optionalPositiveInt(value: number | null): number | null {
 function numericValue(value: number, fallback = 0): number {
   const normalized = Number(value)
   return Number.isFinite(normalized) ? normalized : fallback
+}
+
+function formatDateTimeLocalValue(value: string | null | undefined): string {
+  if (!value) return ''
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  const pad = (part: number) => String(part).padStart(2, '0')
+  const year = date.getFullYear()
+  const month = pad(date.getMonth() + 1)
+  const day = pad(date.getDate())
+  const hours = pad(date.getHours())
+  const minutes = pad(date.getMinutes())
+  return `${year}-${month}-${day}T${hours}:${minutes}`
+}
+
+function dateTimeLocalToISOString(value: string): string {
+  return new Date(value).toISOString()
 }
 
 async function submitCreate() {
@@ -624,13 +716,34 @@ async function submitEdit() {
     editError.value = `请先选择优质额度分组 ${managedPremiumGroupName}`
     return
   }
+  const nextBalance = Math.max(0, numericValue(editForm.balance, item.user.balance))
+  if (nextBalance <= 0) {
+    editError.value = '账户总额度必须大于 0'
+    return
+  }
 
   submittingEdit.value = true
   try {
+    if (Math.abs(nextBalance - Number(item.user.balance || 0)) > 0.000001) {
+      item.user = await adminAPI.users.updateBalance(item.user.id, nextBalance, 'set', '托管用户账户总额度调整')
+    }
+    let expiresAt: string | null = ''
+    if (editForm.expires_at.trim()) {
+      expiresAt = dateTimeLocalToISOString(editForm.expires_at)
+    }
     const payload: UpdateApiKeyPolicyRequest = {
       group_id: editForm.group_id,
+      name: editForm.name.trim(),
       status: editForm.status,
-      quota_disabled: !editForm.quota_enabled
+      quota_disabled: !editForm.quota_enabled,
+      quota: Math.max(0, numericValue(editForm.quota, 0)),
+      expires_at: expiresAt,
+      reset_quota: editForm.reset_quota,
+      rate_limit_5h: Math.max(0, numericValue(editForm.rate_limit_5h, 0)),
+      rate_limit_1d: Math.max(0, numericValue(editForm.rate_limit_1d, 0)),
+      rate_limit_7d: Math.max(0, numericValue(editForm.rate_limit_7d, 0)),
+      ip_whitelist: splitLines(editForm.ip_whitelist),
+      ip_blacklist: splitLines(editForm.ip_blacklist)
     }
     const result = await adminAPI.apiKeys.updateApiKeyPolicy(item.api_key.id, payload)
     item.api_key = result.api_key

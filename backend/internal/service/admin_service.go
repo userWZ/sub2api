@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html"
 	"io"
 	"log/slog"
 	"net/http"
@@ -22,6 +23,7 @@ import (
 	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/geminicli"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/httpclient"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/ip"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/logger"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/openai"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/pagination"
@@ -363,8 +365,18 @@ type AdminUpdateAPIKeyGroupIDResult struct {
 
 // AdminUpdateAPIKeyPolicyInput contains admin-controlled user-visible key settings.
 type AdminUpdateAPIKeyPolicyInput struct {
-	Status        *string
-	QuotaDisabled *bool
+	Status          *string
+	Name            *string
+	QuotaDisabled   *bool
+	Quota           *float64
+	ExpiresAt       *time.Time
+	ClearExpiration bool
+	ResetQuota      *bool
+	IPWhitelist     *[]string
+	IPBlacklist     *[]string
+	RateLimit5h     *float64
+	RateLimit1d     *float64
+	RateLimit7d     *float64
 }
 
 // ReplaceUserGroupResult 分组替换操作的结果
@@ -2479,6 +2491,9 @@ func (s *adminServiceImpl) AdminUpdateAPIKeyPolicy(ctx context.Context, keyID in
 	if err != nil {
 		return nil, err
 	}
+	if input.Name != nil {
+		apiKey.Name = html.EscapeString(strings.TrimSpace(*input.Name))
+	}
 	if input.Status != nil {
 		status := strings.TrimSpace(*input.Status)
 		if status != StatusAPIKeyActive && status != "inactive" {
@@ -2492,11 +2507,70 @@ func (s *adminServiceImpl) AdminUpdateAPIKeyPolicy(ctx context.Context, keyID in
 			apiKey.Status = StatusAPIKeyActive
 		}
 	}
+	if input.Quota != nil {
+		if *input.Quota < 0 {
+			return nil, infraerrors.BadRequest("INVALID_API_KEY_QUOTA", "quota cannot be negative")
+		}
+		apiKey.Quota = *input.Quota
+		if apiKey.Status == StatusAPIKeyQuotaExhausted && *input.Quota > apiKey.QuotaUsed {
+			apiKey.Status = StatusAPIKeyActive
+		}
+	}
+	if input.ResetQuota != nil && *input.ResetQuota {
+		apiKey.QuotaUsed = 0
+		if apiKey.Status == StatusAPIKeyQuotaExhausted {
+			apiKey.Status = StatusAPIKeyActive
+		}
+	}
+	if input.ClearExpiration {
+		apiKey.ExpiresAt = nil
+		if apiKey.Status == StatusAPIKeyExpired {
+			apiKey.Status = StatusAPIKeyActive
+		}
+	} else if input.ExpiresAt != nil {
+		apiKey.ExpiresAt = input.ExpiresAt
+		if apiKey.Status == StatusAPIKeyExpired && time.Now().Before(*input.ExpiresAt) {
+			apiKey.Status = StatusAPIKeyActive
+		}
+	}
+	if input.IPWhitelist != nil {
+		if invalid := ip.ValidateIPPatterns(*input.IPWhitelist); len(invalid) > 0 {
+			return nil, fmt.Errorf("%w: %v", ErrInvalidIPPattern, invalid)
+		}
+		apiKey.IPWhitelist = *input.IPWhitelist
+	}
+	if input.IPBlacklist != nil {
+		if invalid := ip.ValidateIPPatterns(*input.IPBlacklist); len(invalid) > 0 {
+			return nil, fmt.Errorf("%w: %v", ErrInvalidIPPattern, invalid)
+		}
+		apiKey.IPBlacklist = *input.IPBlacklist
+	}
+	if input.RateLimit5h != nil {
+		if *input.RateLimit5h < 0 {
+			return nil, infraerrors.BadRequest("INVALID_RATE_LIMIT", "rate_limit_5h cannot be negative")
+		}
+		apiKey.RateLimit5h = *input.RateLimit5h
+	}
+	if input.RateLimit1d != nil {
+		if *input.RateLimit1d < 0 {
+			return nil, infraerrors.BadRequest("INVALID_RATE_LIMIT", "rate_limit_1d cannot be negative")
+		}
+		apiKey.RateLimit1d = *input.RateLimit1d
+	}
+	if input.RateLimit7d != nil {
+		if *input.RateLimit7d < 0 {
+			return nil, infraerrors.BadRequest("INVALID_RATE_LIMIT", "rate_limit_7d cannot be negative")
+		}
+		apiKey.RateLimit7d = *input.RateLimit7d
+	}
 	if err := s.apiKeyRepo.Update(ctx, apiKey); err != nil {
 		return nil, fmt.Errorf("update api key policy: %w", err)
 	}
 	if s.authCacheInvalidator != nil {
 		s.authCacheInvalidator.InvalidateAuthCacheByKey(ctx, apiKey.Key)
+	}
+	if s.billingCacheService != nil && (input.RateLimit5h != nil || input.RateLimit1d != nil || input.RateLimit7d != nil) {
+		_ = s.billingCacheService.InvalidateAPIKeyRateLimit(ctx, apiKey.ID)
 	}
 	return apiKey, nil
 }

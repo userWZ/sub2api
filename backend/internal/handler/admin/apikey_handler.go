@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/Wei-Shaw/sub2api/internal/handler/dto"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/response"
@@ -40,10 +41,19 @@ func NewAdminAPIKeyHandler(adminService service.AdminService, apiKeyService *ser
 
 // AdminUpdateAPIKeyGroupRequest represents the request to update an API key.
 type AdminUpdateAPIKeyGroupRequest struct {
-	GroupID             *int64  `json:"group_id"`               // nil=不修改, 0=解绑, >0=绑定到目标分组
-	ResetRateLimitUsage *bool   `json:"reset_rate_limit_usage"` // true=重置 5h/1d/7d 限速用量
-	Status              *string `json:"status"`                 // active / inactive
-	QuotaDisabled       *bool   `json:"quota_disabled"`
+	GroupID             *int64    `json:"group_id"`               // nil=不修改, 0=解绑, >0=绑定到目标分组
+	ResetRateLimitUsage *bool     `json:"reset_rate_limit_usage"` // true=重置 5h/1d/7d 限速用量
+	Status              *string   `json:"status"`                 // active / inactive
+	Name                *string   `json:"name"`
+	QuotaDisabled       *bool     `json:"quota_disabled"`
+	Quota               *float64  `json:"quota"`
+	ExpiresAt           *string   `json:"expires_at"`
+	ResetQuota          *bool     `json:"reset_quota"`
+	IPWhitelist         *[]string `json:"ip_whitelist"`
+	IPBlacklist         *[]string `json:"ip_blacklist"`
+	RateLimit5h         *float64  `json:"rate_limit_5h"`
+	RateLimit1d         *float64  `json:"rate_limit_1d"`
+	RateLimit7d         *float64  `json:"rate_limit_7d"`
 }
 
 // CreateManagedKeyRequest creates an internal managed user plus a customer-facing API key.
@@ -118,10 +128,25 @@ func (h *AdminAPIKeyHandler) UpdateGroup(c *gin.Context) {
 	if resetKey != nil && req.GroupID == nil {
 		result.APIKey = resetKey
 	}
-	if req.Status != nil || req.QuotaDisabled != nil {
+	policyInput, err := buildAdminAPIKeyPolicyInput(req)
+	if err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+	if hasAdminAPIKeyPolicyUpdate(policyInput) {
 		policyKey, policyErr := h.adminService.AdminUpdateAPIKeyPolicy(c.Request.Context(), keyID, service.AdminUpdateAPIKeyPolicyInput{
-			Status:        req.Status,
-			QuotaDisabled: req.QuotaDisabled,
+			Status:          policyInput.Status,
+			Name:            policyInput.Name,
+			QuotaDisabled:   policyInput.QuotaDisabled,
+			Quota:           policyInput.Quota,
+			ExpiresAt:       policyInput.ExpiresAt,
+			ClearExpiration: policyInput.ClearExpiration,
+			ResetQuota:      policyInput.ResetQuota,
+			IPWhitelist:     policyInput.IPWhitelist,
+			IPBlacklist:     policyInput.IPBlacklist,
+			RateLimit5h:     policyInput.RateLimit5h,
+			RateLimit1d:     policyInput.RateLimit1d,
+			RateLimit7d:     policyInput.RateLimit7d,
 		})
 		if policyErr != nil {
 			response.ErrorFrom(c, policyErr)
@@ -142,6 +167,50 @@ func (h *AdminAPIKeyHandler) UpdateGroup(c *gin.Context) {
 		GrantedGroupName:       result.GrantedGroupName,
 	}
 	response.Success(c, resp)
+}
+
+func buildAdminAPIKeyPolicyInput(req AdminUpdateAPIKeyGroupRequest) (service.AdminUpdateAPIKeyPolicyInput, error) {
+	input := service.AdminUpdateAPIKeyPolicyInput{
+		Status:        req.Status,
+		Name:          req.Name,
+		QuotaDisabled: req.QuotaDisabled,
+		Quota:         req.Quota,
+		ResetQuota:    req.ResetQuota,
+		IPWhitelist:   req.IPWhitelist,
+		IPBlacklist:   req.IPBlacklist,
+		RateLimit5h:   req.RateLimit5h,
+		RateLimit1d:   req.RateLimit1d,
+		RateLimit7d:   req.RateLimit7d,
+	}
+	if req.ExpiresAt == nil {
+		return input, nil
+	}
+	expiresAt := strings.TrimSpace(*req.ExpiresAt)
+	if expiresAt == "" {
+		input.ClearExpiration = true
+		return input, nil
+	}
+	parsed, err := time.Parse(time.RFC3339, expiresAt)
+	if err != nil {
+		return input, fmt.Errorf("invalid expires_at format: %w", err)
+	}
+	input.ExpiresAt = &parsed
+	return input, nil
+}
+
+func hasAdminAPIKeyPolicyUpdate(input service.AdminUpdateAPIKeyPolicyInput) bool {
+	return input.Status != nil ||
+		input.Name != nil ||
+		input.QuotaDisabled != nil ||
+		input.Quota != nil ||
+		input.ExpiresAt != nil ||
+		input.ClearExpiration ||
+		input.ResetQuota != nil ||
+		input.IPWhitelist != nil ||
+		input.IPBlacklist != nil ||
+		input.RateLimit5h != nil ||
+		input.RateLimit1d != nil ||
+		input.RateLimit7d != nil
 }
 
 // ListManagedKeys lists managed users with their primary API key.
