@@ -343,9 +343,36 @@ func (r *userSubscriptionRepository) IncrementUsage(ctx context.Context, id int6
 	const updateSQL = `
 		UPDATE user_subscriptions us
 		SET
-			daily_usage_usd = us.daily_usage_usd + $1,
-			weekly_usage_usd = us.weekly_usage_usd + $1,
-			monthly_usage_usd = us.monthly_usage_usd + $1,
+			daily_usage_usd = CASE
+				WHEN us.daily_window_start IS NULL OR us.daily_window_start + INTERVAL '24 hours' <= NOW()
+				THEN $1
+				ELSE us.daily_usage_usd + $1
+			END,
+			weekly_usage_usd = CASE
+				WHEN us.weekly_window_start IS NULL OR us.weekly_window_start + INTERVAL '7 days' <= NOW()
+				THEN $1
+				ELSE us.weekly_usage_usd + $1
+			END,
+			monthly_usage_usd = CASE
+				WHEN us.monthly_window_start IS NULL OR us.monthly_window_start + INTERVAL '30 days' <= NOW()
+				THEN $1
+				ELSE us.monthly_usage_usd + $1
+			END,
+			daily_window_start = CASE
+				WHEN us.daily_window_start IS NULL OR us.daily_window_start + INTERVAL '24 hours' <= NOW()
+				THEN date_trunc('day', NOW())
+				ELSE us.daily_window_start
+			END,
+			weekly_window_start = CASE
+				WHEN us.weekly_window_start IS NULL OR us.weekly_window_start + INTERVAL '7 days' <= NOW()
+				THEN date_trunc('day', NOW())
+				ELSE us.weekly_window_start
+			END,
+			monthly_window_start = CASE
+				WHEN us.monthly_window_start IS NULL OR us.monthly_window_start + INTERVAL '30 days' <= NOW()
+				THEN date_trunc('day', NOW())
+				ELSE us.monthly_window_start
+			END,
 			updated_at = NOW()
 		FROM groups g
 		WHERE us.id = $2

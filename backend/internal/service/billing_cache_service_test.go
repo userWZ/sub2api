@@ -16,6 +16,15 @@ type billingCacheWorkerStub struct {
 	subscriptionUpdates int64
 }
 
+type subscriptionWindowCacheStub struct {
+	billingCacheWorkerStub
+	data *SubscriptionCacheData
+}
+
+func (b *subscriptionWindowCacheStub) GetSubscriptionCache(ctx context.Context, userID, groupID int64) (*SubscriptionCacheData, error) {
+	return b.data, nil
+}
+
 func (b *billingCacheWorkerStub) GetUserBalance(ctx context.Context, userID int64) (float64, error) {
 	return 0, errors.New("not implemented")
 }
@@ -129,4 +138,36 @@ func TestBillingCacheServiceEnqueueAfterStopReturnsFalse(t *testing.T) {
 		amount: 1,
 	})
 	require.False(t, enqueued)
+}
+
+func TestBillingCacheServiceCheckSubscriptionEligibilityResetsExpiredDailyWindow(t *testing.T) {
+	now := time.Now()
+	staleWindow := now.Add(-25 * time.Hour)
+	dailyLimit := 30.0
+	cache := &subscriptionWindowCacheStub{
+		data: &SubscriptionCacheData{
+			Status:           SubscriptionStatusActive,
+			ExpiresAt:        now.Add(24 * time.Hour),
+			DailyUsage:       dailyLimit + 0.1,
+			DailyWindowStart: &staleWindow,
+			Version:          now.Unix(),
+		},
+	}
+	svc := NewBillingCacheService(cache, nil, nil, nil, nil, nil, &config.Config{}, nil)
+	t.Cleanup(svc.Stop)
+
+	subscription := &UserSubscription{
+		Status:           SubscriptionStatusActive,
+		StartsAt:         now.Add(-48 * time.Hour),
+		ExpiresAt:        now.Add(24 * time.Hour),
+		DailyUsageUSD:    dailyLimit + 0.1,
+		DailyWindowStart: &staleWindow,
+	}
+	group := &Group{
+		ID:            17,
+		DailyLimitUSD: &dailyLimit,
+	}
+
+	err := svc.checkSubscriptionEligibility(context.Background(), 95, group, subscription)
+	require.NoError(t, err)
 }

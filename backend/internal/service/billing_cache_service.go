@@ -40,12 +40,15 @@ var (
 
 // subscriptionCacheData 订阅缓存数据结构（内部使用）
 type subscriptionCacheData struct {
-	Status       string
-	ExpiresAt    time.Time
-	DailyUsage   float64
-	WeeklyUsage  float64
-	MonthlyUsage float64
-	Version      int64
+	Status             string
+	ExpiresAt          time.Time
+	DailyUsage         float64
+	WeeklyUsage        float64
+	MonthlyUsage       float64
+	DailyWindowStart   *time.Time
+	WeeklyWindowStart  *time.Time
+	MonthlyWindowStart *time.Time
+	Version            int64
 }
 
 // 缓存写入任务类型
@@ -437,23 +440,29 @@ func (s *BillingCacheService) GetSubscriptionStatus(ctx context.Context, userID,
 
 func (s *BillingCacheService) convertFromPortsData(data *SubscriptionCacheData) *subscriptionCacheData {
 	return &subscriptionCacheData{
-		Status:       data.Status,
-		ExpiresAt:    data.ExpiresAt,
-		DailyUsage:   data.DailyUsage,
-		WeeklyUsage:  data.WeeklyUsage,
-		MonthlyUsage: data.MonthlyUsage,
-		Version:      data.Version,
+		Status:             data.Status,
+		ExpiresAt:          data.ExpiresAt,
+		DailyUsage:         data.DailyUsage,
+		WeeklyUsage:        data.WeeklyUsage,
+		MonthlyUsage:       data.MonthlyUsage,
+		DailyWindowStart:   data.DailyWindowStart,
+		WeeklyWindowStart:  data.WeeklyWindowStart,
+		MonthlyWindowStart: data.MonthlyWindowStart,
+		Version:            data.Version,
 	}
 }
 
 func (s *BillingCacheService) convertToPortsData(data *subscriptionCacheData) *SubscriptionCacheData {
 	return &SubscriptionCacheData{
-		Status:       data.Status,
-		ExpiresAt:    data.ExpiresAt,
-		DailyUsage:   data.DailyUsage,
-		WeeklyUsage:  data.WeeklyUsage,
-		MonthlyUsage: data.MonthlyUsage,
-		Version:      data.Version,
+		Status:             data.Status,
+		ExpiresAt:          data.ExpiresAt,
+		DailyUsage:         data.DailyUsage,
+		WeeklyUsage:        data.WeeklyUsage,
+		MonthlyUsage:       data.MonthlyUsage,
+		DailyWindowStart:   data.DailyWindowStart,
+		WeeklyWindowStart:  data.WeeklyWindowStart,
+		MonthlyWindowStart: data.MonthlyWindowStart,
+		Version:            data.Version,
 	}
 }
 
@@ -465,12 +474,15 @@ func (s *BillingCacheService) getSubscriptionFromDB(ctx context.Context, userID,
 	}
 
 	return &subscriptionCacheData{
-		Status:       sub.Status,
-		ExpiresAt:    sub.ExpiresAt,
-		DailyUsage:   sub.DailyUsageUSD,
-		WeeklyUsage:  sub.WeeklyUsageUSD,
-		MonthlyUsage: sub.MonthlyUsageUSD,
-		Version:      sub.UpdatedAt.Unix(),
+		Status:             sub.Status,
+		ExpiresAt:          sub.ExpiresAt,
+		DailyUsage:         sub.DailyUsageUSD,
+		WeeklyUsage:        sub.WeeklyUsageUSD,
+		MonthlyUsage:       sub.MonthlyUsageUSD,
+		DailyWindowStart:   sub.DailyWindowStart,
+		WeeklyWindowStart:  sub.WeeklyWindowStart,
+		MonthlyWindowStart: sub.MonthlyWindowStart,
+		Version:            sub.UpdatedAt.Unix(),
 	}, nil
 }
 
@@ -868,6 +880,17 @@ func (s *BillingCacheService) checkSubscriptionEligibility(ctx context.Context, 
 	if s.circuitBreaker != nil {
 		s.circuitBreaker.OnSuccess()
 	}
+	if subscription != nil {
+		if subData.DailyWindowStart == nil {
+			subData.DailyWindowStart = subscription.DailyWindowStart
+		}
+		if subData.WeeklyWindowStart == nil {
+			subData.WeeklyWindowStart = subscription.WeeklyWindowStart
+		}
+		if subData.MonthlyWindowStart == nil {
+			subData.MonthlyWindowStart = subscription.MonthlyWindowStart
+		}
+	}
 
 	// 检查订阅状态
 	if subData.Status != SubscriptionStatusActive {
@@ -877,6 +900,34 @@ func (s *BillingCacheService) checkSubscriptionEligibility(ctx context.Context, 
 	// 检查是否过期
 	if time.Now().After(subData.ExpiresAt) {
 		return ErrSubscriptionInvalid
+	}
+
+	if subscription != nil {
+		if subscription.NeedsDailyReset() {
+			subData.DailyUsage = 0
+			subData.DailyWindowStart = nil
+		}
+		if subscription.NeedsWeeklyReset() {
+			subData.WeeklyUsage = 0
+			subData.WeeklyWindowStart = nil
+		}
+		if subscription.NeedsMonthlyReset() {
+			subData.MonthlyUsage = 0
+			subData.MonthlyWindowStart = nil
+		}
+	} else {
+		if subData.DailyWindowStart != nil && time.Since(*subData.DailyWindowStart) >= 24*time.Hour {
+			subData.DailyUsage = 0
+			subData.DailyWindowStart = nil
+		}
+		if subData.WeeklyWindowStart != nil && time.Since(*subData.WeeklyWindowStart) >= 7*24*time.Hour {
+			subData.WeeklyUsage = 0
+			subData.WeeklyWindowStart = nil
+		}
+		if subData.MonthlyWindowStart != nil && time.Since(*subData.MonthlyWindowStart) >= 30*24*time.Hour {
+			subData.MonthlyUsage = 0
+			subData.MonthlyWindowStart = nil
+		}
 	}
 
 	// 检查限额（使用传入的Group限额配置）
