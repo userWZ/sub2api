@@ -902,32 +902,17 @@ func (s *BillingCacheService) checkSubscriptionEligibility(ctx context.Context, 
 		return ErrSubscriptionInvalid
 	}
 
-	if subscription != nil {
-		if subscription.NeedsDailyReset() {
-			subData.DailyUsage = 0
-			subData.DailyWindowStart = nil
-		}
-		if subscription.NeedsWeeklyReset() {
-			subData.WeeklyUsage = 0
-			subData.WeeklyWindowStart = nil
-		}
-		if subscription.NeedsMonthlyReset() {
-			subData.MonthlyUsage = 0
-			subData.MonthlyWindowStart = nil
-		}
-	} else {
-		if subData.DailyWindowStart != nil && time.Since(*subData.DailyWindowStart) >= 24*time.Hour {
-			subData.DailyUsage = 0
-			subData.DailyWindowStart = nil
-		}
-		if subData.WeeklyWindowStart != nil && time.Since(*subData.WeeklyWindowStart) >= 7*24*time.Hour {
-			subData.WeeklyUsage = 0
-			subData.WeeklyWindowStart = nil
-		}
-		if subData.MonthlyWindowStart != nil && time.Since(*subData.MonthlyWindowStart) >= 30*24*time.Hour {
-			subData.MonthlyUsage = 0
-			subData.MonthlyWindowStart = nil
-		}
+	if subData.DailyWindowStart != nil && time.Since(*subData.DailyWindowStart) >= 24*time.Hour {
+		subData.DailyUsage = 0
+		subData.DailyWindowStart = nil
+	}
+	if subData.WeeklyWindowStart != nil && time.Since(*subData.WeeklyWindowStart) >= 7*24*time.Hour {
+		subData.WeeklyUsage = 0
+		subData.WeeklyWindowStart = nil
+	}
+	if subData.MonthlyWindowStart != nil && time.Since(*subData.MonthlyWindowStart) >= 30*24*time.Hour {
+		subData.MonthlyUsage = 0
+		subData.MonthlyWindowStart = nil
 	}
 
 	// 检查限额（使用传入的Group限额配置）

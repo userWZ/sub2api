@@ -171,3 +171,37 @@ func TestBillingCacheServiceCheckSubscriptionEligibilityResetsExpiredDailyWindow
 	err := svc.checkSubscriptionEligibility(context.Background(), 95, group, subscription)
 	require.NoError(t, err)
 }
+
+func TestBillingCacheServiceCheckSubscriptionEligibilityUsesCachedWindowWhenSubscriptionWasNormalized(t *testing.T) {
+	now := time.Now()
+	staleWindow := now.Add(-25 * time.Hour)
+	dailyLimit := 30.0
+	cache := &subscriptionWindowCacheStub{
+		data: &SubscriptionCacheData{
+			Status:           SubscriptionStatusActive,
+			ExpiresAt:        now.Add(24 * time.Hour),
+			DailyUsage:       dailyLimit + 0.1,
+			DailyWindowStart: &staleWindow,
+			Version:          now.Unix(),
+		},
+	}
+	svc := NewBillingCacheService(cache, nil, nil, nil, nil, nil, &config.Config{}, nil)
+	t.Cleanup(svc.Stop)
+
+	// Automatic subscription resolution may pass a display-normalized
+	// subscription whose expired window was cleared. Billing must still trust the
+	// DB/Redis window stored in subData when deciding whether stale usage resets.
+	subscription := &UserSubscription{
+		Status:        SubscriptionStatusActive,
+		StartsAt:      now.Add(-48 * time.Hour),
+		ExpiresAt:     now.Add(24 * time.Hour),
+		DailyUsageUSD: 0,
+	}
+	group := &Group{
+		ID:            17,
+		DailyLimitUSD: &dailyLimit,
+	}
+
+	err := svc.checkSubscriptionEligibility(context.Background(), 95, group, subscription)
+	require.NoError(t, err)
+}
