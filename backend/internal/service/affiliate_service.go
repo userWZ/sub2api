@@ -17,6 +17,7 @@ var (
 	ErrAffiliateCodeTaken       = infraerrors.Conflict("AFFILIATE_CODE_TAKEN", "affiliate code already in use")
 	ErrAffiliateAlreadyBound    = infraerrors.Conflict("AFFILIATE_ALREADY_BOUND", "affiliate inviter already bound")
 	ErrAffiliateQuotaEmpty      = infraerrors.BadRequest("AFFILIATE_QUOTA_EMPTY", "no affiliate quota available to transfer")
+	ErrAffiliateDiscountChanged = infraerrors.Conflict("AFFILIATE_DISCOUNT_CHANGED", "affiliate discount changed, please retry")
 )
 
 const (
@@ -102,6 +103,10 @@ type AffiliateRepository interface {
 	GetAccruedRebateFromInvitee(ctx context.Context, inviterID, inviteeUserID int64) (float64, error)
 	ThawFrozenQuota(ctx context.Context, userID int64) (float64, error)
 	TransferQuotaToBalance(ctx context.Context, userID int64) (float64, float64, error)
+	GetAvailableDiscountQuota(ctx context.Context, userID int64) (float64, error)
+	ClaimDiscountForOrder(ctx context.Context, userID int64, amount float64, sourceOrderID int64) (float64, error)
+	RestoreDiscountForOrder(ctx context.Context, userID int64, amount float64, sourceOrderID int64) (bool, error)
+	ReverseAccruedRebateForOrder(ctx context.Context, sourceOrderID int64) (float64, error)
 	ListInvitees(ctx context.Context, inviterID int64, limit int) ([]AffiliateInvitee, error)
 
 	// 管理端：用户级专属配置
@@ -421,6 +426,60 @@ func (s *AffiliateService) TransferAffiliateQuota(ctx context.Context, userID in
 		s.invalidateAffiliateCaches(ctx, userID)
 	}
 	return transferred, balance, nil
+}
+
+func (s *AffiliateService) GetAvailableDiscountQuota(ctx context.Context, userID int64) (float64, error) {
+	if s == nil || s.repo == nil {
+		return 0, nil
+	}
+	if userID <= 0 || !s.IsEnabled(ctx) {
+		return 0, nil
+	}
+	if s.settingService != nil && !s.settingService.IsAffiliateDiscountEnabled(ctx) {
+		return 0, nil
+	}
+	return s.repo.GetAvailableDiscountQuota(ctx, userID)
+}
+
+func (s *AffiliateService) ClaimDiscountForOrder(ctx context.Context, userID int64, amount float64, sourceOrderID int64) (float64, error) {
+	if s == nil || s.repo == nil {
+		return 0, nil
+	}
+	if userID <= 0 || amount <= 0 || sourceOrderID <= 0 || !s.IsEnabled(ctx) {
+		return 0, nil
+	}
+	if s.settingService != nil && !s.settingService.IsAffiliateDiscountEnabled(ctx) {
+		return 0, nil
+	}
+	claimed, err := s.repo.ClaimDiscountForOrder(ctx, userID, amount, sourceOrderID)
+	if err != nil {
+		return 0, err
+	}
+	if claimed > 0 {
+		s.invalidateAffiliateCaches(ctx, userID)
+	}
+	return claimed, nil
+}
+
+func (s *AffiliateService) RestoreDiscountForOrder(ctx context.Context, userID int64, amount float64, sourceOrderID int64) (bool, error) {
+	if s == nil || s.repo == nil || userID <= 0 || amount <= 0 || sourceOrderID <= 0 {
+		return false, nil
+	}
+	restored, err := s.repo.RestoreDiscountForOrder(ctx, userID, amount, sourceOrderID)
+	if err != nil {
+		return false, err
+	}
+	if restored {
+		s.invalidateAffiliateCaches(ctx, userID)
+	}
+	return restored, nil
+}
+
+func (s *AffiliateService) ReverseAccruedRebateForOrder(ctx context.Context, sourceOrderID int64) (float64, error) {
+	if s == nil || s.repo == nil || sourceOrderID <= 0 {
+		return 0, nil
+	}
+	return s.repo.ReverseAccruedRebateForOrder(ctx, sourceOrderID)
 }
 
 func (s *AffiliateService) listInvitees(ctx context.Context, inviterID int64) ([]AffiliateInvitee, error) {

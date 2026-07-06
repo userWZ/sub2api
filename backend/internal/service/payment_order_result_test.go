@@ -403,7 +403,7 @@ func TestMaybeBuildWeChatOAuthRequiredResponseForSelectionSkipsEasyPayProvider(t
 		PaymentType:     payment.TypeWxpay,
 		IsWeChatBrowser: true,
 		OrderType:       payment.OrderTypeBalance,
-	}, 12.5, 12.88, 0.03, &payment.InstanceSelection{
+	}, 12.5, 12.88, 0.03, 0, &payment.InstanceSelection{
 		ProviderKey: payment.TypeEasyPay,
 	})
 	if err != nil {

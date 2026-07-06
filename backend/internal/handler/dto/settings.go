@@ -142,14 +142,17 @@ type SystemSettings struct {
 	CustomMenuItems             []CustomMenuItem `json:"custom_menu_items"`
 	CustomEndpoints             []CustomEndpoint `json:"custom_endpoints"`
 
-	DefaultConcurrency           int                          `json:"default_concurrency"`
-	DefaultBalance               float64                      `json:"default_balance"`
-	AffiliateRebateRate          float64                      `json:"affiliate_rebate_rate"`
-	AffiliateRebateFreezeHours   int                          `json:"affiliate_rebate_freeze_hours"`
-	AffiliateRebateDurationDays  int                          `json:"affiliate_rebate_duration_days"`
-	AffiliateRebatePerInviteeCap float64                      `json:"affiliate_rebate_per_invitee_cap"`
-	DefaultUserRPMLimit          int                          `json:"default_user_rpm_limit"`
-	DefaultSubscriptions         []DefaultSubscriptionSetting `json:"default_subscriptions"`
+	DefaultConcurrency            int                          `json:"default_concurrency"`
+	DefaultBalance                float64                      `json:"default_balance"`
+	AffiliateRebateRate           float64                      `json:"affiliate_rebate_rate"`
+	AffiliateRebateFreezeHours    int                          `json:"affiliate_rebate_freeze_hours"`
+	AffiliateRebateDurationDays   int                          `json:"affiliate_rebate_duration_days"`
+	AffiliateRebatePerInviteeCap  float64                      `json:"affiliate_rebate_per_invitee_cap"`
+	AffiliateDiscountEnabled      bool                         `json:"affiliate_discount_enabled"`
+	AffiliateDiscountMaxPercent   float64                      `json:"affiliate_discount_max_percent"`
+	AffiliateDiscountMinPayAmount float64                      `json:"affiliate_discount_min_pay_amount"`
+	DefaultUserRPMLimit           int                          `json:"default_user_rpm_limit"`
+	DefaultSubscriptions          []DefaultSubscriptionSetting `json:"default_subscriptions"`
 
 	// Model fallback configuration
 	EnableModelFallback      bool   `json:"enable_model_fallback"`

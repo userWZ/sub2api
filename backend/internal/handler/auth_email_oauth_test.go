@@ -407,6 +407,22 @@ func (r *oauthEmailAffiliateRepoStub) TransferQuotaToBalance(context.Context, in
 	panic("unexpected TransferQuotaToBalance call")
 }
 
+func (r *oauthEmailAffiliateRepoStub) GetAvailableDiscountQuota(context.Context, int64) (float64, error) {
+	panic("unexpected GetAvailableDiscountQuota call")
+}
+
+func (r *oauthEmailAffiliateRepoStub) ClaimDiscountForOrder(context.Context, int64, float64, int64) (float64, error) {
+	panic("unexpected ClaimDiscountForOrder call")
+}
+
+func (r *oauthEmailAffiliateRepoStub) RestoreDiscountForOrder(context.Context, int64, float64, int64) (bool, error) {
+	panic("unexpected RestoreDiscountForOrder call")
+}
+
+func (r *oauthEmailAffiliateRepoStub) ReverseAccruedRebateForOrder(context.Context, int64) (float64, error) {
+	panic("unexpected ReverseAccruedRebateForOrder call")
+}
+
 func (r *oauthEmailAffiliateRepoStub) ListInvitees(context.Context, int64, int) ([]service.AffiliateInvitee, error) {
 	panic("unexpected ListInvitees call")
 }

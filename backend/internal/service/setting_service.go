@@ -2164,6 +2164,13 @@ func (s *SettingService) buildSystemSettingsUpdates(ctx context.Context, setting
 		settings.AffiliateRebatePerInviteeCap = AffiliateRebatePerInviteeCapDefault
 	}
 	updates[SettingKeyAffiliateRebatePerInviteeCap] = strconv.FormatFloat(settings.AffiliateRebatePerInviteeCap, 'f', 8, 64)
+	updates[SettingKeyAffiliateDiscountEnabled] = strconv.FormatBool(settings.AffiliateDiscountEnabled)
+	settings.AffiliateDiscountMaxPercent = clampAffiliateDiscountMaxPercent(settings.AffiliateDiscountMaxPercent)
+	updates[SettingKeyAffiliateDiscountMaxPercent] = strconv.FormatFloat(settings.AffiliateDiscountMaxPercent, 'f', 8, 64)
+	if settings.AffiliateDiscountMinPayAmount < 0 || math.IsNaN(settings.AffiliateDiscountMinPayAmount) || math.IsInf(settings.AffiliateDiscountMinPayAmount, 0) {
+		settings.AffiliateDiscountMinPayAmount = AffiliateDiscountMinPayAmountDefault
+	}
+	updates[SettingKeyAffiliateDiscountMinPayAmount] = strconv.FormatFloat(settings.AffiliateDiscountMinPayAmount, 'f', 8, 64)
 	updates[SettingKeyDefaultUserRPMLimit] = strconv.Itoa(settings.DefaultUserRPMLimit)
 	defaultSubsJSON, err := json.Marshal(settings.DefaultSubscriptions)
 	if err != nil {
@@ -2839,6 +2846,38 @@ func (s *SettingService) GetAffiliateRebatePerInviteeCap(ctx context.Context) fl
 	return cap
 }
 
+func (s *SettingService) IsAffiliateDiscountEnabled(ctx context.Context) bool {
+	raw, err := s.settingRepo.GetValue(ctx, SettingKeyAffiliateDiscountEnabled)
+	if err != nil {
+		return AffiliateDiscountEnabledDefault
+	}
+	return strings.TrimSpace(raw) == "true"
+}
+
+func (s *SettingService) GetAffiliateDiscountMaxPercent(ctx context.Context) float64 {
+	raw, err := s.settingRepo.GetValue(ctx, SettingKeyAffiliateDiscountMaxPercent)
+	if err != nil {
+		return AffiliateDiscountMaxPercentDefault
+	}
+	percent, err := strconv.ParseFloat(strings.TrimSpace(raw), 64)
+	if err != nil || math.IsNaN(percent) || math.IsInf(percent, 0) {
+		return AffiliateDiscountMaxPercentDefault
+	}
+	return clampAffiliateDiscountMaxPercent(percent)
+}
+
+func (s *SettingService) GetAffiliateDiscountMinPayAmount(ctx context.Context) float64 {
+	raw, err := s.settingRepo.GetValue(ctx, SettingKeyAffiliateDiscountMinPayAmount)
+	if err != nil {
+		return AffiliateDiscountMinPayAmountDefault
+	}
+	amount, err := strconv.ParseFloat(strings.TrimSpace(raw), 64)
+	if err != nil || amount < 0 || math.IsNaN(amount) || math.IsInf(amount, 0) {
+		return AffiliateDiscountMinPayAmountDefault
+	}
+	return amount
+}
+
 // IsPasswordResetEnabled 检查是否启用密码重置功能
 // 要求：必须同时开启邮件验证
 func (s *SettingService) IsPasswordResetEnabled(ctx context.Context) bool {
@@ -3130,6 +3169,9 @@ func (s *SettingService) InitializeDefaultSettings(ctx context.Context) error {
 		SettingKeyAffiliateRebateFreezeHours:                strconv.Itoa(AffiliateRebateFreezeHoursDefault),
 		SettingKeyAffiliateRebateDurationDays:               strconv.Itoa(AffiliateRebateDurationDaysDefault),
 		SettingKeyAffiliateRebatePerInviteeCap:              strconv.FormatFloat(AffiliateRebatePerInviteeCapDefault, 'f', 2, 64),
+		SettingKeyAffiliateDiscountEnabled:                  strconv.FormatBool(AffiliateDiscountEnabledDefault),
+		SettingKeyAffiliateDiscountMaxPercent:               strconv.FormatFloat(AffiliateDiscountMaxPercentDefault, 'f', 2, 64),
+		SettingKeyAffiliateDiscountMinPayAmount:             strconv.FormatFloat(AffiliateDiscountMinPayAmountDefault, 'f', 2, 64),
 		SettingKeyDefaultUserRPMLimit:                       "0",
 		SettingKeyDefaultSubscriptions:                      "[]",
 		SettingKeyAuthSourceDefaultEmailBalance:             "0",
@@ -3332,6 +3374,21 @@ func (s *SettingService) parseSettings(settings map[string]string) *SystemSettin
 	}
 	if perInviteeCap, err := strconv.ParseFloat(settings[SettingKeyAffiliateRebatePerInviteeCap], 64); err == nil && perInviteeCap >= 0 {
 		result.AffiliateRebatePerInviteeCap = perInviteeCap
+	}
+	if raw, ok := settings[SettingKeyAffiliateDiscountEnabled]; ok {
+		result.AffiliateDiscountEnabled = strings.TrimSpace(raw) == "true"
+	} else {
+		result.AffiliateDiscountEnabled = AffiliateDiscountEnabledDefault
+	}
+	if discountMaxPercent, err := strconv.ParseFloat(settings[SettingKeyAffiliateDiscountMaxPercent], 64); err == nil {
+		result.AffiliateDiscountMaxPercent = clampAffiliateDiscountMaxPercent(discountMaxPercent)
+	} else {
+		result.AffiliateDiscountMaxPercent = AffiliateDiscountMaxPercentDefault
+	}
+	if minPayAmount, err := strconv.ParseFloat(settings[SettingKeyAffiliateDiscountMinPayAmount], 64); err == nil && minPayAmount >= 0 {
+		result.AffiliateDiscountMinPayAmount = minPayAmount
+	} else {
+		result.AffiliateDiscountMinPayAmount = AffiliateDiscountMinPayAmountDefault
 	}
 	result.DefaultSubscriptions = parseDefaultSubscriptions(settings[SettingKeyDefaultSubscriptions])
 
@@ -3831,6 +3888,19 @@ func clampAffiliateRebateRate(value float64) float64 {
 	}
 	if value > AffiliateRebateRateMax {
 		return AffiliateRebateRateMax
+	}
+	return value
+}
+
+func clampAffiliateDiscountMaxPercent(value float64) float64 {
+	if math.IsNaN(value) || math.IsInf(value, 0) {
+		return AffiliateDiscountMaxPercentDefault
+	}
+	if value < AffiliateDiscountMaxPercentMin {
+		return AffiliateDiscountMaxPercentMin
+	}
+	if value > AffiliateDiscountMaxPercentMax {
+		return AffiliateDiscountMaxPercentMax
 	}
 	return value
 }

@@ -279,6 +279,7 @@ describe('buildCreateOrderPayload', () => {
       return_url: 'https://app.example.com/payment/result',
       is_mobile: true,
       payment_source: 'hosted_redirect',
+      use_affiliate_discount: true,
     })
   })
 
@@ -299,6 +300,7 @@ describe('buildCreateOrderPayload', () => {
       return_url: 'https://app.example.com/payment/result',
       is_mobile: false,
       payment_source: 'wechat_in_app_resume',
+      use_affiliate_discount: true,
     })
   })
 
@@ -347,6 +349,8 @@ describe('readPaymentRecoverySnapshot', () => {
       countryCode: '',
       paymentEnv: '',
       payAmount: 18,
+      originalAmount: 18,
+      affiliateDiscount: 0,
       orderType: 'balance',
       paymentMode: 'popup',
       resumeToken: 'resume-33',
@@ -376,6 +380,8 @@ describe('readPaymentRecoverySnapshot', () => {
       countryCode: '',
       paymentEnv: '',
       payAmount: 18,
+      originalAmount: 18,
+      affiliateDiscount: 0,
       orderType: 'balance',
       paymentMode: 'popup',
       resumeToken: 'resume-55',
@@ -445,5 +451,7 @@ describe('readPaymentRecoverySnapshot', () => {
     expect(restored?.currency).toBe('')
     expect(restored?.countryCode).toBe('')
     expect(restored?.paymentEnv).toBe('')
+    expect(restored?.originalAmount).toBe(28)
+    expect(restored?.affiliateDiscount).toBe(0)
   })
 })

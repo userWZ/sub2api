@@ -1174,7 +1174,7 @@ export default {
 
   affiliate: {
     title: '邀请返利',
-    description: '邀请新用户注册，并将返利额度转入账户余额',
+    description: '邀请新用户注册，返利额度可在购买余额或订阅时抵扣',
     yourCode: '我的邀请码',
     inviteLink: '邀请链接',
     copyCode: '复制邀请码',
@@ -1182,23 +1182,23 @@ export default {
     codeCopied: '邀请码已复制',
     linkCopied: '邀请链接已复制',
     loadFailed: '加载邀请返利数据失败',
-    transferFailed: '转入余额失败',
+    transferFailed: '返利抵扣失败',
     stats: {
       rebateRate: '我的返利比例',
       rebateRateHint: '被邀请用户每次充值后你可获得的返利比例',
       invitedUsers: '邀请人数',
-      availableQuota: '可转返利额度',
+      availableQuota: '可用抵扣额度',
       frozenQuota: '冻结中',
       frozenQuotaHint: '新产生的返利正在冻结期中',
       totalQuota: '历史返利额度'
     },
     transfer: {
-      title: '返利额度转余额',
-      description: '将当前可用返利额度一键转入账户余额',
-      button: '转入余额',
-      transferring: '转入中...',
-      empty: '当前没有可转入额度',
-      success: '已转入余额：{amount}'
+      title: '返利额度购买抵扣',
+      description: '购买余额或订阅时使用当前可用返利额度抵扣订单金额',
+      button: '使用抵扣',
+      transferring: '抵扣中...',
+      empty: '当前没有可用抵扣额度',
+      success: '已抵扣：{amount}'
     },
     invitees: {
       title: '已邀请用户',
@@ -1214,8 +1214,8 @@ export default {
       title: '使用说明',
       line1: '将邀请码或邀请链接分享给新用户。',
       line2: '被邀请用户充值后，你可获得 {rate} 的返利额度。',
-      line3: '返利额度可随时转入账户余额。',
-      line4: '新产生的返利需要经过冻结期后才能提现。'
+      line3: '可用返利会在购买余额或订阅时自动作为抵扣选项。',
+      line4: '新产生的返利需要经过冻结期后才能用于抵扣。'
     }
   },
 
@@ -5879,15 +5879,21 @@ export default {
           title: '邀请返利',
           description: '老用户邀请新用户注册，新用户充值后老用户按比例获得返利额度。默认关闭。',
           enabled: '启用邀请返利',
-          enabledHint: '关闭后用户菜单中的邀请页面入口隐藏、注册时忽略邀请码、新充值不再产生返利。已有返利额度仍可转入余额。',
+          enabledHint: '关闭后用户菜单中的邀请页面入口隐藏、注册时忽略邀请码、新充值不再产生返利。已有返利额度仍可在购买余额或订阅时抵扣。',
           rebateRate: '全局返利比例',
           rebateRateHint: '充值后返给邀请人的默认比例（0-100%，例如填写 10 表示返利 10%）。',
           freezeHours: '返利冻结期（小时）',
-          freezeHoursDesc: '新产生的返利将在冻结期内无法提现。0 = 不冻结。',
+          freezeHoursDesc: '新产生的返利将在冻结期内无法抵扣。0 = 不冻结。',
           durationDays: '返利有效期（天）',
           durationDaysDesc: '被邀请用户注册后多少天内的充值产生返利。0 = 永久有效。',
           perInviteeCap: '单人返利上限',
           perInviteeCapDesc: '每个被邀请用户最多产生的返利总额。0 = 无上限。',
+          discountEnabled: '允许购买时使用返利抵扣',
+          discountEnabledHint: '开启后，用户在购买余额或订阅时可用返利钱包直接抵扣订单实付金额。',
+          discountMaxPercent: '单笔最高抵扣比例',
+          discountMaxPercentHint: '按订单原价计算，避免订单被返利完全覆盖。0 = 不抵扣。',
+          discountMinPayAmount: '单笔最低实付金额',
+          discountMinPayAmountHint: '抵扣后仍需支付的最小金额，建议至少保留 1 元以便支付通道正常创建订单。',
           customUsers: {
             title: '专属用户配置',
             description: '为指定用户设置专属邀请码或专属返利比例。仅展示已设置过专属配置的用户。',

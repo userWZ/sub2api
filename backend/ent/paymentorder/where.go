@@ -80,6 +80,16 @@ func Amount(v float64) predicate.PaymentOrder {
 	return predicate.PaymentOrder(sql.FieldEQ(FieldAmount, v))
 }
 
+// OriginalAmount applies equality check predicate on the "original_amount" field. It's identical to OriginalAmountEQ.
+func OriginalAmount(v float64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldEQ(FieldOriginalAmount, v))
+}
+
+// AffiliateDiscount applies equality check predicate on the "affiliate_discount" field. It's identical to AffiliateDiscountEQ.
+func AffiliateDiscount(v float64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldEQ(FieldAffiliateDiscount, v))
+}
+
 // PayAmount applies equality check predicate on the "pay_amount" field. It's identical to PayAmountEQ.
 func PayAmount(v float64) predicate.PaymentOrder {
 	return predicate.PaymentOrder(sql.FieldEQ(FieldPayAmount, v))
@@ -508,6 +518,86 @@ func AmountLT(v float64) predicate.PaymentOrder {
 // AmountLTE applies the LTE predicate on the "amount" field.
 func AmountLTE(v float64) predicate.PaymentOrder {
 	return predicate.PaymentOrder(sql.FieldLTE(FieldAmount, v))
+}
+
+// OriginalAmountEQ applies the EQ predicate on the "original_amount" field.
+func OriginalAmountEQ(v float64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldEQ(FieldOriginalAmount, v))
+}
+
+// OriginalAmountNEQ applies the NEQ predicate on the "original_amount" field.
+func OriginalAmountNEQ(v float64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldNEQ(FieldOriginalAmount, v))
+}
+
+// OriginalAmountIn applies the In predicate on the "original_amount" field.
+func OriginalAmountIn(vs ...float64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldIn(FieldOriginalAmount, vs...))
+}
+
+// OriginalAmountNotIn applies the NotIn predicate on the "original_amount" field.
+func OriginalAmountNotIn(vs ...float64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldNotIn(FieldOriginalAmount, vs...))
+}
+
+// OriginalAmountGT applies the GT predicate on the "original_amount" field.
+func OriginalAmountGT(v float64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldGT(FieldOriginalAmount, v))
+}
+
+// OriginalAmountGTE applies the GTE predicate on the "original_amount" field.
+func OriginalAmountGTE(v float64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldGTE(FieldOriginalAmount, v))
+}
+
+// OriginalAmountLT applies the LT predicate on the "original_amount" field.
+func OriginalAmountLT(v float64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldLT(FieldOriginalAmount, v))
+}
+
+// OriginalAmountLTE applies the LTE predicate on the "original_amount" field.
+func OriginalAmountLTE(v float64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldLTE(FieldOriginalAmount, v))
+}
+
+// AffiliateDiscountEQ applies the EQ predicate on the "affiliate_discount" field.
+func AffiliateDiscountEQ(v float64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldEQ(FieldAffiliateDiscount, v))
+}
+
+// AffiliateDiscountNEQ applies the NEQ predicate on the "affiliate_discount" field.
+func AffiliateDiscountNEQ(v float64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldNEQ(FieldAffiliateDiscount, v))
+}
+
+// AffiliateDiscountIn applies the In predicate on the "affiliate_discount" field.
+func AffiliateDiscountIn(vs ...float64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldIn(FieldAffiliateDiscount, vs...))
+}
+
+// AffiliateDiscountNotIn applies the NotIn predicate on the "affiliate_discount" field.
+func AffiliateDiscountNotIn(vs ...float64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldNotIn(FieldAffiliateDiscount, vs...))
+}
+
+// AffiliateDiscountGT applies the GT predicate on the "affiliate_discount" field.
+func AffiliateDiscountGT(v float64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldGT(FieldAffiliateDiscount, v))
+}
+
+// AffiliateDiscountGTE applies the GTE predicate on the "affiliate_discount" field.
+func AffiliateDiscountGTE(v float64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldGTE(FieldAffiliateDiscount, v))
+}
+
+// AffiliateDiscountLT applies the LT predicate on the "affiliate_discount" field.
+func AffiliateDiscountLT(v float64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldLT(FieldAffiliateDiscount, v))
+}
+
+// AffiliateDiscountLTE applies the LTE predicate on the "affiliate_discount" field.
+func AffiliateDiscountLTE(v float64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldLTE(FieldAffiliateDiscount, v))
 }
 
 // PayAmountEQ applies the EQ predicate on the "pay_amount" field.

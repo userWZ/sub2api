@@ -21263,6 +21263,10 @@ type PaymentOrderMutation struct {
 	user_notes               *string
 	amount                   *float64
 	addamount                *float64
+	original_amount          *float64
+	addoriginal_amount       *float64
+	affiliate_discount       *float64
+	addaffiliate_discount    *float64
 	pay_amount               *float64
 	addpay_amount            *float64
 	fee_rate                 *float64
@@ -21620,6 +21624,118 @@ func (m *PaymentOrderMutation) AddedAmount() (r float64, exists bool) {
 func (m *PaymentOrderMutation) ResetAmount() {
 	m.amount = nil
 	m.addamount = nil
+}
+
+// SetOriginalAmount sets the "original_amount" field.
+func (m *PaymentOrderMutation) SetOriginalAmount(f float64) {
+	m.original_amount = &f
+	m.addoriginal_amount = nil
+}
+
+// OriginalAmount returns the value of the "original_amount" field in the mutation.
+func (m *PaymentOrderMutation) OriginalAmount() (r float64, exists bool) {
+	v := m.original_amount
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldOriginalAmount returns the old "original_amount" field's value of the PaymentOrder entity.
+// If the PaymentOrder object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PaymentOrderMutation) OldOriginalAmount(ctx context.Context) (v float64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldOriginalAmount is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldOriginalAmount requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldOriginalAmount: %w", err)
+	}
+	return oldValue.OriginalAmount, nil
+}
+
+// AddOriginalAmount adds f to the "original_amount" field.
+func (m *PaymentOrderMutation) AddOriginalAmount(f float64) {
+	if m.addoriginal_amount != nil {
+		*m.addoriginal_amount += f
+	} else {
+		m.addoriginal_amount = &f
+	}
+}
+
+// AddedOriginalAmount returns the value that was added to the "original_amount" field in this mutation.
+func (m *PaymentOrderMutation) AddedOriginalAmount() (r float64, exists bool) {
+	v := m.addoriginal_amount
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetOriginalAmount resets all changes to the "original_amount" field.
+func (m *PaymentOrderMutation) ResetOriginalAmount() {
+	m.original_amount = nil
+	m.addoriginal_amount = nil
+}
+
+// SetAffiliateDiscount sets the "affiliate_discount" field.
+func (m *PaymentOrderMutation) SetAffiliateDiscount(f float64) {
+	m.affiliate_discount = &f
+	m.addaffiliate_discount = nil
+}
+
+// AffiliateDiscount returns the value of the "affiliate_discount" field in the mutation.
+func (m *PaymentOrderMutation) AffiliateDiscount() (r float64, exists bool) {
+	v := m.affiliate_discount
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAffiliateDiscount returns the old "affiliate_discount" field's value of the PaymentOrder entity.
+// If the PaymentOrder object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PaymentOrderMutation) OldAffiliateDiscount(ctx context.Context) (v float64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAffiliateDiscount is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAffiliateDiscount requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAffiliateDiscount: %w", err)
+	}
+	return oldValue.AffiliateDiscount, nil
+}
+
+// AddAffiliateDiscount adds f to the "affiliate_discount" field.
+func (m *PaymentOrderMutation) AddAffiliateDiscount(f float64) {
+	if m.addaffiliate_discount != nil {
+		*m.addaffiliate_discount += f
+	} else {
+		m.addaffiliate_discount = &f
+	}
+}
+
+// AddedAffiliateDiscount returns the value that was added to the "affiliate_discount" field in this mutation.
+func (m *PaymentOrderMutation) AddedAffiliateDiscount() (r float64, exists bool) {
+	v := m.addaffiliate_discount
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetAffiliateDiscount resets all changes to the "affiliate_discount" field.
+func (m *PaymentOrderMutation) ResetAffiliateDiscount() {
+	m.affiliate_discount = nil
+	m.addaffiliate_discount = nil
 }
 
 // SetPayAmount sets the "pay_amount" field.
@@ -23277,7 +23393,7 @@ func (m *PaymentOrderMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *PaymentOrderMutation) Fields() []string {
-	fields := make([]string, 0, 39)
+	fields := make([]string, 0, 41)
 	if m.user != nil {
 		fields = append(fields, paymentorder.FieldUserID)
 	}
@@ -23292,6 +23408,12 @@ func (m *PaymentOrderMutation) Fields() []string {
 	}
 	if m.amount != nil {
 		fields = append(fields, paymentorder.FieldAmount)
+	}
+	if m.original_amount != nil {
+		fields = append(fields, paymentorder.FieldOriginalAmount)
+	}
+	if m.affiliate_discount != nil {
+		fields = append(fields, paymentorder.FieldAffiliateDiscount)
 	}
 	if m.pay_amount != nil {
 		fields = append(fields, paymentorder.FieldPayAmount)
@@ -23413,6 +23535,10 @@ func (m *PaymentOrderMutation) Field(name string) (ent.Value, bool) {
 		return m.UserNotes()
 	case paymentorder.FieldAmount:
 		return m.Amount()
+	case paymentorder.FieldOriginalAmount:
+		return m.OriginalAmount()
+	case paymentorder.FieldAffiliateDiscount:
+		return m.AffiliateDiscount()
 	case paymentorder.FieldPayAmount:
 		return m.PayAmount()
 	case paymentorder.FieldFeeRate:
@@ -23500,6 +23626,10 @@ func (m *PaymentOrderMutation) OldField(ctx context.Context, name string) (ent.V
 		return m.OldUserNotes(ctx)
 	case paymentorder.FieldAmount:
 		return m.OldAmount(ctx)
+	case paymentorder.FieldOriginalAmount:
+		return m.OldOriginalAmount(ctx)
+	case paymentorder.FieldAffiliateDiscount:
+		return m.OldAffiliateDiscount(ctx)
 	case paymentorder.FieldPayAmount:
 		return m.OldPayAmount(ctx)
 	case paymentorder.FieldFeeRate:
@@ -23611,6 +23741,20 @@ func (m *PaymentOrderMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetAmount(v)
+		return nil
+	case paymentorder.FieldOriginalAmount:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetOriginalAmount(v)
+		return nil
+	case paymentorder.FieldAffiliateDiscount:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAffiliateDiscount(v)
 		return nil
 	case paymentorder.FieldPayAmount:
 		v, ok := value.(float64)
@@ -23861,6 +24005,12 @@ func (m *PaymentOrderMutation) AddedFields() []string {
 	if m.addamount != nil {
 		fields = append(fields, paymentorder.FieldAmount)
 	}
+	if m.addoriginal_amount != nil {
+		fields = append(fields, paymentorder.FieldOriginalAmount)
+	}
+	if m.addaffiliate_discount != nil {
+		fields = append(fields, paymentorder.FieldAffiliateDiscount)
+	}
 	if m.addpay_amount != nil {
 		fields = append(fields, paymentorder.FieldPayAmount)
 	}
@@ -23889,6 +24039,10 @@ func (m *PaymentOrderMutation) AddedField(name string) (ent.Value, bool) {
 	switch name {
 	case paymentorder.FieldAmount:
 		return m.AddedAmount()
+	case paymentorder.FieldOriginalAmount:
+		return m.AddedOriginalAmount()
+	case paymentorder.FieldAffiliateDiscount:
+		return m.AddedAffiliateDiscount()
 	case paymentorder.FieldPayAmount:
 		return m.AddedPayAmount()
 	case paymentorder.FieldFeeRate:
@@ -23916,6 +24070,20 @@ func (m *PaymentOrderMutation) AddField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.AddAmount(v)
+		return nil
+	case paymentorder.FieldOriginalAmount:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddOriginalAmount(v)
+		return nil
+	case paymentorder.FieldAffiliateDiscount:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddAffiliateDiscount(v)
 		return nil
 	case paymentorder.FieldPayAmount:
 		v, ok := value.(float64)
@@ -24123,6 +24291,12 @@ func (m *PaymentOrderMutation) ResetField(name string) error {
 		return nil
 	case paymentorder.FieldAmount:
 		m.ResetAmount()
+		return nil
+	case paymentorder.FieldOriginalAmount:
+		m.ResetOriginalAmount()
+		return nil
+	case paymentorder.FieldAffiliateDiscount:
+		m.ResetAffiliateDiscount()
 		return nil
 	case paymentorder.FieldPayAmount:
 		m.ResetPayAmount()

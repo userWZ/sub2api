@@ -61,6 +61,34 @@ func (_c *PaymentOrderCreate) SetAmount(v float64) *PaymentOrderCreate {
 	return _c
 }
 
+// SetOriginalAmount sets the "original_amount" field.
+func (_c *PaymentOrderCreate) SetOriginalAmount(v float64) *PaymentOrderCreate {
+	_c.mutation.SetOriginalAmount(v)
+	return _c
+}
+
+// SetNillableOriginalAmount sets the "original_amount" field if the given value is not nil.
+func (_c *PaymentOrderCreate) SetNillableOriginalAmount(v *float64) *PaymentOrderCreate {
+	if v != nil {
+		_c.SetOriginalAmount(*v)
+	}
+	return _c
+}
+
+// SetAffiliateDiscount sets the "affiliate_discount" field.
+func (_c *PaymentOrderCreate) SetAffiliateDiscount(v float64) *PaymentOrderCreate {
+	_c.mutation.SetAffiliateDiscount(v)
+	return _c
+}
+
+// SetNillableAffiliateDiscount sets the "affiliate_discount" field if the given value is not nil.
+func (_c *PaymentOrderCreate) SetNillableAffiliateDiscount(v *float64) *PaymentOrderCreate {
+	if v != nil {
+		_c.SetAffiliateDiscount(*v)
+	}
+	return _c
+}
+
 // SetPayAmount sets the "pay_amount" field.
 func (_c *PaymentOrderCreate) SetPayAmount(v float64) *PaymentOrderCreate {
 	_c.mutation.SetPayAmount(v)
@@ -513,6 +541,14 @@ func (_c *PaymentOrderCreate) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (_c *PaymentOrderCreate) defaults() {
+	if _, ok := _c.mutation.OriginalAmount(); !ok {
+		v := paymentorder.DefaultOriginalAmount
+		_c.mutation.SetOriginalAmount(v)
+	}
+	if _, ok := _c.mutation.AffiliateDiscount(); !ok {
+		v := paymentorder.DefaultAffiliateDiscount
+		_c.mutation.SetAffiliateDiscount(v)
+	}
 	if _, ok := _c.mutation.FeeRate(); !ok {
 		v := paymentorder.DefaultFeeRate
 		_c.mutation.SetFeeRate(v)
@@ -570,6 +606,12 @@ func (_c *PaymentOrderCreate) check() error {
 	}
 	if _, ok := _c.mutation.Amount(); !ok {
 		return &ValidationError{Name: "amount", err: errors.New(`ent: missing required field "PaymentOrder.amount"`)}
+	}
+	if _, ok := _c.mutation.OriginalAmount(); !ok {
+		return &ValidationError{Name: "original_amount", err: errors.New(`ent: missing required field "PaymentOrder.original_amount"`)}
+	}
+	if _, ok := _c.mutation.AffiliateDiscount(); !ok {
+		return &ValidationError{Name: "affiliate_discount", err: errors.New(`ent: missing required field "PaymentOrder.affiliate_discount"`)}
 	}
 	if _, ok := _c.mutation.PayAmount(); !ok {
 		return &ValidationError{Name: "pay_amount", err: errors.New(`ent: missing required field "PaymentOrder.pay_amount"`)}
@@ -716,6 +758,14 @@ func (_c *PaymentOrderCreate) createSpec() (*PaymentOrder, *sqlgraph.CreateSpec)
 	if value, ok := _c.mutation.Amount(); ok {
 		_spec.SetField(paymentorder.FieldAmount, field.TypeFloat64, value)
 		_node.Amount = value
+	}
+	if value, ok := _c.mutation.OriginalAmount(); ok {
+		_spec.SetField(paymentorder.FieldOriginalAmount, field.TypeFloat64, value)
+		_node.OriginalAmount = value
+	}
+	if value, ok := _c.mutation.AffiliateDiscount(); ok {
+		_spec.SetField(paymentorder.FieldAffiliateDiscount, field.TypeFloat64, value)
+		_node.AffiliateDiscount = value
 	}
 	if value, ok := _c.mutation.PayAmount(); ok {
 		_spec.SetField(paymentorder.FieldPayAmount, field.TypeFloat64, value)
@@ -991,6 +1041,42 @@ func (u *PaymentOrderUpsert) UpdateAmount() *PaymentOrderUpsert {
 // AddAmount adds v to the "amount" field.
 func (u *PaymentOrderUpsert) AddAmount(v float64) *PaymentOrderUpsert {
 	u.Add(paymentorder.FieldAmount, v)
+	return u
+}
+
+// SetOriginalAmount sets the "original_amount" field.
+func (u *PaymentOrderUpsert) SetOriginalAmount(v float64) *PaymentOrderUpsert {
+	u.Set(paymentorder.FieldOriginalAmount, v)
+	return u
+}
+
+// UpdateOriginalAmount sets the "original_amount" field to the value that was provided on create.
+func (u *PaymentOrderUpsert) UpdateOriginalAmount() *PaymentOrderUpsert {
+	u.SetExcluded(paymentorder.FieldOriginalAmount)
+	return u
+}
+
+// AddOriginalAmount adds v to the "original_amount" field.
+func (u *PaymentOrderUpsert) AddOriginalAmount(v float64) *PaymentOrderUpsert {
+	u.Add(paymentorder.FieldOriginalAmount, v)
+	return u
+}
+
+// SetAffiliateDiscount sets the "affiliate_discount" field.
+func (u *PaymentOrderUpsert) SetAffiliateDiscount(v float64) *PaymentOrderUpsert {
+	u.Set(paymentorder.FieldAffiliateDiscount, v)
+	return u
+}
+
+// UpdateAffiliateDiscount sets the "affiliate_discount" field to the value that was provided on create.
+func (u *PaymentOrderUpsert) UpdateAffiliateDiscount() *PaymentOrderUpsert {
+	u.SetExcluded(paymentorder.FieldAffiliateDiscount)
+	return u
+}
+
+// AddAffiliateDiscount adds v to the "affiliate_discount" field.
+func (u *PaymentOrderUpsert) AddAffiliateDiscount(v float64) *PaymentOrderUpsert {
+	u.Add(paymentorder.FieldAffiliateDiscount, v)
 	return u
 }
 
@@ -1666,6 +1752,48 @@ func (u *PaymentOrderUpsertOne) AddAmount(v float64) *PaymentOrderUpsertOne {
 func (u *PaymentOrderUpsertOne) UpdateAmount() *PaymentOrderUpsertOne {
 	return u.Update(func(s *PaymentOrderUpsert) {
 		s.UpdateAmount()
+	})
+}
+
+// SetOriginalAmount sets the "original_amount" field.
+func (u *PaymentOrderUpsertOne) SetOriginalAmount(v float64) *PaymentOrderUpsertOne {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.SetOriginalAmount(v)
+	})
+}
+
+// AddOriginalAmount adds v to the "original_amount" field.
+func (u *PaymentOrderUpsertOne) AddOriginalAmount(v float64) *PaymentOrderUpsertOne {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.AddOriginalAmount(v)
+	})
+}
+
+// UpdateOriginalAmount sets the "original_amount" field to the value that was provided on create.
+func (u *PaymentOrderUpsertOne) UpdateOriginalAmount() *PaymentOrderUpsertOne {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.UpdateOriginalAmount()
+	})
+}
+
+// SetAffiliateDiscount sets the "affiliate_discount" field.
+func (u *PaymentOrderUpsertOne) SetAffiliateDiscount(v float64) *PaymentOrderUpsertOne {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.SetAffiliateDiscount(v)
+	})
+}
+
+// AddAffiliateDiscount adds v to the "affiliate_discount" field.
+func (u *PaymentOrderUpsertOne) AddAffiliateDiscount(v float64) *PaymentOrderUpsertOne {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.AddAffiliateDiscount(v)
+	})
+}
+
+// UpdateAffiliateDiscount sets the "affiliate_discount" field to the value that was provided on create.
+func (u *PaymentOrderUpsertOne) UpdateAffiliateDiscount() *PaymentOrderUpsertOne {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.UpdateAffiliateDiscount()
 	})
 }
 
@@ -2598,6 +2726,48 @@ func (u *PaymentOrderUpsertBulk) AddAmount(v float64) *PaymentOrderUpsertBulk {
 func (u *PaymentOrderUpsertBulk) UpdateAmount() *PaymentOrderUpsertBulk {
 	return u.Update(func(s *PaymentOrderUpsert) {
 		s.UpdateAmount()
+	})
+}
+
+// SetOriginalAmount sets the "original_amount" field.
+func (u *PaymentOrderUpsertBulk) SetOriginalAmount(v float64) *PaymentOrderUpsertBulk {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.SetOriginalAmount(v)
+	})
+}
+
+// AddOriginalAmount adds v to the "original_amount" field.
+func (u *PaymentOrderUpsertBulk) AddOriginalAmount(v float64) *PaymentOrderUpsertBulk {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.AddOriginalAmount(v)
+	})
+}
+
+// UpdateOriginalAmount sets the "original_amount" field to the value that was provided on create.
+func (u *PaymentOrderUpsertBulk) UpdateOriginalAmount() *PaymentOrderUpsertBulk {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.UpdateOriginalAmount()
+	})
+}
+
+// SetAffiliateDiscount sets the "affiliate_discount" field.
+func (u *PaymentOrderUpsertBulk) SetAffiliateDiscount(v float64) *PaymentOrderUpsertBulk {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.SetAffiliateDiscount(v)
+	})
+}
+
+// AddAffiliateDiscount adds v to the "affiliate_discount" field.
+func (u *PaymentOrderUpsertBulk) AddAffiliateDiscount(v float64) *PaymentOrderUpsertBulk {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.AddAffiliateDiscount(v)
+	})
+}
+
+// UpdateAffiliateDiscount sets the "affiliate_discount" field to the value that was provided on create.
+func (u *PaymentOrderUpsertBulk) UpdateAffiliateDiscount() *PaymentOrderUpsertBulk {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.UpdateAffiliateDiscount()
 	})
 }
 

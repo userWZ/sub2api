@@ -47,11 +47,28 @@
         <div class="confirm-grid">
           <div class="confirm-detail">
             <span>{{ copy.payAmount }}</span>
-            <strong>{{ selectedProduct.priceText }}</strong>
+            <strong>{{ selectedPayableText }}</strong>
           </div>
           <div class="confirm-detail">
             <span>{{ copy.arrival }}</span>
             <strong>{{ selectedProduct.arrivalText }}</strong>
+          </div>
+        </div>
+
+        <div v-if="affiliateDiscountVisible" class="affiliate-discount-panel">
+          <label class="affiliate-discount-toggle">
+            <input
+              v-model="useAffiliateDiscount"
+              type="checkbox"
+            />
+            <span>{{ copy.useAffiliateDiscount }}</span>
+          </label>
+          <div class="affiliate-discount-summary">
+            <span>{{ copy.availableDiscount }}: {{ formatCnyPrice(affiliateAvailableQuota) }}</span>
+            <span v-if="selectedAffiliateDiscount > 0">
+              {{ copy.discountApplied }}: -{{ formatCnyPrice(selectedAffiliateDiscount) }}
+            </span>
+            <span v-else>{{ copy.discountNotApplied }}</span>
           </div>
         </div>
 
@@ -184,6 +201,7 @@ import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { paymentAPI } from '@/api/payment'
+import userAPI from '@/api/user'
 import {
   buildCreateOrderPayload,
   clearPaymentRecoverySnapshot,
@@ -205,7 +223,7 @@ import type {
   OrderType,
   SubscriptionPlan,
 } from '@/types/payment'
-import type { HomePricingLocalizedText } from '@/types'
+import type { HomePricingLocalizedText, UserAffiliateDetail } from '@/types'
 import { isMobileDevice } from '@/utils/device'
 import { extractApiErrorCode, extractI18nErrorMessage } from '@/utils/apiError'
 import { formatPoints } from '@/utils/format'
@@ -273,12 +291,14 @@ const appStore = useAppStore()
 const paymentStore = usePaymentStore()
 
 const checkoutInfo = ref<CheckoutInfoResponse | null>(null)
+const affiliateDetail = ref<UserAffiliateDetail | null>(null)
 const loadingCheckout = ref(false)
 const submitting = ref(false)
 const selectedProduct = ref<CashierProduct | null>(null)
 const selectedPaymentMethod = ref<VisibleLocalPaymentMethod | ''>('')
 const activeProductKind = ref<ProductTabKind>('balance')
 const confirmPanelRef = ref<HTMLElement | null>(null)
+const useAffiliateDiscount = ref(true)
 
 const user = computed(() => authStore.user)
 const localeValue = computed(() => {
@@ -293,6 +313,29 @@ const userBalance = computed(() => {
   const balance = Number(user.value?.balance || 0)
   return formatCreditAmount(balance)
 })
+
+const affiliateDiscountSettings = computed(() => checkoutInfo.value?.affiliate_discount)
+
+const affiliateAvailableQuota = computed(() => {
+  const quota = Number(affiliateDetail.value?.aff_quota || 0)
+  return Number.isFinite(quota) && quota > 0 ? quota : 0
+})
+
+const affiliateDiscountVisible = computed(() => {
+  return affiliateDiscountSettings.value?.enabled === true && affiliateAvailableQuota.value > 0
+})
+
+const selectedAffiliateDiscount = computed(() => {
+  if (!selectedProduct.value || !affiliateDiscountVisible.value || !useAffiliateDiscount.value) return 0
+  return estimateAffiliateDiscount(selectedProduct.value.amount)
+})
+
+const selectedPayableAmount = computed(() => {
+  if (!selectedProduct.value) return 0
+  return roundMoney(Math.max(0, selectedProduct.value.amount - selectedAffiliateDiscount.value))
+})
+
+const selectedPayableText = computed(() => formatCnyPrice(selectedPayableAmount.value))
 
 const pricingHeader = computed(() => {
   return {
@@ -363,10 +406,11 @@ const selectedMethodLimitMessage = computed(() => {
   const limit = visibleMethodLimits.value[selectedPaymentMethod.value]
   if (!limit) return copy.value.noPaymentMethod
   if (!limit.available) return copy.value.methodUnavailable
-  if (limit.single_min > 0 && selectedProduct.value.amount < limit.single_min) {
+  const amount = selectedPayableAmount.value
+  if (limit.single_min > 0 && amount < limit.single_min) {
     return copy.value.amountTooLow.replace('{amount}', formatCnyPrice(limit.single_min))
   }
-  if (limit.single_max > 0 && selectedProduct.value.amount > limit.single_max) {
+  if (limit.single_max > 0 && amount > limit.single_max) {
     return copy.value.amountTooHigh.replace('{amount}', formatCnyPrice(limit.single_max))
   }
   return ''
@@ -386,6 +430,7 @@ onMounted(async () => {
   await Promise.resolve(appStore.fetchPublicSettings?.(true)).catch(() => {})
   Promise.resolve(authStore.refreshUser()).catch(() => {})
   await loadCheckoutInfo()
+  await loadAffiliateDetail()
   applyPurchaseQueryDefaults()
   await resumeWechatPaymentIfNeeded()
 })
@@ -402,6 +447,15 @@ async function loadCheckoutInfo() {
     appStore.showError(extractI18nErrorMessage(error, t, 'payment.errors', t('common.error')))
   } finally {
     loadingCheckout.value = false
+  }
+}
+
+async function loadAffiliateDetail() {
+  if (checkoutInfo.value?.affiliate_discount?.enabled !== true) return
+  try {
+    affiliateDetail.value = await userAPI.getAffiliateDetail()
+  } catch {
+    affiliateDetail.value = null
   }
 }
 
@@ -531,6 +585,21 @@ function calculateBalanceCreditAmount(paymentAmount: number) {
   return Math.round(paymentAmount * safeMultiplier * 100) / 100
 }
 
+function estimateAffiliateDiscount(amount: number) {
+  const settings = affiliateDiscountSettings.value
+  if (!settings?.enabled || affiliateAvailableQuota.value <= 0 || amount <= 0) return 0
+  const maxPercent = Number.isFinite(settings.max_percent) ? Math.max(0, Math.min(100, settings.max_percent)) : 50
+  const minPayAmount = Number.isFinite(settings.min_pay_amount) ? Math.max(0, settings.min_pay_amount) : 1
+  const maxByPercent = amount * maxPercent / 100
+  const maxByMinPay = Math.max(0, amount - minPayAmount)
+  return roundMoney(Math.min(affiliateAvailableQuota.value, maxByPercent, maxByMinPay))
+}
+
+function effectivePaymentAmountForProduct(product: CashierProduct) {
+  if (selectedProduct.value?.id !== product.id) return product.amount
+  return selectedPayableAmount.value
+}
+
 function buildPlanMetrics(plan: SubscriptionPlan): TextPair[] {
   const metrics: TextPair[] = []
   if (plan.daily_limit_usd) {
@@ -601,6 +670,7 @@ async function submitSelectedOrder() {
     orderType: selectedProduct.value.kind,
     paymentType: selectedPaymentMethod.value,
     planId: selectedProduct.value.planId,
+    useAffiliateDiscount: useAffiliateDiscount.value,
   })
 }
 
@@ -611,6 +681,7 @@ async function createAndLaunchOrder(input: {
   planId?: number
   openid?: string
   wechatResumeToken?: string
+  useAffiliateDiscount?: boolean
 }) {
   const mobile = isMobileDevice()
   const inWechat = isWechatBrowser()
@@ -622,11 +693,13 @@ async function createAndLaunchOrder(input: {
     origin: window.location.origin,
     isMobile: mobile,
     isWechatBrowser: inWechat,
+    useAffiliateDiscount: input.useAffiliateDiscount,
   })
   const payload: CreateOrderRequest = {
     ...basePayload,
     ...(input.openid ? { openid: input.openid } : {}),
     ...(input.wechatResumeToken ? { wechat_resume_token: input.wechatResumeToken } : {}),
+    use_affiliate_discount: input.useAffiliateDiscount !== false,
   }
 
   submitting.value = true
@@ -853,7 +926,7 @@ function showPaymentError(error: unknown, paymentType: string, mobile: boolean, 
 }
 
 function methodIsUsableForProduct(method: VisibleLocalPaymentMethod, product: CashierProduct) {
-  return methodIsUsableForAmount(method, product.amount)
+  return methodIsUsableForAmount(method, effectivePaymentAmountForProduct(product))
 }
 
 function methodIsUsableForAmount(method: VisibleLocalPaymentMethod, amount: number) {
@@ -887,6 +960,11 @@ function pickHomePricingOptionalText(value?: HomePricingLocalizedText | null) {
 function formatCnyPrice(value: number) {
   if (!Number.isFinite(value) || value <= 0) return '¥0'
   return `¥${Number.isInteger(value) ? value.toFixed(0) : value.toFixed(1)}`
+}
+
+function roundMoney(value: number) {
+  if (!Number.isFinite(value)) return 0
+  return Math.round(value * 100) / 100
 }
 
 function formatCreditAmount(value: number) {
@@ -930,6 +1008,10 @@ const zhCopy = {
   confirmEyebrow: '确认支付',
   payAmount: '支付金额',
   arrival: '到账内容',
+  useAffiliateDiscount: '使用返利抵扣',
+  availableDiscount: '可用抵扣金',
+  discountApplied: '本单抵扣',
+  discountNotApplied: '本单不使用抵扣',
   confirmPay: '确认并支付',
   creatingOrder: '正在创建订单...',
   methodUnavailable: '该支付方式暂不可用',
@@ -971,6 +1053,10 @@ const enCopy = {
   confirmEyebrow: 'Confirm Payment',
   payAmount: 'Pay Amount',
   arrival: 'Credit Received',
+  useAffiliateDiscount: 'Use referral credit',
+  availableDiscount: 'Available credit',
+  discountApplied: 'Applied',
+  discountNotApplied: 'No referral credit applied',
   confirmPay: 'Confirm and Pay',
   creatingOrder: 'Creating order...',
   methodUnavailable: 'This payment method is unavailable.',
@@ -1374,6 +1460,41 @@ const enCopy = {
   font-weight: 950;
 }
 
+.affiliate-discount-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  margin: -0.15rem 0 1rem;
+  border: 1px solid rgba(16, 185, 129, 0.28);
+  border-radius: 0.6rem;
+  background: rgba(236, 253, 245, 0.72);
+  padding: 0.85rem;
+}
+
+.affiliate-discount-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  color: #065f46;
+  font-size: 0.9rem;
+  font-weight: 850;
+}
+
+.affiliate-discount-toggle input {
+  height: 1rem;
+  width: 1rem;
+  accent-color: #059669;
+}
+
+.affiliate-discount-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  color: #047857;
+  font-size: 0.8rem;
+  font-weight: 750;
+}
+
 .method-warning {
   color: #b45309;
 }
@@ -1449,6 +1570,16 @@ const enCopy = {
   border-color: rgba(56, 189, 248, 0.76);
   background: rgba(14, 116, 144, 0.28);
   color: #e0f2fe;
+}
+
+:global(.dark .affiliate-discount-panel) {
+  border-color: rgba(16, 185, 129, 0.38);
+  background: rgba(6, 78, 59, 0.24);
+}
+
+:global(.dark .affiliate-discount-toggle),
+:global(.dark .affiliate-discount-summary) {
+  color: #a7f3d0;
 }
 
 :global(.dark .pricing-tabs) {

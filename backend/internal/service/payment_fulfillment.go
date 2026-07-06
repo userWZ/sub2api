@@ -308,9 +308,11 @@ func (s *PaymentService) markCompleted(ctx context.Context, o *dbent.PaymentOrde
 		return fmt.Errorf("mark completed: %w", err)
 	}
 	s.writeAuditLog(ctx, o.ID, auditAction, "system", map[string]any{
-		"rechargeCode":   o.RechargeCode,
-		"creditedAmount": o.Amount,
-		"payAmount":      o.PayAmount,
+		"rechargeCode":      o.RechargeCode,
+		"creditedAmount":    o.Amount,
+		"originalAmount":    paymentOrderOriginalAmount(o),
+		"affiliateDiscount": o.AffiliateDiscount,
+		"payAmount":         o.PayAmount,
 	})
 	s.dispatchPaymentFulfillmentNotification(o, auditAction)
 	return nil
@@ -542,6 +544,12 @@ func affiliateRebateBaseAmount(o *dbent.PaymentOrder) float64 {
 	}
 	switch o.OrderType {
 	case payment.OrderTypeBalance, payment.OrderTypeSubscription:
+		if o.PayAmount > 0 {
+			return o.PayAmount
+		}
+		if o.OriginalAmount > 0 {
+			return o.OriginalAmount
+		}
 		return o.Amount
 	default:
 		return 0

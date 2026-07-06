@@ -24,15 +24,20 @@ const (
 
 // Affiliate rebate settings
 const (
-	AffiliateRebateRateDefault          = 20.0
-	AffiliateRebateRateMin              = 0.0
-	AffiliateRebateRateMax              = 100.0
-	AffiliateEnabledDefault             = false // 邀请返利总开关默认关闭
-	AffiliateRebateFreezeHoursDefault   = 0     // 0 = 不冻结（向后兼容）
-	AffiliateRebateFreezeHoursMax       = 720   // 最大 30 天
-	AffiliateRebateDurationDaysDefault  = 0     // 0 = 永久有效
-	AffiliateRebateDurationDaysMax      = 3650  // ~10 年
-	AffiliateRebatePerInviteeCapDefault = 0.0   // 0 = 无上限
+	AffiliateRebateRateDefault           = 20.0
+	AffiliateRebateRateMin               = 0.0
+	AffiliateRebateRateMax               = 100.0
+	AffiliateEnabledDefault              = false // 邀请返利总开关默认关闭
+	AffiliateRebateFreezeHoursDefault    = 0     // 0 = 不冻结（向后兼容）
+	AffiliateRebateFreezeHoursMax        = 720   // 最大 30 天
+	AffiliateRebateDurationDaysDefault   = 0     // 0 = 永久有效
+	AffiliateRebateDurationDaysMax       = 3650  // ~10 年
+	AffiliateRebatePerInviteeCapDefault  = 0.0   // 0 = 无上限
+	AffiliateDiscountEnabledDefault      = true  // 返利钱包默认可在购买时抵扣
+	AffiliateDiscountMaxPercentDefault   = 50.0  // 单笔最多抵扣订单原价的 50%
+	AffiliateDiscountMaxPercentMin       = 0.0
+	AffiliateDiscountMaxPercentMax       = 100.0
+	AffiliateDiscountMinPayAmountDefault = 1.0 // 单笔订单最低实付金额
 )
 
 // Platform constants
@@ -138,6 +143,9 @@ const (
 	SettingKeyAffiliateRebateFreezeHours       = "affiliate_rebate_freeze_hours"       // 返利冻结期（小时，0=不冻结）
 	SettingKeyAffiliateRebateDurationDays      = "affiliate_rebate_duration_days"      // 返利有效期（天，0=永久）
 	SettingKeyAffiliateRebatePerInviteeCap     = "affiliate_rebate_per_invitee_cap"    // 单人返利上限（0=无上限）
+	SettingKeyAffiliateDiscountEnabled         = "affiliate_discount_enabled"          // 返利钱包是否可在购买时抵扣
+	SettingKeyAffiliateDiscountMaxPercent      = "affiliate_discount_max_percent"      // 单笔最大抵扣比例（百分比，0-100）
+	SettingKeyAffiliateDiscountMinPayAmount    = "affiliate_discount_min_pay_amount"   // 单笔最低实付金额
 	SettingKeyRiskControlEnabled               = "risk_control_enabled"                // 是否启用风控中心入口与审计链路
 	SettingKeyContentModerationConfig          = "content_moderation_config"           // 内容审计配置（JSON）
 	SettingKeyCyberSessionBlockEnabled         = "cyber_session_block_enabled"         // cyber 命中后会话级自动屏蔽总开关(默认关)

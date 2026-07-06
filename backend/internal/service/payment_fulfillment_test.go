@@ -49,9 +49,10 @@ type paymentFulfillmentAffiliateAccrueCall struct {
 }
 
 type paymentFulfillmentAffiliateRepoStub struct {
-	inviteeSummary *AffiliateSummary
-	inviterSummary *AffiliateSummary
-	accrueCalls    []paymentFulfillmentAffiliateAccrueCall
+	inviteeSummary         *AffiliateSummary
+	inviterSummary         *AffiliateSummary
+	availableDiscountQuota float64
+	accrueCalls            []paymentFulfillmentAffiliateAccrueCall
 }
 
 func (r *paymentFulfillmentAffiliateRepoStub) EnsureUserAffiliate(_ context.Context, userID int64) (*AffiliateSummary, error) {
@@ -101,6 +102,22 @@ func (r *paymentFulfillmentAffiliateRepoStub) ThawFrozenQuota(context.Context, i
 
 func (r *paymentFulfillmentAffiliateRepoStub) TransferQuotaToBalance(context.Context, int64) (float64, float64, error) {
 	panic("unexpected TransferQuotaToBalance call")
+}
+
+func (r *paymentFulfillmentAffiliateRepoStub) GetAvailableDiscountQuota(context.Context, int64) (float64, error) {
+	return r.availableDiscountQuota, nil
+}
+
+func (r *paymentFulfillmentAffiliateRepoStub) ClaimDiscountForOrder(context.Context, int64, float64, int64) (float64, error) {
+	panic("unexpected ClaimDiscountForOrder call")
+}
+
+func (r *paymentFulfillmentAffiliateRepoStub) RestoreDiscountForOrder(context.Context, int64, float64, int64) (bool, error) {
+	panic("unexpected RestoreDiscountForOrder call")
+}
+
+func (r *paymentFulfillmentAffiliateRepoStub) ReverseAccruedRebateForOrder(context.Context, int64) (float64, error) {
+	return 0, nil
 }
 
 func (r *paymentFulfillmentAffiliateRepoStub) ListInvitees(context.Context, int64, int) ([]AffiliateInvitee, error) {

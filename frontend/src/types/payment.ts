@@ -72,6 +72,11 @@ export interface CheckoutInfoResponse {
   stripe_publishable_key: string
   /** When true, Alipay payments on mobile always show the QR code instead of redirecting */
   alipay_force_qrcode?: boolean
+  affiliate_discount?: {
+    enabled: boolean
+    max_percent: number
+    min_pay_amount: number
+  }
 }
 
 // ==================== Orders ====================
@@ -80,6 +85,8 @@ export interface PaymentOrder {
   id: number
   user_id: number
   amount: number
+  original_amount?: number
+  affiliate_discount?: number
   pay_amount: number
   currency?: string
   fee_rate: number
@@ -168,6 +175,7 @@ export interface CreateOrderRequest {
   openid?: string
   wechat_resume_token?: string
   is_mobile?: boolean
+  use_affiliate_discount?: boolean
 }
 
 export type CreateOrderResultType = 'order_created' | 'oauth_required' | 'jsapi_ready'
@@ -193,6 +201,8 @@ export interface WechatJSAPIPayload {
 export interface CreateOrderResult {
   order_id: number
   amount: number
+  original_amount?: number
+  affiliate_discount?: number
   pay_url?: string
   qr_code?: string
   client_secret?: string

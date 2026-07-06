@@ -1170,7 +1170,7 @@ export default {
 
   affiliate: {
     title: 'Affiliate Rebates',
-    description: 'Invite new users and convert your rebate quota into account balance',
+    description: 'Invite new users and use rebate credit as a discount when buying balance or plans',
     yourCode: 'Your Affiliate Code',
     inviteLink: 'Invite Link',
     copyCode: 'Copy Code',
@@ -1178,23 +1178,23 @@ export default {
     codeCopied: 'Affiliate code copied',
     linkCopied: 'Invite link copied',
     loadFailed: 'Failed to load affiliate data',
-    transferFailed: 'Failed to transfer affiliate quota',
+    transferFailed: 'Failed to apply affiliate discount',
     stats: {
       rebateRate: 'My Rebate Rate',
       rebateRateHint: 'What you earn each time an invitee recharges',
       invitedUsers: 'Invited Users',
-      availableQuota: 'Available Rebate Quota',
+      availableQuota: 'Available Discount Credit',
       frozenQuota: 'Frozen',
       frozenQuotaHint: 'Recently earned rebates pending release',
       totalQuota: 'Historical Rebate Quota'
     },
     transfer: {
-      title: 'Transfer Rebate Quota',
-      description: 'Move available rebate quota into your account balance',
-      button: 'Transfer to Balance',
-      transferring: 'Transferring...',
-      empty: 'No available rebate quota',
-      success: '{amount} has been transferred to your balance'
+      title: 'Use Rebate Credit',
+      description: 'Apply available rebate credit as a discount when buying balance or plans',
+      button: 'Apply Discount',
+      transferring: 'Applying...',
+      empty: 'No available discount credit',
+      success: '{amount} discount applied'
     },
     invitees: {
       title: 'Invited Users',
@@ -1210,8 +1210,8 @@ export default {
       title: 'How It Works',
       line1: 'Share your affiliate code or invite link with new users.',
       line2: 'When invitees recharge, you receive {rate} of the recharge as rebate quota.',
-      line3: 'Transfer rebate quota to balance at any time.',
-      line4: 'Newly earned rebates may have a waiting period before they can be transferred.'
+      line3: 'Available rebate credit can be used as a discount when buying balance or plans.',
+      line4: 'Newly earned rebates may have a waiting period before they can be used.'
     }
   },
 
@@ -5720,15 +5720,21 @@ export default {
           title: 'Affiliate (Invite Rebate)',
           description: 'Existing users invite new ones; the inviter earns a percentage rebate on the invitee’s recharges. Disabled by default.',
           enabled: 'Enable Affiliate',
-          enabledHint: 'When off, the affiliate menu is hidden, the aff parameter is ignored at signup, and new recharges generate no rebate. Existing rebate balances can still be transferred.',
+          enabledHint: 'When off, the affiliate menu is hidden, the aff parameter is ignored at signup, and new recharges generate no rebate. Existing rebate credit can still be used as a purchase discount.',
           rebateRate: 'Global Rebate Rate',
           rebateRateHint: 'Default percentage given back to the inviter on recharges (0-100, e.g. 10 = 10%).',
           freezeHours: 'Rebate Freeze Period (hours)',
-          freezeHoursDesc: 'New rebates will be frozen for this period before becoming available for withdrawal. 0 = no freeze.',
+          freezeHoursDesc: 'New rebates will be frozen for this period before they can be used. 0 = no freeze.',
           durationDays: 'Rebate Duration (days)',
           durationDaysDesc: 'Rebate relationship expires after this many days since invitee registration. 0 = permanent.',
           perInviteeCap: 'Per-Invitee Rebate Cap',
           perInviteeCapDesc: 'Maximum total rebate from a single invitee. 0 = no limit.',
+          discountEnabled: 'Allow rebate discounts at checkout',
+          discountEnabledHint: 'When enabled, users can apply affiliate wallet credit directly to balance and plan purchases.',
+          discountMaxPercent: 'Max Discount Per Order',
+          discountMaxPercentHint: 'Calculated from the original order amount. 0 means no discount.',
+          discountMinPayAmount: 'Minimum Payable Amount',
+          discountMinPayAmountHint: 'Minimum amount still paid after discount. Keeping at least 1 helps payment providers create orders normally.',
           customUsers: {
             title: 'Per-User Overrides',
             description: 'Set a custom invite code or exclusive rebate rate for specific users. Lists only users that have an override applied.',

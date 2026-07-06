@@ -341,6 +341,285 @@ VALUES ($1, 'transfer', $2, NULL, $3, $4, $5, $6, NOW(), NOW())`,
 	return transferred, newBalance, nil
 }
 
+func (r *affiliateRepository) GetAvailableDiscountQuota(ctx context.Context, userID int64) (float64, error) {
+	if userID <= 0 {
+		return 0, service.ErrUserNotFound
+	}
+	var available float64
+	err := r.withTx(ctx, func(txCtx context.Context, txClient *dbent.Client) error {
+		if _, err := ensureUserAffiliateWithClient(txCtx, txClient, userID); err != nil {
+			return err
+		}
+		if _, err := thawFrozenQuotaTx(txCtx, txClient, userID); err != nil {
+			return err
+		}
+		rows, err := txClient.QueryContext(txCtx, `
+SELECT GREATEST(aff_quota, 0)::double precision
+FROM user_affiliates
+WHERE user_id = $1`, userID)
+		if err != nil {
+			return fmt.Errorf("query affiliate discount quota: %w", err)
+		}
+		defer func() { _ = rows.Close() }()
+		if !rows.Next() {
+			return service.ErrAffiliateProfileNotFound
+		}
+		if err := rows.Scan(&available); err != nil {
+			return err
+		}
+		return rows.Err()
+	})
+	if err != nil {
+		return 0, err
+	}
+	return available, nil
+}
+
+func (r *affiliateRepository) ClaimDiscountForOrder(ctx context.Context, userID int64, amount float64, sourceOrderID int64) (float64, error) {
+	if userID <= 0 {
+		return 0, service.ErrUserNotFound
+	}
+	if amount <= 0 || sourceOrderID <= 0 {
+		return 0, nil
+	}
+
+	var claimed float64
+	err := r.withTx(ctx, func(txCtx context.Context, txClient *dbent.Client) error {
+		if _, err := ensureUserAffiliateWithClient(txCtx, txClient, userID); err != nil {
+			return err
+		}
+		if _, err := thawFrozenQuotaTx(txCtx, txClient, userID); err != nil {
+			return err
+		}
+
+		var existing float64
+		rows, err := txClient.QueryContext(txCtx, `
+SELECT COALESCE(SUM(amount), 0)::double precision
+FROM user_affiliate_ledger
+WHERE user_id = $1 AND source_order_id = $2 AND action = 'discount'`,
+			userID, sourceOrderID)
+		if err != nil {
+			return fmt.Errorf("query existing affiliate discount: %w", err)
+		}
+		if rows.Next() {
+			if err := rows.Scan(&existing); err != nil {
+				_ = rows.Close()
+				return err
+			}
+		}
+		if err := rows.Close(); err != nil {
+			return err
+		}
+		if existing > 0 {
+			claimed = existing
+			return nil
+		}
+
+		var available float64
+		rows, err = txClient.QueryContext(txCtx, `
+SELECT aff_quota::double precision
+FROM user_affiliates
+WHERE user_id = $1
+FOR UPDATE`, userID)
+		if err != nil {
+			return fmt.Errorf("lock affiliate discount quota: %w", err)
+		}
+		if !rows.Next() {
+			_ = rows.Close()
+			return service.ErrAffiliateProfileNotFound
+		}
+		if err := rows.Scan(&available); err != nil {
+			_ = rows.Close()
+			return err
+		}
+		if err := rows.Close(); err != nil {
+			return err
+		}
+		if available+0.00000001 < amount {
+			return service.ErrAffiliateDiscountChanged
+		}
+
+		if _, err := txClient.ExecContext(txCtx, `
+UPDATE user_affiliates
+SET aff_quota = aff_quota - $1,
+    updated_at = NOW()
+WHERE user_id = $2`, amount, userID); err != nil {
+			return fmt.Errorf("claim affiliate discount quota: %w", err)
+		}
+		if _, err := txClient.ExecContext(txCtx, `
+INSERT INTO user_affiliate_ledger (user_id, action, amount, source_order_id, created_at, updated_at)
+VALUES ($1, 'discount', $2, $3, NOW(), NOW())`,
+			userID, amount, sourceOrderID); err != nil {
+			return fmt.Errorf("insert affiliate discount ledger: %w", err)
+		}
+		claimed = amount
+		return nil
+	})
+	if err != nil {
+		return 0, err
+	}
+	return claimed, nil
+}
+
+func (r *affiliateRepository) RestoreDiscountForOrder(ctx context.Context, userID int64, amount float64, sourceOrderID int64) (bool, error) {
+	if userID <= 0 {
+		return false, service.ErrUserNotFound
+	}
+	if amount <= 0 || sourceOrderID <= 0 {
+		return false, nil
+	}
+
+	var restored bool
+	err := r.withTx(ctx, func(txCtx context.Context, txClient *dbent.Client) error {
+		if _, err := ensureUserAffiliateWithClient(txCtx, txClient, userID); err != nil {
+			return err
+		}
+
+		var claimed float64
+		var alreadyRestored float64
+		rows, err := txClient.QueryContext(txCtx, `
+SELECT
+    COALESCE(SUM(amount) FILTER (WHERE action = 'discount'), 0)::double precision,
+    COALESCE(SUM(amount) FILTER (WHERE action = 'discount_restore'), 0)::double precision
+FROM user_affiliate_ledger
+WHERE user_id = $1 AND source_order_id = $2 AND action IN ('discount', 'discount_restore')`,
+			userID, sourceOrderID)
+		if err != nil {
+			return fmt.Errorf("query affiliate discount restore state: %w", err)
+		}
+		if rows.Next() {
+			if err := rows.Scan(&claimed, &alreadyRestored); err != nil {
+				_ = rows.Close()
+				return err
+			}
+		}
+		if err := rows.Close(); err != nil {
+			return err
+		}
+		if claimed <= 0 || alreadyRestored >= claimed-0.00000001 {
+			return nil
+		}
+		restoreAmount := amount
+		if remaining := claimed - alreadyRestored; restoreAmount > remaining {
+			restoreAmount = remaining
+		}
+		if restoreAmount <= 0 {
+			return nil
+		}
+
+		if _, err := txClient.ExecContext(txCtx, `
+UPDATE user_affiliates
+SET aff_quota = aff_quota + $1,
+    updated_at = NOW()
+WHERE user_id = $2`, restoreAmount, userID); err != nil {
+			return fmt.Errorf("restore affiliate discount quota: %w", err)
+		}
+		if _, err := txClient.ExecContext(txCtx, `
+INSERT INTO user_affiliate_ledger (user_id, action, amount, source_order_id, created_at, updated_at)
+VALUES ($1, 'discount_restore', $2, $3, NOW(), NOW())`,
+			userID, restoreAmount, sourceOrderID); err != nil {
+			return fmt.Errorf("insert affiliate discount restore ledger: %w", err)
+		}
+		restored = true
+		return nil
+	})
+	if err != nil {
+		return false, err
+	}
+	return restored, nil
+}
+
+func (r *affiliateRepository) ReverseAccruedRebateForOrder(ctx context.Context, sourceOrderID int64) (float64, error) {
+	if sourceOrderID <= 0 {
+		return 0, nil
+	}
+	type rebateEntry struct {
+		UserID       int64
+		SourceUserID sql.NullInt64
+		Amount       float64
+		FrozenUntil  sql.NullTime
+	}
+
+	var reversedTotal float64
+	err := r.withTx(ctx, func(txCtx context.Context, txClient *dbent.Client) error {
+		rows, err := txClient.QueryContext(txCtx, `
+SELECT 1
+FROM user_affiliate_ledger
+WHERE source_order_id = $1 AND action = 'rebate_reversal'
+LIMIT 1`, sourceOrderID)
+		if err != nil {
+			return fmt.Errorf("query affiliate rebate reversal: %w", err)
+		}
+		alreadyReversed := rows.Next()
+		if err := rows.Close(); err != nil {
+			return err
+		}
+		if alreadyReversed {
+			return nil
+		}
+
+		rows, err = txClient.QueryContext(txCtx, `
+SELECT user_id, source_user_id, amount::double precision, frozen_until
+FROM user_affiliate_ledger
+WHERE source_order_id = $1 AND action = 'accrue'
+FOR UPDATE`, sourceOrderID)
+		if err != nil {
+			return fmt.Errorf("query affiliate rebate entries: %w", err)
+		}
+
+		entries := make([]rebateEntry, 0)
+		for rows.Next() {
+			var entry rebateEntry
+			if err := rows.Scan(&entry.UserID, &entry.SourceUserID, &entry.Amount, &entry.FrozenUntil); err != nil {
+				return err
+			}
+			if entry.UserID > 0 && entry.Amount > 0 {
+				entries = append(entries, entry)
+			}
+		}
+		if err := rows.Err(); err != nil {
+			return err
+		}
+		if err := rows.Close(); err != nil {
+			return err
+		}
+
+		for _, entry := range entries {
+			if entry.FrozenUntil.Valid {
+				if _, err := txClient.ExecContext(txCtx, `
+UPDATE user_affiliates
+SET aff_frozen_quota = GREATEST(aff_frozen_quota - $1, 0),
+    aff_history_quota = GREATEST(aff_history_quota - $1, 0),
+    updated_at = NOW()
+WHERE user_id = $2`, entry.Amount, entry.UserID); err != nil {
+					return fmt.Errorf("reverse frozen affiliate rebate: %w", err)
+				}
+			} else {
+				if _, err := txClient.ExecContext(txCtx, `
+UPDATE user_affiliates
+SET aff_quota = aff_quota - $1,
+    aff_history_quota = GREATEST(aff_history_quota - $1, 0),
+    updated_at = NOW()
+WHERE user_id = $2`, entry.Amount, entry.UserID); err != nil {
+					return fmt.Errorf("reverse available affiliate rebate: %w", err)
+				}
+			}
+			if _, err := txClient.ExecContext(txCtx, `
+INSERT INTO user_affiliate_ledger (user_id, action, amount, source_user_id, source_order_id, created_at, updated_at)
+VALUES ($1, 'rebate_reversal', $2, $3, $4, NOW(), NOW())`,
+				entry.UserID, -entry.Amount, nullableSQLInt64Arg(entry.SourceUserID), sourceOrderID); err != nil {
+				return fmt.Errorf("insert affiliate rebate reversal ledger: %w", err)
+			}
+			reversedTotal += entry.Amount
+		}
+		return nil
+	})
+	if err != nil {
+		return 0, err
+	}
+	return reversedTotal, nil
+}
+
 func (r *affiliateRepository) ListInvitees(ctx context.Context, inviterID int64, limit int) ([]service.AffiliateInvitee, error) {
 	if limit <= 0 {
 		limit = 100
@@ -1121,6 +1400,13 @@ func nullableInt64Arg(v *int64) any {
 		return nil
 	}
 	return *v
+}
+
+func nullableSQLInt64Arg(v sql.NullInt64) any {
+	if !v.Valid {
+		return nil
+	}
+	return v.Int64
 }
 
 // ListUsersWithCustomSettings 列出有专属配置（自定义码或专属比例）的用户。

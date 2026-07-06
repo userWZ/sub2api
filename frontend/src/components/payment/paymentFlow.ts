@@ -44,6 +44,8 @@ export interface PaymentRecoverySnapshot {
   countryCode: string
   paymentEnv: string
   payAmount: number
+  originalAmount: number
+  affiliateDiscount: number
   orderType: OrderType | ''
   paymentMode: string
   resumeToken: string
@@ -82,6 +84,7 @@ export interface BuildCreateOrderPayloadInput {
   isWechatBrowser: boolean
   /** When true, Alipay payments always use QR code (passes is_mobile: false to backend) */
   forceQRCode?: boolean
+  useAffiliateDiscount?: boolean
 }
 
 type CreateOrderFlowResult = CreateOrderResult & {
@@ -131,6 +134,7 @@ export function buildCreateOrderPayload(input: BuildCreateOrderPayloadInput): Cr
     payment_source: visibleMethod === 'wxpay' && input.isWechatBrowser
       ? 'wechat_in_app_resume'
       : 'hosted_redirect',
+    use_affiliate_discount: input.useAffiliateDiscount !== false,
   }
 
   if (input.planId) {
@@ -162,6 +166,8 @@ export function decidePaymentLaunch(
     countryCode: result.country_code || '',
     paymentEnv: result.payment_env || '',
     payAmount: result.pay_amount,
+    originalAmount: result.original_amount || result.amount,
+    affiliateDiscount: result.affiliate_discount || 0,
     orderType: context.orderType,
     paymentMode: (result.payment_mode || '').trim(),
     resumeToken: result.resume_token || '',
@@ -280,6 +286,8 @@ export function readPaymentRecoverySnapshot(
       || (parsed.countryCode != null && typeof parsed.countryCode !== 'string')
       || (parsed.paymentEnv != null && typeof parsed.paymentEnv !== 'string')
       || typeof parsed.payAmount !== 'number'
+      || (parsed.originalAmount != null && typeof parsed.originalAmount !== 'number')
+      || (parsed.affiliateDiscount != null && typeof parsed.affiliateDiscount !== 'number')
       || typeof parsed.paymentMode !== 'string'
       || typeof parsed.resumeToken !== 'string'
       || typeof parsed.createdAt !== 'number'
@@ -310,6 +318,8 @@ export function readPaymentRecoverySnapshot(
       countryCode: parsed.countryCode || '',
       paymentEnv: parsed.paymentEnv || '',
       payAmount: parsed.payAmount,
+      originalAmount: parsed.originalAmount ?? parsed.amount,
+      affiliateDiscount: parsed.affiliateDiscount ?? 0,
       orderType: parsed.orderType === 'subscription' ? 'subscription' : 'balance',
       paymentMode: parsed.paymentMode,
       resumeToken: parsed.resumeToken,

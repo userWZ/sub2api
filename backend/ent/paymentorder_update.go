@@ -112,6 +112,48 @@ func (_u *PaymentOrderUpdate) AddAmount(v float64) *PaymentOrderUpdate {
 	return _u
 }
 
+// SetOriginalAmount sets the "original_amount" field.
+func (_u *PaymentOrderUpdate) SetOriginalAmount(v float64) *PaymentOrderUpdate {
+	_u.mutation.ResetOriginalAmount()
+	_u.mutation.SetOriginalAmount(v)
+	return _u
+}
+
+// SetNillableOriginalAmount sets the "original_amount" field if the given value is not nil.
+func (_u *PaymentOrderUpdate) SetNillableOriginalAmount(v *float64) *PaymentOrderUpdate {
+	if v != nil {
+		_u.SetOriginalAmount(*v)
+	}
+	return _u
+}
+
+// AddOriginalAmount adds value to the "original_amount" field.
+func (_u *PaymentOrderUpdate) AddOriginalAmount(v float64) *PaymentOrderUpdate {
+	_u.mutation.AddOriginalAmount(v)
+	return _u
+}
+
+// SetAffiliateDiscount sets the "affiliate_discount" field.
+func (_u *PaymentOrderUpdate) SetAffiliateDiscount(v float64) *PaymentOrderUpdate {
+	_u.mutation.ResetAffiliateDiscount()
+	_u.mutation.SetAffiliateDiscount(v)
+	return _u
+}
+
+// SetNillableAffiliateDiscount sets the "affiliate_discount" field if the given value is not nil.
+func (_u *PaymentOrderUpdate) SetNillableAffiliateDiscount(v *float64) *PaymentOrderUpdate {
+	if v != nil {
+		_u.SetAffiliateDiscount(*v)
+	}
+	return _u
+}
+
+// AddAffiliateDiscount adds value to the "affiliate_discount" field.
+func (_u *PaymentOrderUpdate) AddAffiliateDiscount(v float64) *PaymentOrderUpdate {
+	_u.mutation.AddAffiliateDiscount(v)
+	return _u
+}
+
 // SetPayAmount sets the "pay_amount" field.
 func (_u *PaymentOrderUpdate) SetPayAmount(v float64) *PaymentOrderUpdate {
 	_u.mutation.ResetPayAmount()
@@ -869,6 +911,18 @@ func (_u *PaymentOrderUpdate) sqlSave(ctx context.Context) (_node int, err error
 	if value, ok := _u.mutation.AddedAmount(); ok {
 		_spec.AddField(paymentorder.FieldAmount, field.TypeFloat64, value)
 	}
+	if value, ok := _u.mutation.OriginalAmount(); ok {
+		_spec.SetField(paymentorder.FieldOriginalAmount, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.AddedOriginalAmount(); ok {
+		_spec.AddField(paymentorder.FieldOriginalAmount, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.AffiliateDiscount(); ok {
+		_spec.SetField(paymentorder.FieldAffiliateDiscount, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.AddedAffiliateDiscount(); ok {
+		_spec.AddField(paymentorder.FieldAffiliateDiscount, field.TypeFloat64, value)
+	}
 	if value, ok := _u.mutation.PayAmount(); ok {
 		_spec.SetField(paymentorder.FieldPayAmount, field.TypeFloat64, value)
 	}
@@ -1172,6 +1226,48 @@ func (_u *PaymentOrderUpdateOne) SetNillableAmount(v *float64) *PaymentOrderUpda
 // AddAmount adds value to the "amount" field.
 func (_u *PaymentOrderUpdateOne) AddAmount(v float64) *PaymentOrderUpdateOne {
 	_u.mutation.AddAmount(v)
+	return _u
+}
+
+// SetOriginalAmount sets the "original_amount" field.
+func (_u *PaymentOrderUpdateOne) SetOriginalAmount(v float64) *PaymentOrderUpdateOne {
+	_u.mutation.ResetOriginalAmount()
+	_u.mutation.SetOriginalAmount(v)
+	return _u
+}
+
+// SetNillableOriginalAmount sets the "original_amount" field if the given value is not nil.
+func (_u *PaymentOrderUpdateOne) SetNillableOriginalAmount(v *float64) *PaymentOrderUpdateOne {
+	if v != nil {
+		_u.SetOriginalAmount(*v)
+	}
+	return _u
+}
+
+// AddOriginalAmount adds value to the "original_amount" field.
+func (_u *PaymentOrderUpdateOne) AddOriginalAmount(v float64) *PaymentOrderUpdateOne {
+	_u.mutation.AddOriginalAmount(v)
+	return _u
+}
+
+// SetAffiliateDiscount sets the "affiliate_discount" field.
+func (_u *PaymentOrderUpdateOne) SetAffiliateDiscount(v float64) *PaymentOrderUpdateOne {
+	_u.mutation.ResetAffiliateDiscount()
+	_u.mutation.SetAffiliateDiscount(v)
+	return _u
+}
+
+// SetNillableAffiliateDiscount sets the "affiliate_discount" field if the given value is not nil.
+func (_u *PaymentOrderUpdateOne) SetNillableAffiliateDiscount(v *float64) *PaymentOrderUpdateOne {
+	if v != nil {
+		_u.SetAffiliateDiscount(*v)
+	}
+	return _u
+}
+
+// AddAffiliateDiscount adds value to the "affiliate_discount" field.
+func (_u *PaymentOrderUpdateOne) AddAffiliateDiscount(v float64) *PaymentOrderUpdateOne {
+	_u.mutation.AddAffiliateDiscount(v)
 	return _u
 }
 
@@ -1961,6 +2057,18 @@ func (_u *PaymentOrderUpdateOne) sqlSave(ctx context.Context) (_node *PaymentOrd
 	}
 	if value, ok := _u.mutation.AddedAmount(); ok {
 		_spec.AddField(paymentorder.FieldAmount, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.OriginalAmount(); ok {
+		_spec.SetField(paymentorder.FieldOriginalAmount, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.AddedOriginalAmount(); ok {
+		_spec.AddField(paymentorder.FieldOriginalAmount, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.AffiliateDiscount(); ok {
+		_spec.SetField(paymentorder.FieldAffiliateDiscount, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.AddedAffiliateDiscount(); ok {
+		_spec.AddField(paymentorder.FieldAffiliateDiscount, field.TypeFloat64, value)
 	}
 	if value, ok := _u.mutation.PayAmount(); ok {
 		_spec.SetField(paymentorder.FieldPayAmount, field.TypeFloat64, value)

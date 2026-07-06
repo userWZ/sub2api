@@ -155,21 +155,23 @@ func (h *PaymentHandler) GetCheckoutInfo(c *gin.Context) {
 		HelpImageURL:              cfg.HelpImageURL,
 		StripePublishableKey:      cfg.StripePublishableKey,
 		AlipayForceQRCode:         cfg.AlipayForceQRCode,
+		AffiliateDiscount:         h.paymentService.AffiliateDiscountCheckoutSettings(ctx),
 	})
 }
 
 type checkoutInfoResponse struct {
-	Methods                   map[string]service.MethodLimits `json:"methods"`
-	GlobalMin                 float64                         `json:"global_min"`
-	GlobalMax                 float64                         `json:"global_max"`
-	Plans                     []checkoutPlan                  `json:"plans"`
-	BalanceDisabled           bool                            `json:"balance_disabled"`
-	BalanceRechargeMultiplier float64                         `json:"balance_recharge_multiplier"`
-	RechargeFeeRate           float64                         `json:"recharge_fee_rate"`
-	HelpText                  string                          `json:"help_text"`
-	HelpImageURL              string                          `json:"help_image_url"`
-	StripePublishableKey      string                          `json:"stripe_publishable_key"`
-	AlipayForceQRCode         bool                            `json:"alipay_force_qrcode"`
+	Methods                   map[string]service.MethodLimits           `json:"methods"`
+	GlobalMin                 float64                                   `json:"global_min"`
+	GlobalMax                 float64                                   `json:"global_max"`
+	Plans                     []checkoutPlan                            `json:"plans"`
+	BalanceDisabled           bool                                      `json:"balance_disabled"`
+	BalanceRechargeMultiplier float64                                   `json:"balance_recharge_multiplier"`
+	RechargeFeeRate           float64                                   `json:"recharge_fee_rate"`
+	HelpText                  string                                    `json:"help_text"`
+	HelpImageURL              string                                    `json:"help_image_url"`
+	StripePublishableKey      string                                    `json:"stripe_publishable_key"`
+	AlipayForceQRCode         bool                                      `json:"alipay_force_qrcode"`
+	AffiliateDiscount         service.AffiliateDiscountCheckoutSettings `json:"affiliate_discount"`
 }
 
 type checkoutPlan struct {
@@ -226,14 +228,15 @@ func (h *PaymentHandler) GetLimits(c *gin.Context) {
 
 // CreateOrderRequest is the request body for creating a payment order.
 type CreateOrderRequest struct {
-	Amount            float64 `json:"amount"`
-	PaymentType       string  `json:"payment_type" binding:"required"`
-	OpenID            string  `json:"openid"`
-	WechatResumeToken string  `json:"wechat_resume_token"`
-	ReturnURL         string  `json:"return_url"`
-	PaymentSource     string  `json:"payment_source"`
-	OrderType         string  `json:"order_type"`
-	PlanID            int64   `json:"plan_id"`
+	Amount               float64 `json:"amount"`
+	PaymentType          string  `json:"payment_type" binding:"required"`
+	OpenID               string  `json:"openid"`
+	WechatResumeToken    string  `json:"wechat_resume_token"`
+	ReturnURL            string  `json:"return_url"`
+	PaymentSource        string  `json:"payment_source"`
+	OrderType            string  `json:"order_type"`
+	PlanID               int64   `json:"plan_id"`
+	UseAffiliateDiscount *bool   `json:"use_affiliate_discount,omitempty"`
 	// IsMobile lets the frontend declare its mobile status directly. When
 	// nil we fall back to User-Agent heuristics (which miss iPadOS / some
 	// embedded browsers that strip the "Mobile" keyword).
@@ -270,20 +273,21 @@ func (h *PaymentHandler) CreateOrder(c *gin.Context) {
 		mobile = *req.IsMobile
 	}
 	result, err := h.paymentService.CreateOrder(c.Request.Context(), service.CreateOrderRequest{
-		UserID:          subject.UserID,
-		Amount:          req.Amount,
-		PaymentType:     req.PaymentType,
-		OpenID:          req.OpenID,
-		ClientIP:        c.ClientIP(),
-		IsMobile:        mobile,
-		IsWeChatBrowser: isWeChatBrowser(c),
-		SrcHost:         c.Request.Host,
-		SrcURL:          c.Request.Referer(),
-		ReturnURL:       req.ReturnURL,
-		PaymentSource:   req.PaymentSource,
-		OrderType:       req.OrderType,
-		PlanID:          req.PlanID,
-		Locale:          c.GetHeader("Accept-Language"),
+		UserID:               subject.UserID,
+		Amount:               req.Amount,
+		PaymentType:          req.PaymentType,
+		OpenID:               req.OpenID,
+		ClientIP:             c.ClientIP(),
+		IsMobile:             mobile,
+		IsWeChatBrowser:      isWeChatBrowser(c),
+		SrcHost:              c.Request.Host,
+		SrcURL:               c.Request.Referer(),
+		ReturnURL:            req.ReturnURL,
+		PaymentSource:        req.PaymentSource,
+		OrderType:            req.OrderType,
+		PlanID:               req.PlanID,
+		Locale:               c.GetHeader("Accept-Language"),
+		UseAffiliateDiscount: req.UseAffiliateDiscount,
 	})
 	if err != nil {
 		response.ErrorFrom(c, err)
@@ -326,6 +330,9 @@ func applyWeChatPaymentResumeClaims(req *CreateOrderRequest, claims *service.WeC
 	}
 	if claims.PlanID > 0 {
 		req.PlanID = claims.PlanID
+	}
+	if claims.UseAffiliateDiscount != nil {
+		req.UseAffiliateDiscount = claims.UseAffiliateDiscount
 	}
 	return nil
 }
@@ -478,6 +485,8 @@ type PublicOrderResult struct {
 	ID                  int64      `json:"id"`
 	OutTradeNo          string     `json:"out_trade_no"`
 	Amount              float64    `json:"amount"`
+	OriginalAmount      float64    `json:"original_amount"`
+	AffiliateDiscount   float64    `json:"affiliate_discount"`
 	PayAmount           float64    `json:"pay_amount"`
 	FeeRate             float64    `json:"fee_rate"`
 	Currency            string     `json:"currency"`
@@ -621,6 +630,8 @@ type PaymentOrderResult struct {
 	ID                  int64      `json:"id"`
 	UserID              int64      `json:"user_id"`
 	Amount              float64    `json:"amount"`
+	OriginalAmount      float64    `json:"original_amount"`
+	AffiliateDiscount   float64    `json:"affiliate_discount"`
 	PayAmount           float64    `json:"pay_amount"`
 	FeeRate             float64    `json:"fee_rate"`
 	Currency            string     `json:"currency"`
@@ -659,6 +670,8 @@ func sanitizePaymentOrderForResponse(order *dbent.PaymentOrder) *PaymentOrderRes
 		ID:                  order.ID,
 		UserID:              order.UserID,
 		Amount:              order.Amount,
+		OriginalAmount:      service.PaymentOrderOriginalAmountForResponse(order),
+		AffiliateDiscount:   order.AffiliateDiscount,
 		PayAmount:           order.PayAmount,
 		FeeRate:             order.FeeRate,
 		Currency:            service.PaymentOrderCurrency(order),

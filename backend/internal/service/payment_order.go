@@ -63,6 +63,11 @@ func (s *PaymentService) CreateOrder(ctx context.Context, req CreateOrderRequest
 		}
 		orderAmount = creditedAmount
 	}
+	discountQuote, err := s.quoteAffiliateDiscount(ctx, req, limitAmount)
+	if err != nil {
+		return nil, err
+	}
+	payableAmount := discountQuote.PayableAmount
 	feeRate := cfg.RechargeFeeRate
 	methodCurrency := payment.DefaultPaymentCurrency
 	if s.configService != nil {
@@ -72,7 +77,7 @@ func (s *PaymentService) CreateOrder(ctx context.Context, req CreateOrderRequest
 		}
 	}
 	// 订阅套餐 price 是直付价，余额充值倍率只影响余额充值到账，不参与订阅 pay_amount 计算。
-	payAmountStr, payAmount, err := calculateCreateOrderPayAmount(limitAmount, feeRate, methodCurrency)
+	payAmountStr, payAmount, err := calculateCreateOrderPayAmount(payableAmount, feeRate, methodCurrency)
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +93,7 @@ func (s *PaymentService) CreateOrder(ctx context.Context, req CreateOrderRequest
 		selectedCurrency = paymentProviderConfigCurrency(sel.ProviderKey, sel.Config)
 	}
 	if selectedCurrency != methodCurrency {
-		payAmountStr, payAmount, err = calculateCreateOrderPayAmount(limitAmount, feeRate, selectedCurrency)
+		payAmountStr, payAmount, err = calculateCreateOrderPayAmount(payableAmount, feeRate, selectedCurrency)
 		if err != nil {
 			return nil, err
 		}
@@ -96,22 +101,23 @@ func (s *PaymentService) CreateOrder(ctx context.Context, req CreateOrderRequest
 	if err := validateSelectedCreateOrderAmountCurrency(payAmountStr, sel); err != nil {
 		return nil, err
 	}
-	oauthResp, err := s.maybeBuildWeChatOAuthRequiredResponseForSelection(ctx, req, limitAmount, payAmount, feeRate, sel)
+	oauthResp, err := s.maybeBuildWeChatOAuthRequiredResponseForSelection(ctx, req, limitAmount, payAmount, feeRate, discountQuote.DiscountAmount, sel)
 	if err != nil {
 		return nil, err
 	}
 	if oauthResp != nil {
 		return oauthResp, nil
 	}
-	order, err := s.createOrderInTx(ctx, req, user, plan, cfg, orderAmount, limitAmount, feeRate, payAmount, sel)
+	order, err := s.createOrderInTx(ctx, req, user, plan, cfg, orderAmount, limitAmount, discountQuote.DiscountAmount, feeRate, payAmount, sel)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := s.invokeProvider(ctx, order, req, cfg, limitAmount, payAmountStr, payAmount, plan, sel)
+	resp, err := s.invokeProvider(ctx, order, req, cfg, payableAmount, payAmountStr, payAmount, plan, sel)
 	if err != nil {
 		_, _ = s.entClient.PaymentOrder.UpdateOneID(order.ID).
 			SetStatus(OrderStatusFailed).
 			Save(ctx)
+		_ = s.restoreAffiliateDiscountForOrder(ctx, order, "provider_create_failed")
 		return nil, err
 	}
 	return resp, nil
@@ -175,7 +181,7 @@ func (s *PaymentService) resolveBalanceOrderPackageAmount(ctx context.Context, a
 	return 0, infraerrors.BadRequest("BALANCE_PACKAGE_NOT_AVAILABLE", "balance recharge amount must match an enabled credit package")
 }
 
-func (s *PaymentService) createOrderInTx(ctx context.Context, req CreateOrderRequest, user *User, plan *dbent.SubscriptionPlan, cfg *PaymentConfig, orderAmount, limitAmount, feeRate, payAmount float64, sel *payment.InstanceSelection) (*dbent.PaymentOrder, error) {
+func (s *PaymentService) createOrderInTx(ctx context.Context, req CreateOrderRequest, user *User, plan *dbent.SubscriptionPlan, cfg *PaymentConfig, orderAmount, limitAmount, affiliateDiscount, feeRate, payAmount float64, sel *payment.InstanceSelection) (*dbent.PaymentOrder, error) {
 	tx, err := s.entClient.Tx(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("begin transaction: %w", err)
@@ -209,6 +215,8 @@ func (s *PaymentService) createOrderInTx(ctx context.Context, req CreateOrderReq
 		SetUserName(user.Username).
 		SetNillableUserNotes(psNilIfEmpty(user.Notes)).
 		SetAmount(orderAmount).
+		SetOriginalAmount(limitAmount).
+		SetAffiliateDiscount(affiliateDiscount).
 		SetPayAmount(payAmount).
 		SetFeeRate(feeRate).
 		SetRechargeCode("").
@@ -238,6 +246,15 @@ func (s *PaymentService) createOrderInTx(ctx context.Context, req CreateOrderReq
 	order, err := b.Save(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("create order: %w", err)
+	}
+	if affiliateDiscount > 0 {
+		claimed, err := s.affiliateService.ClaimDiscountForOrder(dbent.NewTxContext(ctx, tx), req.UserID, affiliateDiscount, order.ID)
+		if err != nil {
+			return nil, err
+		}
+		if math.Abs(claimed-affiliateDiscount) > 0.00000001 {
+			return nil, ErrAffiliateDiscountChanged
+		}
 	}
 	code := fmt.Sprintf("PAY-%d-%d", order.ID, time.Now().UnixNano()%100000)
 	order, err = tx.PaymentOrder.UpdateOneID(order.ID).SetRechargeCode(code).Save(ctx)
@@ -491,12 +508,14 @@ func (s *PaymentService) invokeProvider(ctx context.Context, order *dbent.Paymen
 		return nil, fmt.Errorf("update order with payment details: %w", err)
 	}
 	s.writeAuditLog(ctx, order.ID, "ORDER_CREATED", fmt.Sprintf("user:%d", req.UserID), map[string]any{
-		"paymentAmount":  req.Amount,
-		"creditedAmount": order.Amount,
-		"payAmount":      order.PayAmount,
-		"paymentType":    req.PaymentType,
-		"orderType":      req.OrderType,
-		"paymentSource":  NormalizePaymentSource(req.PaymentSource),
+		"paymentAmount":     req.Amount,
+		"creditedAmount":    order.Amount,
+		"originalAmount":    paymentOrderOriginalAmount(order),
+		"affiliateDiscount": order.AffiliateDiscount,
+		"payAmount":         order.PayAmount,
+		"paymentType":       req.PaymentType,
+		"orderType":         req.OrderType,
+		"paymentSource":     NormalizePaymentSource(req.PaymentSource),
 	})
 	resultType := pr.ResultType
 	if resultType == "" {
@@ -566,20 +585,20 @@ func applyPaymentProductNameAffix(productName string, cfg *PaymentConfig) string
 }
 
 func (s *PaymentService) maybeBuildWeChatOAuthRequiredResponse(ctx context.Context, req CreateOrderRequest, amount, payAmount, feeRate float64) (*CreateOrderResponse, error) {
-	return s.maybeBuildWeChatOAuthRequiredResponseForSelection(ctx, req, amount, payAmount, feeRate, nil)
+	return s.maybeBuildWeChatOAuthRequiredResponseForSelection(ctx, req, amount, payAmount, feeRate, 0, nil)
 }
 
-func (s *PaymentService) maybeBuildWeChatOAuthRequiredResponseForSelection(ctx context.Context, req CreateOrderRequest, amount, payAmount, feeRate float64, sel *payment.InstanceSelection) (*CreateOrderResponse, error) {
+func (s *PaymentService) maybeBuildWeChatOAuthRequiredResponseForSelection(ctx context.Context, req CreateOrderRequest, amount, payAmount, feeRate, affiliateDiscount float64, sel *payment.InstanceSelection) (*CreateOrderResponse, error) {
 	if sel != nil && sel.ProviderKey != "" && sel.ProviderKey != payment.TypeWxpay {
 		return nil, nil
 	}
 	if strings.TrimSpace(req.OpenID) != "" || !req.IsWeChatBrowser || payment.GetBasePaymentType(req.PaymentType) != payment.TypeWxpay {
 		return nil, nil
 	}
-	return s.buildWeChatOAuthRequiredResponse(ctx, req, amount, payAmount, feeRate)
+	return s.buildWeChatOAuthRequiredResponse(ctx, req, amount, payAmount, feeRate, affiliateDiscount)
 }
 
-func (s *PaymentService) buildWeChatOAuthRequiredResponse(ctx context.Context, req CreateOrderRequest, amount, payAmount, feeRate float64) (*CreateOrderResponse, error) {
+func (s *PaymentService) buildWeChatOAuthRequiredResponse(ctx context.Context, req CreateOrderRequest, amount, payAmount, feeRate, affiliateDiscount float64) (*CreateOrderResponse, error) {
 	appID, _, err := s.getWeChatPaymentOAuthCredential(ctx)
 	if err != nil {
 		return nil, err
@@ -594,11 +613,13 @@ func (s *PaymentService) buildWeChatOAuthRequiredResponse(ctx context.Context, r
 	}
 
 	return &CreateOrderResponse{
-		Amount:      amount,
-		PayAmount:   payAmount,
-		FeeRate:     feeRate,
-		ResultType:  payment.CreatePaymentResultOAuthRequired,
-		PaymentType: req.PaymentType,
+		Amount:            amount,
+		OriginalAmount:    amount,
+		AffiliateDiscount: affiliateDiscount,
+		PayAmount:         payAmount,
+		FeeRate:           feeRate,
+		ResultType:        payment.CreatePaymentResultOAuthRequired,
+		PaymentType:       req.PaymentType,
 		OAuth: &payment.WechatOAuthInfo{
 			AuthorizeURL: authorizeURL,
 			AppID:        appID,
@@ -706,26 +727,28 @@ func classifyCreatePaymentError(req CreateOrderRequest, providerKey string, err 
 
 func buildCreateOrderResponse(order *dbent.PaymentOrder, req CreateOrderRequest, payAmount float64, sel *payment.InstanceSelection, pr *payment.CreatePaymentResponse, resultType payment.CreatePaymentResultType) *CreateOrderResponse {
 	return &CreateOrderResponse{
-		OrderID:      order.ID,
-		Amount:       order.Amount,
-		PayAmount:    payAmount,
-		FeeRate:      order.FeeRate,
-		Status:       OrderStatusPending,
-		ResultType:   resultType,
-		PaymentType:  req.PaymentType,
-		OutTradeNo:   order.OutTradeNo,
-		PayURL:       pr.PayURL,
-		QRCode:       pr.QRCode,
-		ClientSecret: pr.ClientSecret,
-		IntentID:     pr.IntentID,
-		Currency:     pr.Currency,
-		CountryCode:  pr.CountryCode,
-		PaymentEnv:   pr.PaymentEnv,
-		OAuth:        pr.OAuth,
-		JSAPI:        pr.JSAPI,
-		JSAPIPayload: pr.JSAPI,
-		ExpiresAt:    order.ExpiresAt,
-		PaymentMode:  sel.PaymentMode,
+		OrderID:           order.ID,
+		Amount:            order.Amount,
+		OriginalAmount:    paymentOrderOriginalAmount(order),
+		AffiliateDiscount: order.AffiliateDiscount,
+		PayAmount:         payAmount,
+		FeeRate:           order.FeeRate,
+		Status:            OrderStatusPending,
+		ResultType:        resultType,
+		PaymentType:       req.PaymentType,
+		OutTradeNo:        order.OutTradeNo,
+		PayURL:            pr.PayURL,
+		QRCode:            pr.QRCode,
+		ClientSecret:      pr.ClientSecret,
+		IntentID:          pr.IntentID,
+		Currency:          pr.Currency,
+		CountryCode:       pr.CountryCode,
+		PaymentEnv:        pr.PaymentEnv,
+		OAuth:             pr.OAuth,
+		JSAPI:             pr.JSAPI,
+		JSAPIPayload:      pr.JSAPI,
+		ExpiresAt:         order.ExpiresAt,
+		PaymentMode:       sel.PaymentMode,
 	}
 }
 
@@ -744,6 +767,9 @@ func buildWeChatPaymentOAuthStartURL(req CreateOrderRequest, scope string) (stri
 	}
 	if req.PlanID > 0 {
 		q.Set("plan_id", strconv.FormatInt(req.PlanID, 10))
+	}
+	if req.UseAffiliateDiscount != nil {
+		q.Set("use_affiliate_discount", strconv.FormatBool(*req.UseAffiliateDiscount))
 	}
 	if scope = strings.TrimSpace(scope); scope != "" {
 		q.Set("scope", scope)

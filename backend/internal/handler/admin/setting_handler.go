@@ -234,6 +234,9 @@ func (h *SettingHandler) GetSettings(c *gin.Context) {
 		AffiliateRebateFreezeHours:             settings.AffiliateRebateFreezeHours,
 		AffiliateRebateDurationDays:            settings.AffiliateRebateDurationDays,
 		AffiliateRebatePerInviteeCap:           settings.AffiliateRebatePerInviteeCap,
+		AffiliateDiscountEnabled:               settings.AffiliateDiscountEnabled,
+		AffiliateDiscountMaxPercent:            settings.AffiliateDiscountMaxPercent,
+		AffiliateDiscountMinPayAmount:          settings.AffiliateDiscountMinPayAmount,
 		DefaultUserRPMLimit:                    settings.DefaultUserRPMLimit,
 		DefaultSubscriptions:                   defaultSubscriptions,
 		EnableModelFallback:                    settings.EnableModelFallback,
@@ -525,6 +528,9 @@ type UpdateSettingsRequest struct {
 	AffiliateRebateFreezeHours                *int                              `json:"affiliate_rebate_freeze_hours"`
 	AffiliateRebateDurationDays               *int                              `json:"affiliate_rebate_duration_days"`
 	AffiliateRebatePerInviteeCap              *float64                          `json:"affiliate_rebate_per_invitee_cap"`
+	AffiliateDiscountEnabled                  *bool                             `json:"affiliate_discount_enabled"`
+	AffiliateDiscountMaxPercent               *float64                          `json:"affiliate_discount_max_percent"`
+	AffiliateDiscountMinPayAmount             *float64                          `json:"affiliate_discount_min_pay_amount"`
 	DefaultUserRPMLimit                       int                               `json:"default_user_rpm_limit"`
 	DefaultSubscriptions                      []dto.DefaultSubscriptionSetting  `json:"default_subscriptions"`
 	AuthSourceDefaultEmailBalance             *float64                          `json:"auth_source_default_email_balance"`
@@ -753,6 +759,27 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 	}
 	if affiliateRebatePerInviteeCap < 0 {
 		affiliateRebatePerInviteeCap = service.AffiliateRebatePerInviteeCapDefault
+	}
+	affiliateDiscountEnabled := previousSettings.AffiliateDiscountEnabled
+	if req.AffiliateDiscountEnabled != nil {
+		affiliateDiscountEnabled = *req.AffiliateDiscountEnabled
+	}
+	affiliateDiscountMaxPercent := previousSettings.AffiliateDiscountMaxPercent
+	if req.AffiliateDiscountMaxPercent != nil {
+		affiliateDiscountMaxPercent = *req.AffiliateDiscountMaxPercent
+	}
+	if affiliateDiscountMaxPercent < service.AffiliateDiscountMaxPercentMin {
+		affiliateDiscountMaxPercent = service.AffiliateDiscountMaxPercentMin
+	}
+	if affiliateDiscountMaxPercent > service.AffiliateDiscountMaxPercentMax {
+		affiliateDiscountMaxPercent = service.AffiliateDiscountMaxPercentMax
+	}
+	affiliateDiscountMinPayAmount := previousSettings.AffiliateDiscountMinPayAmount
+	if req.AffiliateDiscountMinPayAmount != nil {
+		affiliateDiscountMinPayAmount = *req.AffiliateDiscountMinPayAmount
+	}
+	if affiliateDiscountMinPayAmount < 0 {
+		affiliateDiscountMinPayAmount = service.AffiliateDiscountMinPayAmountDefault
 	}
 	// 通用表格配置：兼容旧客户端未传字段时保留当前值。
 	if req.TableDefaultPageSize <= 0 {
@@ -1642,6 +1669,9 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		AffiliateRebateFreezeHours:             affiliateRebateFreezeHours,
 		AffiliateRebateDurationDays:            affiliateRebateDurationDays,
 		AffiliateRebatePerInviteeCap:           affiliateRebatePerInviteeCap,
+		AffiliateDiscountEnabled:               affiliateDiscountEnabled,
+		AffiliateDiscountMaxPercent:            affiliateDiscountMaxPercent,
+		AffiliateDiscountMinPayAmount:          affiliateDiscountMinPayAmount,
 		DefaultUserRPMLimit:                    req.DefaultUserRPMLimit,
 		DefaultSubscriptions:                   defaultSubscriptions,
 		EnableModelFallback:                    req.EnableModelFallback,
@@ -2126,6 +2156,9 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		AffiliateRebateFreezeHours:             updatedSettings.AffiliateRebateFreezeHours,
 		AffiliateRebateDurationDays:            updatedSettings.AffiliateRebateDurationDays,
 		AffiliateRebatePerInviteeCap:           updatedSettings.AffiliateRebatePerInviteeCap,
+		AffiliateDiscountEnabled:               updatedSettings.AffiliateDiscountEnabled,
+		AffiliateDiscountMaxPercent:            updatedSettings.AffiliateDiscountMaxPercent,
+		AffiliateDiscountMinPayAmount:          updatedSettings.AffiliateDiscountMinPayAmount,
 		DefaultUserRPMLimit:                    updatedSettings.DefaultUserRPMLimit,
 		DefaultSubscriptions:                   updatedDefaultSubscriptions,
 		EnableModelFallback:                    updatedSettings.EnableModelFallback,
@@ -2544,6 +2577,15 @@ func diffSettings(before *service.SystemSettings, after *service.SystemSettings,
 	}
 	if before.AffiliateRebatePerInviteeCap != after.AffiliateRebatePerInviteeCap {
 		changed = append(changed, "affiliate_rebate_per_invitee_cap")
+	}
+	if before.AffiliateDiscountEnabled != after.AffiliateDiscountEnabled {
+		changed = append(changed, "affiliate_discount_enabled")
+	}
+	if before.AffiliateDiscountMaxPercent != after.AffiliateDiscountMaxPercent {
+		changed = append(changed, "affiliate_discount_max_percent")
+	}
+	if before.AffiliateDiscountMinPayAmount != after.AffiliateDiscountMinPayAmount {
+		changed = append(changed, "affiliate_discount_min_pay_amount")
 	}
 	if !equalDefaultSubscriptions(before.DefaultSubscriptions, after.DefaultSubscriptions) {
 		changed = append(changed, "default_subscriptions")

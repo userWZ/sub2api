@@ -6038,6 +6038,60 @@
                 </p>
               </div>
 
+              <div class="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-dark-700 dark:bg-dark-800/50">
+                <div class="flex items-center justify-between gap-4">
+                  <div>
+                    <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      {{ t('admin.settings.features.affiliate.discountEnabled') }}
+                    </label>
+                    <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                      {{ t('admin.settings.features.affiliate.discountEnabledHint') }}
+                    </p>
+                  </div>
+                  <Toggle v-model="form.affiliate_discount_enabled" />
+                </div>
+
+                <div v-if="form.affiliate_discount_enabled" class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div>
+                    <label class="input-label">
+                      {{ t('admin.settings.features.affiliate.discountMaxPercent') }}
+                    </label>
+                    <div class="relative">
+                      <input
+                        v-model.number="form.affiliate_discount_max_percent"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        max="100"
+                        class="input pr-8"
+                        placeholder="50"
+                      />
+                      <span class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">%</span>
+                    </div>
+                    <p class="mt-1 text-xs text-gray-400">
+                      {{ t('admin.settings.features.affiliate.discountMaxPercentHint') }}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label class="input-label">
+                      {{ t('admin.settings.features.affiliate.discountMinPayAmount') }}
+                    </label>
+                    <input
+                      v-model.number="form.affiliate_discount_min_pay_amount"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      class="input"
+                      placeholder="1"
+                    />
+                    <p class="mt-1 text-xs text-gray-400">
+                      {{ t('admin.settings.features.affiliate.discountMinPayAmountHint') }}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
               <!-- 专属用户管理 -->
               <div class="border-t border-gray-100 pt-6 dark:border-dark-700">
                 <div class="mb-3 flex items-center justify-between">
@@ -8067,6 +8121,9 @@ const form = reactive<SettingsForm>({
   affiliate_rebate_freeze_hours: 0,
   affiliate_rebate_duration_days: 0,
   affiliate_rebate_per_invitee_cap: 0,
+  affiliate_discount_enabled: true,
+  affiliate_discount_max_percent: 50,
+  affiliate_discount_min_pay_amount: 1,
   default_concurrency: 1,
   default_subscriptions: [],
   force_email_on_third_party_signup: false,
@@ -9311,6 +9368,15 @@ async function saveSettings() {
       affiliate_rebate_freeze_hours: Math.max(0, Math.min(720, Number(form.affiliate_rebate_freeze_hours) || 0)),
       affiliate_rebate_duration_days: Math.max(0, Math.min(3650, Math.floor(Number(form.affiliate_rebate_duration_days) || 0))),
       affiliate_rebate_per_invitee_cap: Math.max(0, Number(form.affiliate_rebate_per_invitee_cap) || 0),
+      affiliate_discount_enabled: form.affiliate_discount_enabled,
+      affiliate_discount_max_percent: Math.min(
+        100,
+        Math.max(0, Number(form.affiliate_discount_max_percent) || 0),
+      ),
+      affiliate_discount_min_pay_amount: Math.max(
+        0,
+        Number(form.affiliate_discount_min_pay_amount) || 0,
+      ),
       default_concurrency: form.default_concurrency,
       default_subscriptions: normalizedDefaultSubscriptions,
       force_email_on_third_party_signup: form.force_email_on_third_party_signup,

@@ -136,6 +136,9 @@ func (s *PaymentService) cancelCore(ctx context.Context, o *dbent.PaymentOrder, 
 			auditAction = "ORDER_EXPIRED"
 		}
 		s.writeAuditLog(ctx, o.ID, auditAction, op, map[string]any{"detail": ad})
+		if err := s.restoreAffiliateDiscountForOrder(ctx, o, auditAction); err != nil {
+			return "", err
+		}
 	}
 	return checkPaidResultCancelled, nil
 }
