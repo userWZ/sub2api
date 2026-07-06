@@ -305,7 +305,6 @@ const imageBase = '/docs/oceanway-codex'
 const docImages = {
   homepage: `${imageBase}/page-01-img-01-X16.png`,
   groupQr: `${imageBase}/page-02-img-01-X43.jpg`,
-  groupQrRepeat: `${imageBase}/page-03-img-01-X43.jpg`,
   supportQr: `${imageBase}/page-03-img-02-X46.png`,
   register: `${imageBase}/page-04-img-01-X66.png`,
   billing: `${imageBase}/page-05-img-01-X117.png`,
@@ -392,7 +391,6 @@ const zhCopy = computed(() => ({
   supportImages: [
     { src: docImages.homepage, alt: 'OceanWay AI 官网首页截图', caption: '官网首页', variant: 'wide' },
     { src: docImages.groupQr, alt: 'OceanWay AI 讨论 2 群二维码', caption: '讨论组二维码', variant: 'qr' },
-    { src: docImages.groupQrRepeat, alt: 'OceanWay AI 讨论 2 群二维码备用图', caption: '讨论组二维码备用图', variant: 'qr' },
     { src: docImages.supportQr, alt: '微信扫码咨询开通与使用方式二维码', caption: '微信扫码咨询开通与使用方式', variant: 'compact' }
   ] satisfies DocImage[],
   quickStartTitle: '按以下步骤获取 API 密钥',
@@ -580,7 +578,6 @@ const enCopy = computed(() => ({
   supportImages: [
     { src: docImages.homepage, alt: 'OceanWay AI official homepage screenshot', caption: 'Official homepage', variant: 'wide' },
     { src: docImages.groupQr, alt: 'OceanWay AI discussion group QR code', caption: 'Discussion group QR code', variant: 'qr' },
-    { src: docImages.groupQrRepeat, alt: 'OceanWay AI discussion group QR code duplicate image', caption: 'Discussion group QR code backup image', variant: 'qr' },
     { src: docImages.supportQr, alt: 'WeChat support QR code', caption: 'WeChat support QR code', variant: 'compact' }
   ] satisfies DocImage[],
   quickStartTitle: 'Get an API key and connect Codex',
