@@ -478,7 +478,7 @@ const zhCopy = computed(() => ({
       label: 'Mac 安装',
       title: '下载官方 macOS 安装包',
       paragraphs: [
-        '官方 macOS 下载链接：https://persistent.oaistatic.com/codex-app-prod/Codex.dmg',
+        'Intel 芯片 Mac 下载链接：https://persistent.oaistatic.com/codex-app-prod/Codex-latest-x64.dmg',
         '下载后双击安装，按系统提示拖入 Applications。'
       ],
       callout: '注意：下载完后，要完全关闭 Codex。左面右下角图标右键，exit 退出，再使用一键配置软件进行环境配置。'
@@ -665,7 +665,7 @@ const enCopy = computed(() => ({
       label: 'Mac install',
       title: 'Download the official macOS installer',
       paragraphs: [
-        'Official macOS download: https://persistent.oaistatic.com/codex-app-prod/Codex.dmg',
+        'Intel Mac download: https://persistent.oaistatic.com/codex-app-prod/Codex-latest-x64.dmg',
         'Open the dmg after download and drag Codex into Applications.'
       ],
       callout: 'Important: fully quit Codex before using the one-click config tool.'
