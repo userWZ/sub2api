@@ -154,14 +154,58 @@
                   :key="paragraph"
                   class="tutorial-paragraph"
                 >
-                  {{ paragraph }}
+                  <template
+                    v-for="(part, partIndex) in linkifyText(paragraph)"
+                    :key="`${paragraph}-${partIndex}`"
+                  >
+                    <a
+                      v-if="part.href"
+                      :href="part.href"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="inline-doc-link"
+                    >
+                      {{ part.text }}
+                    </a>
+                    <template v-else>{{ part.text }}</template>
+                  </template>
                 </p>
               </div>
               <ul v-if="section.bullets?.length" class="tutorial-list">
-                <li v-for="bullet in section.bullets" :key="bullet">{{ bullet }}</li>
+                <li v-for="bullet in section.bullets" :key="bullet">
+                  <template
+                    v-for="(part, partIndex) in linkifyText(bullet)"
+                    :key="`${bullet}-${partIndex}`"
+                  >
+                    <a
+                      v-if="part.href"
+                      :href="part.href"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="inline-doc-link"
+                    >
+                      {{ part.text }}
+                    </a>
+                    <template v-else>{{ part.text }}</template>
+                  </template>
+                </li>
               </ul>
               <p v-if="section.callout" class="tutorial-callout">
-                {{ section.callout }}
+                <template
+                  v-for="(part, partIndex) in linkifyText(section.callout)"
+                  :key="`callout-${section.id}-${partIndex}`"
+                >
+                  <a
+                    v-if="part.href"
+                    :href="part.href"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="inline-doc-link"
+                  >
+                    {{ part.text }}
+                  </a>
+                  <template v-else>{{ part.text }}</template>
+                </template>
               </p>
               <div v-if="section.images?.length" class="tutorial-image-grid mt-5">
                 <figure
@@ -257,6 +301,7 @@ type ErrorRow = { code: string; meaning: string; fix: string }
 type FaqItem = { question: string; answer: string }
 type CodeBlock = { key: string; title: string; description?: string; code: string }
 type DocImage = { src: string; alt: string; caption: string; variant?: 'wide' | 'compact' | 'qr' | 'pair' }
+type LinkifiedPart = { text: string; href?: string }
 type TutorialSection = {
   id: string
   step?: string
@@ -302,6 +347,7 @@ const redeemUrl = computed(() => `${apiHost.value}/redeem`)
 const copy = computed(() => isZh.value ? zhCopy.value : enCopy.value)
 
 const imageBase = '/docs/oceanway-codex'
+const urlPattern = /https?:\/\/[^\s，。；、)）]+/g
 const docImages = {
   homepage: `${imageBase}/page-01-img-01-X16.png`,
   groupQr: `${imageBase}/page-02-img-01-X43.jpg`,
@@ -745,6 +791,27 @@ function getCurrentOrigin() {
   return window.location.origin.replace(/\/+$/, '')
 }
 
+function linkifyText(text: string): LinkifiedPart[] {
+  const parts: LinkifiedPart[] = []
+  let lastIndex = 0
+
+  for (const match of text.matchAll(urlPattern)) {
+    const url = match[0]
+    const index = match.index ?? 0
+    if (index > lastIndex) {
+      parts.push({ text: text.slice(lastIndex, index) })
+    }
+    parts.push({ text: url, href: url })
+    lastIndex = index + url.length
+  }
+
+  if (lastIndex < text.length) {
+    parts.push({ text: text.slice(lastIndex) })
+  }
+
+  return parts.length > 0 ? parts : [{ text }]
+}
+
 function isLocalOrigin(origin: string) {
   return /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(?::\d+)?$/i.test(origin)
 }
@@ -969,6 +1036,19 @@ onMounted(() => {
 
 .tutorial-list li {
   overflow-wrap: anywhere;
+}
+
+.inline-doc-link {
+  color: #0066cc;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+  text-decoration: underline;
+  text-decoration-thickness: 0.08em;
+  text-underline-offset: 0.16em;
+}
+
+.inline-doc-link:hover {
+  color: #004c99;
 }
 
 .tutorial-callout {
