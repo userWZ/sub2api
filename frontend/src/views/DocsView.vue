@@ -26,7 +26,7 @@
           <LocaleSwitcher />
           <router-link
             to="/agents"
-            class="shrink-0 text-sm font-medium text-slate-500 transition hover:text-slate-900"
+            class="hidden shrink-0 text-sm font-medium text-slate-500 transition hover:text-slate-900 sm:inline"
           >
             {{ copy.agentsHub }}
           </router-link>
@@ -124,7 +124,7 @@
             <figure
               v-for="image in copy.supportImages"
               :key="image.src"
-              class="tutorial-image-card"
+              :class="['tutorial-image-card', image.variant ? `tutorial-image-card-${image.variant}` : '']"
             >
               <img :src="image.src" :alt="image.alt" loading="lazy" />
               <figcaption>{{ image.caption }}</figcaption>
@@ -167,7 +167,7 @@
                 <figure
                   v-for="image in section.images"
                   :key="image.src"
-                  class="tutorial-image-card"
+                  :class="['tutorial-image-card', image.variant ? `tutorial-image-card-${image.variant}` : '']"
                 >
                   <img :src="image.src" :alt="image.alt" loading="lazy" />
                   <figcaption>{{ image.caption }}</figcaption>
@@ -275,7 +275,7 @@ type Endpoint = { method: string; path: string; description: string }
 type ErrorRow = { code: string; meaning: string; fix: string }
 type FaqItem = { question: string; answer: string }
 type CodeBlock = { key: string; title: string; description?: string; code: string }
-type DocImage = { src: string; alt: string; caption: string }
+type DocImage = { src: string; alt: string; caption: string; variant?: 'wide' | 'compact' | 'qr' }
 type TutorialSection = {
   id: string
   step?: string
@@ -471,10 +471,10 @@ const zhCopy = computed(() => ({
     { href: '#step-6-config', title: '一键配置', description: '输入 API Key，点击一键配置，再重新打开 Codex 即可使用。' }
   ] satisfies GuideCard[],
   supportImages: [
-    { src: docImages.homepage, alt: 'OceanWay AI 官网首页截图', caption: '官网首页' },
-    { src: docImages.groupQr, alt: 'OceanWay AI 讨论 2 群二维码', caption: '讨论组二维码' },
-    { src: docImages.groupQrRepeat, alt: 'OceanWay AI 讨论 2 群二维码备用图', caption: '讨论组二维码备用图' },
-    { src: docImages.supportQr, alt: '微信扫码咨询开通与使用方式二维码', caption: '微信扫码咨询开通与使用方式' }
+    { src: docImages.homepage, alt: 'OceanWay AI 官网首页截图', caption: '官网首页', variant: 'wide' },
+    { src: docImages.groupQr, alt: 'OceanWay AI 讨论 2 群二维码', caption: '讨论组二维码', variant: 'qr' },
+    { src: docImages.groupQrRepeat, alt: 'OceanWay AI 讨论 2 群二维码备用图', caption: '讨论组二维码备用图', variant: 'qr' },
+    { src: docImages.supportQr, alt: '微信扫码咨询开通与使用方式二维码', caption: '微信扫码咨询开通与使用方式', variant: 'compact' }
   ] satisfies DocImage[],
   quickStartTitle: '按以下步骤获取 API 密钥',
   quickStartIntro: '以下结构按原始教程重写：先注册账号和获取额度，再获取 API Key，随后安装 Codex、运行一键配置并验证可用。',
@@ -486,7 +486,7 @@ const zhCopy = computed(() => ({
       title: '访问官网注册账号',
       paragraphs: [`访问 ${registerUrl.value}，使用邮箱注册 OceanWay AI 账号。注册完成后登录控制台。`],
       images: [
-        { src: docImages.register, alt: 'OceanWay AI 注册页面截图', caption: '邮箱注册页面' }
+        { src: docImages.register, alt: 'OceanWay AI 注册页面截图', caption: '邮箱注册页面', variant: 'wide' }
       ]
     },
     {
@@ -505,11 +505,11 @@ const zhCopy = computed(() => ({
         '兑换成功后可看到兑换结果；订阅在我的订阅中查看，额度在左上角余额查看。'
       ],
       images: [
-        { src: docImages.billing, alt: '充值订阅页面切换额度套餐和订阅套餐截图', caption: '站内充值/订阅入口' },
-        { src: docImages.redeem, alt: '兑换码页面输入兑换码截图', caption: '兑换码使用方式' },
-        { src: docImages.redeemBalance, alt: '兑换余额成功页面截图', caption: '兑换余额成功' },
-        { src: docImages.redeemSubscription, alt: '兑换订阅成功页面截图', caption: '兑换订阅成功' },
-        { src: docImages.subscriptions, alt: '我的订阅页面截图', caption: '我的订阅和余额变化' }
+        { src: docImages.billing, alt: '充值订阅页面切换额度套餐和订阅套餐截图', caption: '站内充值/订阅入口', variant: 'wide' },
+        { src: docImages.redeem, alt: '兑换码页面输入兑换码截图', caption: '兑换码使用方式', variant: 'wide' },
+        { src: docImages.redeemBalance, alt: '兑换余额成功页面截图', caption: '兑换余额成功', variant: 'compact' },
+        { src: docImages.redeemSubscription, alt: '兑换订阅成功页面截图', caption: '兑换订阅成功', variant: 'compact' },
+        { src: docImages.subscriptions, alt: '我的订阅页面截图', caption: '我的订阅和余额变化', variant: 'wide' }
       ]
     },
     {
@@ -523,8 +523,8 @@ const zhCopy = computed(() => ({
         `如果需要试用多个 key，可以在 API 密钥页 ${keysUrl.value} 额外创建新的 key，点击复制图标即可复制 API 密钥。`
       ],
       images: [
-        { src: docImages.dashboardKey, alt: '仪表盘默认 Key 和 Base URL 复制按钮截图', caption: '仪表盘默认 Key 和 Base URL' },
-        { src: docImages.apiKeys, alt: 'API 密钥页面复制多个 Key 截图', caption: 'API 密钥页额外创建和复制 Key' }
+        { src: docImages.dashboardKey, alt: '仪表盘默认 Key 和 Base URL 复制按钮截图', caption: '仪表盘默认 Key 和 Base URL', variant: 'wide' },
+        { src: docImages.apiKeys, alt: 'API 密钥页面复制多个 Key 截图', caption: 'API 密钥页额外创建和复制 Key', variant: 'wide' }
       ]
     },
     {
@@ -533,7 +533,7 @@ const zhCopy = computed(() => ({
       title: '先安装官方 Codex 客户端',
       paragraphs: ['完成账号、额度和 API Key 准备后，再下载安装 Codex。Windows 和 Mac 的安装方式不同，任选对应系统步骤即可。'],
       images: [
-        { src: docImages.codexWebsite, alt: 'Codex 官网下载页面截图', caption: 'Codex 官网下载入口' }
+        { src: docImages.codexWebsite, alt: 'Codex 官网下载页面截图', caption: 'Codex 官网下载入口', variant: 'wide' }
       ]
     },
     {
@@ -551,8 +551,8 @@ const zhCopy = computed(() => ({
       ],
       callout: '安装时如果有报错，请携带错误代码和截图到群里，我们帮助解决。',
       images: [
-        { src: docImages.windowsStart, alt: 'Windows 搜索 Microsoft Store 截图', caption: '搜索并打开 Microsoft Store' },
-        { src: docImages.windowsStore, alt: 'Microsoft Store 搜索 Codex 截图', caption: '在 Microsoft Store 搜索 Codex' }
+        { src: docImages.windowsStart, alt: 'Windows 搜索 Microsoft Store 截图', caption: '搜索并打开 Microsoft Store', variant: 'compact' },
+        { src: docImages.windowsStore, alt: 'Microsoft Store 搜索 Codex 截图', caption: '在 Microsoft Store 搜索 Codex', variant: 'wide' }
       ]
     },
     {
@@ -582,7 +582,7 @@ const zhCopy = computed(() => ({
       ],
       callout: 'Mac 版本如无法打开，可在终端运行：xattr -dr com.apple.quarantine ~/Downloads/codex-config.app',
       images: [
-        { src: docImages.configTool, alt: 'OceanWay AI Codex 一键配置软件截图', caption: '填写 API Key 和 Base URL 后点击一键配置' }
+        { src: docImages.configTool, alt: 'OceanWay AI Codex 一键配置软件截图', caption: '填写 API Key 和 Base URL 后点击一键配置', variant: 'wide' }
       ]
     },
     {
@@ -595,7 +595,7 @@ const zhCopy = computed(() => ({
         `重新打开后，无需任何登录环节，无需任何代理服务。正常情况下可以看到 ${siteName.value} 标记，发送 hi 得到回复，即配置完毕。`
       ],
       images: [
-        { src: docImages.codexReady, alt: 'Codex 中显示 OceanWay 标记并可发送消息截图', caption: '看到 OceanWay 标记并发送 hi 验证' }
+        { src: docImages.codexReady, alt: 'Codex 中显示 OceanWay 标记并可发送消息截图', caption: '看到 OceanWay 标记并发送 hi 验证', variant: 'compact' }
       ]
     }
   ] satisfies TutorialSection[],
@@ -666,10 +666,10 @@ const enCopy = computed(() => ({
     { href: '#step-6-config', title: 'One-click config', description: 'Paste your API key, click one-click config, then reopen Codex.' }
   ] satisfies GuideCard[],
   supportImages: [
-    { src: docImages.homepage, alt: 'OceanWay AI official homepage screenshot', caption: 'Official homepage' },
-    { src: docImages.groupQr, alt: 'OceanWay AI discussion group QR code', caption: 'Discussion group QR code' },
-    { src: docImages.groupQrRepeat, alt: 'OceanWay AI discussion group QR code duplicate image', caption: 'Discussion group QR code backup image' },
-    { src: docImages.supportQr, alt: 'WeChat support QR code', caption: 'WeChat support QR code' }
+    { src: docImages.homepage, alt: 'OceanWay AI official homepage screenshot', caption: 'Official homepage', variant: 'wide' },
+    { src: docImages.groupQr, alt: 'OceanWay AI discussion group QR code', caption: 'Discussion group QR code', variant: 'qr' },
+    { src: docImages.groupQrRepeat, alt: 'OceanWay AI discussion group QR code duplicate image', caption: 'Discussion group QR code backup image', variant: 'qr' },
+    { src: docImages.supportQr, alt: 'WeChat support QR code', caption: 'WeChat support QR code', variant: 'compact' }
   ] satisfies DocImage[],
   quickStartTitle: 'Get an API key and connect Codex',
   quickStartIntro: 'This follows the original guide order: register, get credit, copy the API key, install Codex, run one-click config, and verify.',
@@ -681,7 +681,7 @@ const enCopy = computed(() => ({
       title: 'Create an OceanWay AI account',
       paragraphs: [`Visit ${registerUrl.value}, register with email, then sign in to the console.`],
       images: [
-        { src: docImages.register, alt: 'OceanWay AI registration page screenshot', caption: 'Email registration page' }
+        { src: docImages.register, alt: 'OceanWay AI registration page screenshot', caption: 'Email registration page', variant: 'wide' }
       ]
     },
     {
@@ -700,11 +700,11 @@ const enCopy = computed(() => ({
         'After redemption, subscriptions appear under My subscriptions and balance changes appear in the header.'
       ],
       images: [
-        { src: docImages.billing, alt: 'Top-up and subscription page screenshot', caption: 'In-site top-up and subscription' },
-        { src: docImages.redeem, alt: 'Redemption code page screenshot', caption: 'Redeem a code' },
-        { src: docImages.redeemBalance, alt: 'Balance redemption success screenshot', caption: 'Balance redemption success' },
-        { src: docImages.redeemSubscription, alt: 'Subscription redemption success screenshot', caption: 'Subscription redemption success' },
-        { src: docImages.subscriptions, alt: 'My subscriptions page screenshot', caption: 'My subscriptions and balance' }
+        { src: docImages.billing, alt: 'Top-up and subscription page screenshot', caption: 'In-site top-up and subscription', variant: 'wide' },
+        { src: docImages.redeem, alt: 'Redemption code page screenshot', caption: 'Redeem a code', variant: 'wide' },
+        { src: docImages.redeemBalance, alt: 'Balance redemption success screenshot', caption: 'Balance redemption success', variant: 'compact' },
+        { src: docImages.redeemSubscription, alt: 'Subscription redemption success screenshot', caption: 'Subscription redemption success', variant: 'compact' },
+        { src: docImages.subscriptions, alt: 'My subscriptions page screenshot', caption: 'My subscriptions and balance', variant: 'wide' }
       ]
     },
     {
@@ -718,8 +718,8 @@ const enCopy = computed(() => ({
         `If you need multiple keys, create and copy extra keys at ${keysUrl.value}.`
       ],
       images: [
-        { src: docImages.dashboardKey, alt: 'Dashboard default key and Base URL screenshot', caption: 'Dashboard default key and Base URL' },
-        { src: docImages.apiKeys, alt: 'API keys page screenshot', caption: 'Create and copy extra API keys' }
+        { src: docImages.dashboardKey, alt: 'Dashboard default key and Base URL screenshot', caption: 'Dashboard default key and Base URL', variant: 'wide' },
+        { src: docImages.apiKeys, alt: 'API keys page screenshot', caption: 'Create and copy extra API keys', variant: 'wide' }
       ]
     },
     {
@@ -728,7 +728,7 @@ const enCopy = computed(() => ({
       title: 'Install the official Codex client',
       paragraphs: ['After account, credit, and API key are ready, install Codex for your operating system.'],
       images: [
-        { src: docImages.codexWebsite, alt: 'Codex official download page screenshot', caption: 'Codex official download page' }
+        { src: docImages.codexWebsite, alt: 'Codex official download page screenshot', caption: 'Codex official download page', variant: 'wide' }
       ]
     },
     {
@@ -746,8 +746,8 @@ const enCopy = computed(() => ({
       ],
       callout: 'If installation fails, send the error code and screenshot to the group for help.',
       images: [
-        { src: docImages.windowsStart, alt: 'Windows Microsoft Store search screenshot', caption: 'Open Microsoft Store' },
-        { src: docImages.windowsStore, alt: 'Microsoft Store Codex search screenshot', caption: 'Search Codex in Microsoft Store' }
+        { src: docImages.windowsStart, alt: 'Windows Microsoft Store search screenshot', caption: 'Open Microsoft Store', variant: 'compact' },
+        { src: docImages.windowsStore, alt: 'Microsoft Store Codex search screenshot', caption: 'Search Codex in Microsoft Store', variant: 'wide' }
       ]
     },
     {
@@ -777,7 +777,7 @@ const enCopy = computed(() => ({
       ],
       callout: 'If macOS blocks the app, run: xattr -dr com.apple.quarantine ~/Downloads/codex-config.app',
       images: [
-        { src: docImages.configTool, alt: 'OceanWay AI Codex config tool screenshot', caption: 'Paste API key and Base URL, then click one-click config' }
+        { src: docImages.configTool, alt: 'OceanWay AI Codex config tool screenshot', caption: 'Paste API key and Base URL, then click one-click config', variant: 'wide' }
       ]
     },
     {
@@ -790,7 +790,7 @@ const enCopy = computed(() => ({
         `After reopening, no proxy is needed. When the ${siteName.value} badge appears, send hi. A reply means setup is complete.`
       ],
       images: [
-        { src: docImages.codexReady, alt: 'Codex ready with OceanWay badge screenshot', caption: 'OceanWay badge and hi verification' }
+        { src: docImages.codexReady, alt: 'Codex ready with OceanWay badge screenshot', caption: 'OceanWay badge and hi verification', variant: 'compact' }
       ]
     }
   ] satisfies TutorialSection[],
@@ -856,6 +856,7 @@ onMounted(() => {
 <style scoped>
 .docs-shell {
   position: relative;
+  overflow-x: hidden;
   background:
     linear-gradient(180deg, rgba(242, 248, 255, 0.96) 0%, rgba(250, 252, 255, 0.94) 38%, rgba(232, 246, 255, 0.98) 100%);
 }
@@ -910,6 +911,7 @@ onMounted(() => {
   border-radius: 0.5rem;
   font-size: 0.875rem;
   font-weight: 700;
+  white-space: nowrap;
   transition:
     border-color 0.16s ease,
     background-color 0.16s ease,
@@ -1062,6 +1064,10 @@ onMounted(() => {
   list-style: disc;
 }
 
+.tutorial-list li {
+  overflow-wrap: anywhere;
+}
+
 .tutorial-callout {
   margin-top: 1rem;
   border: 1px solid rgba(0, 160, 255, 0.22);
@@ -1076,7 +1082,7 @@ onMounted(() => {
 
 .tutorial-image-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(18rem, 100%), 1fr));
   align-items: start;
   gap: 1rem;
 }
@@ -1088,12 +1094,34 @@ onMounted(() => {
   background: rgba(255, 255, 255, 0.9);
 }
 
+.tutorial-image-card-wide {
+  grid-column: 1 / -1;
+}
+
+.tutorial-image-card-compact {
+  justify-self: center;
+  width: min(100%, 34rem);
+}
+
+.tutorial-image-card-qr {
+  justify-self: center;
+  width: min(100%, 22rem);
+}
+
 .tutorial-image-card img {
   display: block;
   width: 100%;
-  max-height: 34rem;
+  max-height: 38rem;
   object-fit: contain;
   background: #f8fafc;
+}
+
+.tutorial-image-card-wide img {
+  max-height: 44rem;
+}
+
+.tutorial-image-card-qr img {
+  max-height: 34rem;
 }
 
 .tutorial-image-card figcaption {
@@ -1163,6 +1191,7 @@ onMounted(() => {
 
 :deep(.code-pre) {
   overflow-x: auto;
+  max-width: 100%;
   background: #001040;
   padding: 1.1rem;
   color: #d1d5db;
