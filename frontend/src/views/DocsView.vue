@@ -87,7 +87,7 @@
 
           <div class="mt-8 flex flex-wrap gap-3">
             <a href="#quick-start" class="primary-action">{{ copy.quickStartAction }}</a>
-            <a href="#clients" class="secondary-action">{{ copy.apiAction }}</a>
+            <a href="#step-6-config" class="secondary-action">{{ copy.apiAction }}</a>
           </div>
 
           <dl class="mt-9 grid gap-3 md:grid-cols-3">
@@ -177,25 +177,6 @@
           </div>
         </section>
 
-        <section id="clients" class="docs-section">
-          <h2>{{ copy.clientsTitle }}</h2>
-          <p class="section-lead">{{ copy.clientsIntro }}</p>
-
-          <div class="mt-6 space-y-5">
-            <CodeSnippet
-              v-for="block in clientBlocks"
-              :key="block.key"
-              :title="block.title"
-              :description="block.description"
-              :code="block.code"
-              :copied="copiedKey === block.key"
-              :copy-label="copy.copy"
-              :copied-label="copy.copied"
-              @copy="copyCode(block.key, block.code)"
-            />
-          </div>
-        </section>
-
         <section id="api" class="docs-section">
           <h2>{{ copy.apiTitle }}</h2>
           <p class="section-lead">{{ copy.apiIntro }}</p>
@@ -275,7 +256,7 @@ type Endpoint = { method: string; path: string; description: string }
 type ErrorRow = { code: string; meaning: string; fix: string }
 type FaqItem = { question: string; answer: string }
 type CodeBlock = { key: string; title: string; description?: string; code: string }
-type DocImage = { src: string; alt: string; caption: string; variant?: 'wide' | 'compact' | 'qr' }
+type DocImage = { src: string; alt: string; caption: string; variant?: 'wide' | 'compact' | 'qr' | 'pair' }
 type TutorialSection = {
   id: string
   step?: string
@@ -341,66 +322,6 @@ const docImages = {
   codexReady: `${imageBase}/page-11-img-01-X212.png`
 }
 
-const clientBlocks = computed<CodeBlock[]>(() => [
-  {
-    key: 'one-click-config',
-    title: isZh.value ? '一键配置软件' : 'One-click Codex config tool',
-    description: isZh.value
-      ? '配置前先完全退出 Codex。Windows 需要把任务栏里的 Codex 也退出。'
-      : 'Fully quit Codex before configuring. On Windows, also quit it from the taskbar.',
-    code: isZh.value
-      ? `1. 从讨论组或客服处获取对应系统的一键配置软件
-2. 解压并打开 codex-config
-3. API Key 填入仪表盘复制的 default-key
-4. Base URL 填入 ${apiHost.value}
-5. 点击测试连接
-6. 点击一键配置
-7. 重新打开 Codex，看到 ${siteName.value} 标记后发送 hi 验证`
-      : `1. Get the matching config tool from support
-2. Unzip and open codex-config
-3. Paste the default-key from the dashboard
-4. Set Base URL to ${apiHost.value}
-5. Test the connection
-6. Click one-click config
-7. Reopen Codex and send hi after the ${siteName.value} badge appears`
-  },
-  {
-    key: 'mac-quarantine',
-    title: isZh.value ? 'macOS 配置器无法打开时' : 'macOS quarantine command',
-    description: isZh.value
-      ? '如果 macOS 阻止打开配置器，在终端运行后再打开。'
-      : 'Run this in Terminal if macOS blocks the config app.',
-    code: `xattr -dr com.apple.quarantine ~/Downloads/codex-config.app`
-  },
-  {
-    key: 'codex-manual',
-    title: isZh.value ? '手动 Codex 配置备用' : 'Manual Codex config fallback',
-    description: isZh.value
-      ? '一键配置不可用时，可以按这个 Provider 结构手动配置。'
-      : 'Use this provider structure if the config tool is unavailable.',
-    code: `disable_response_storage = true
-model = "your-model"
-model_provider = "${siteName.value}"
-model_reasoning_effort = "high"
-
-[model_providers."${siteName.value}"]
-name = "${siteName.value}"
-base_url = "${endpointBase.value}"
-requires_openai_auth = true
-wire_api = "responses"`
-  },
-  {
-    key: 'auth-json',
-    title: 'auth.json',
-    description: isZh.value
-      ? 'API Key 使用默认 Key 或你在 API 密钥页额外创建的 Key。'
-      : 'Use your default key or an extra key created on the API keys page.',
-    code: `{
-  "OPENAI_API_KEY": "sk-your-token"
-}`
-  }
-])
-
 const apiBlocks = computed<CodeBlock[]>(() => [
   {
     key: 'models',
@@ -457,7 +378,6 @@ const zhCopy = computed(() => ({
     { href: '#overview', label: '首页' },
     { href: '#support', label: '官网与支持' },
     { href: '#quick-start', label: '图文步骤' },
-    { href: '#clients', label: '一键配置' },
     { href: '#api', label: 'API 补充' },
     { href: '#errors', label: '错误排查' },
     { href: '#faq', label: 'Q&A' }
@@ -551,8 +471,8 @@ const zhCopy = computed(() => ({
       ],
       callout: '安装时如果有报错，请携带错误代码和截图到群里，我们帮助解决。',
       images: [
-        { src: docImages.windowsStart, alt: 'Windows 搜索 Microsoft Store 截图', caption: '搜索并打开 Microsoft Store', variant: 'compact' },
-        { src: docImages.windowsStore, alt: 'Microsoft Store 搜索 Codex 截图', caption: '在 Microsoft Store 搜索 Codex', variant: 'wide' }
+        { src: docImages.windowsStart, alt: 'Windows 搜索 Microsoft Store 截图', caption: '搜索并打开 Microsoft Store', variant: 'pair' },
+        { src: docImages.windowsStore, alt: 'Microsoft Store 搜索 Codex 截图', caption: '在 Microsoft Store 搜索 Codex', variant: 'pair' }
       ]
     },
     {
@@ -599,9 +519,6 @@ const zhCopy = computed(() => ({
       ]
     }
   ] satisfies TutorialSection[],
-  clientsTitle: '一键配置 Codex',
-  clientsIntro:
-    '一键配置软件由 OceanWay 团队提供，适合不想手动编辑配置文件的用户。配置前请先完全退出 Codex。',
   apiTitle: 'API 调用补充',
   apiIntro: '普通 Codex 用户优先使用一键配置。需要脚本或 SDK 调用时，OpenAI 兼容接口使用带 /v1 的 Base URL。',
   endpoints: [
@@ -652,7 +569,6 @@ const enCopy = computed(() => ({
     { href: '#overview', label: 'Home' },
     { href: '#support', label: 'Site and support' },
     { href: '#quick-start', label: 'Visual guide' },
-    { href: '#clients', label: 'One-click config' },
     { href: '#api', label: 'API supplement' },
     { href: '#errors', label: 'Troubleshooting' },
     { href: '#faq', label: 'Q&A' }
@@ -746,8 +662,8 @@ const enCopy = computed(() => ({
       ],
       callout: 'If installation fails, send the error code and screenshot to the group for help.',
       images: [
-        { src: docImages.windowsStart, alt: 'Windows Microsoft Store search screenshot', caption: 'Open Microsoft Store', variant: 'compact' },
-        { src: docImages.windowsStore, alt: 'Microsoft Store Codex search screenshot', caption: 'Search Codex in Microsoft Store', variant: 'wide' }
+        { src: docImages.windowsStart, alt: 'Windows Microsoft Store search screenshot', caption: 'Open Microsoft Store', variant: 'pair' },
+        { src: docImages.windowsStore, alt: 'Microsoft Store Codex search screenshot', caption: 'Search Codex in Microsoft Store', variant: 'pair' }
       ]
     },
     {
@@ -794,9 +710,6 @@ const enCopy = computed(() => ({
       ]
     }
   ] satisfies TutorialSection[],
-  clientsTitle: 'One-click Codex config',
-  clientsIntro:
-    'The one-click config tool is the recommended path for regular Codex users. Fully quit Codex before configuring.',
   apiTitle: 'API supplement',
   apiIntro: 'Regular Codex users should use the config tool. Scripts and SDKs can use the OpenAI-compatible /v1 Base URL.',
   endpoints: [
@@ -1108,6 +1021,10 @@ onMounted(() => {
   width: min(100%, 22rem);
 }
 
+.tutorial-image-card-pair {
+  align-self: stretch;
+}
+
 .tutorial-image-card img {
   display: block;
   width: 100%;
@@ -1120,8 +1037,20 @@ onMounted(() => {
   max-height: 44rem;
 }
 
+.tutorial-image-card-pair img {
+  height: 18rem;
+  max-height: 18rem;
+}
+
 .tutorial-image-card-qr img {
   max-height: 34rem;
+}
+
+@media (max-width: 639px) {
+  .tutorial-image-card-pair img {
+    height: auto;
+    max-height: 28rem;
+  }
 }
 
 .tutorial-image-card figcaption {
