@@ -318,8 +318,7 @@ const docImages = {
   windowsStart: `${imageBase}/page-08-img-01-X157.jpg`,
   windowsStore: `${imageBase}/page-08-img-02-X158.jpg`,
   codexWebsite: `${imageBase}/page-08-img-03-X160.png`,
-  configTool: `${imageBase}/page-10-img-01-X205.png`,
-  codexReady: `${imageBase}/page-11-img-01-X212.png`
+  configTool: `${imageBase}/page-10-img-01-X205.png`
 }
 
 const apiBlocks = computed<CodeBlock[]>(() => [
@@ -512,10 +511,7 @@ const zhCopy = computed(() => ({
       title: '重新打开 Codex 并验证',
       paragraphs: [
         '配置前别打开 Codex，如果打开了记得彻底退出。Windows 需要把任务栏里的也退出。',
-        `重新打开后，无需任何登录环节，无需任何代理服务。正常情况下可以看到 ${siteName.value} 标记，发送 hi 得到回复，即配置完毕。`
-      ],
-      images: [
-        { src: docImages.codexReady, alt: 'Codex 中显示 OceanWay 标记并可发送消息截图', caption: '看到 OceanWay 标记并发送 hi 验证', variant: 'compact' }
+        '重新打开后，无需任何登录环节，无需任何代理服务。发送 hi 能正常收到回复，即配置完毕。'
       ]
     }
   ] satisfies TutorialSection[],
@@ -529,7 +525,7 @@ const zhCopy = computed(() => ({
   errorsTitle: '错误排查',
   errorsIntro: '如果安装或配置时报错，优先截图并记录错误代码。API 调用失败时，再按状态码排查。',
   errorRows: [
-    { code: 'Codex 无 OceanWay 标记', meaning: '配置未生效', fix: '彻底退出 Codex 后重新运行一键配置，再重新打开。Windows 也要退出任务栏中的 Codex。' },
+    { code: 'Codex 无法回复', meaning: '配置未生效或 Key 不可用', fix: '彻底退出 Codex 后重新运行一键配置，再重新打开。Windows 也要退出任务栏中的 Codex；仍失败时重新复制 default-key。' },
     { code: '401', meaning: '认证失败', fix: '确认使用的是仪表盘 default-key 或 API 密钥页创建的有效 Key。' },
     { code: '403', meaning: '权限不足', fix: '检查账户是否有有效订阅、余额或对应模型权限。' },
     { code: '404', meaning: '路径不存在', fix: 'Codex 配置器填裸域；脚本调用 OpenAI 兼容 API 时填带 /v1 的地址。' },
@@ -540,7 +536,7 @@ const zhCopy = computed(() => ({
   faq: [
     { question: '我需要自己创建 API Key 吗？', answer: '通常不需要。注册登录后，仪表盘里的 default-key 可以直接作为 Codex Key 使用。只有需要多个 Key 时，再到 API 密钥页创建。' },
     { question: 'Codex 配置器里的 Base URL 应该填什么？', answer: `按教程填裸域 ${apiHost.value}。如果你写脚本直接调 OpenAI 兼容 API，则使用 ${endpointBase.value}。` },
-    { question: '配置前为什么要完全退出 Codex？', answer: 'Codex 可能已经读取了旧配置。完全退出后再配置、再重新打开，可以确保新 Provider 和 Key 被加载。' },
+    { question: '配置前为什么要完全退出 Codex？', answer: 'Codex 可能已经读取了旧配置。完全退出后再配置、再重新打开，可以确保新配置和 Key 被加载。' },
     { question: '没有额度可以测试吗？', answer: '新注册账号可先使用默认赠送额度；如需更多试用额度，可以联系微信客服或讨论组。' }
   ] satisfies FaqItem[],
   copy: '复制',
@@ -683,7 +679,7 @@ const enCopy = computed(() => ({
       label: 'One-click config',
       title: 'Paste the API key and configure',
       paragraphs: [
-        'The OceanWay one-click config tool writes the provider settings for you.',
+        'The OceanWay one-click config tool writes the connection settings for you.',
         `Paste the API key activated on ${apiHost.value}, set Base URL to ${apiHost.value}, click one-click config, then reopen Codex.`
       ],
       bullets: [
@@ -703,10 +699,7 @@ const enCopy = computed(() => ({
       title: 'Reopen Codex and verify',
       paragraphs: [
         'Do not keep Codex open before configuring. On Windows, quit the taskbar instance too.',
-        `After reopening, no proxy is needed. When the ${siteName.value} badge appears, send hi. A reply means setup is complete.`
-      ],
-      images: [
-        { src: docImages.codexReady, alt: 'Codex ready with OceanWay badge screenshot', caption: 'OceanWay badge and hi verification', variant: 'compact' }
+        'After reopening, no proxy is needed. Send hi; receiving a normal reply means setup is complete.'
       ]
     }
   ] satisfies TutorialSection[],
@@ -720,7 +713,7 @@ const enCopy = computed(() => ({
   errorsTitle: 'Troubleshooting',
   errorsIntro: 'For install or config errors, keep the screenshot and error code. For API errors, check the status code.',
   errorRows: [
-    { code: 'No OceanWay badge', meaning: 'Config not loaded', fix: 'Quit Codex completely, run the config tool again, then reopen Codex.' },
+    { code: 'Codex does not reply', meaning: 'Config not loaded or key unavailable', fix: 'Quit Codex completely, run the config tool again, then reopen Codex. If it still fails, copy the default-key again.' },
     { code: '401', meaning: 'Auth failed', fix: 'Use the dashboard default-key or a valid key from the API keys page.' },
     { code: '403', meaning: 'No permission', fix: 'Check your subscription, balance, or model permission.' },
     { code: '404', meaning: 'Wrong path', fix: 'Use the bare domain in the Codex config tool; use /v1 for direct OpenAI-compatible API calls.' },
@@ -731,7 +724,7 @@ const enCopy = computed(() => ({
   faq: [
     { question: 'Do I need to create an API key manually?', answer: 'Usually no. The dashboard default-key is ready for Codex. Create extra keys only if you need multiple keys.' },
     { question: 'Which Base URL should I use?', answer: `Use ${apiHost.value} in the Codex config tool. Use ${endpointBase.value} for direct OpenAI-compatible API calls.` },
-    { question: 'Why must I quit Codex before configuring?', answer: 'Codex may have already loaded the old provider. Reopening it after configuration ensures the new provider and key are loaded.' },
+    { question: 'Why must I quit Codex before configuring?', answer: 'Codex may have already loaded the old config. Reopening it after configuration ensures the new config and key are loaded.' },
     { question: 'Can I test without topping up?', answer: 'Try the sign-up credit first. Contact support for trial credit when available.' }
   ] satisfies FaqItem[],
   copy: 'Copy',
