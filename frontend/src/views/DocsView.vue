@@ -493,9 +493,9 @@ const zhCopy = computed(() => ({
         `打开软件，输入 ${apiHost.value} 激活的 API Key，Base URL 填 ${apiHost.value}，点击一键配置，然后重新打开 Codex，用 sk 登录即可使用。`
       ],
       bullets: [
-        'Windows 版本配置软件：codex-config-Windows.zip',
-        'Mac Intel 版本配置软件：codex-config-macOS-x64.zip',
-        'Mac M 系列版本配置软件：codex-config-macOS-arm64.zip'
+        'Windows 版本配置软件：http://download.czroad.xyz/codex-config-Windows.zip',
+        'Mac Intel 版本配置软件：http://download.czroad.xyz/codex-config-macOS-intel.zip',
+        'Mac M 系列版本配置软件：http://download.czroad.xyz/codex-config-macOS.zip'
       ],
       callout: 'Mac 版本如无法打开，可在终端运行：xattr -dr com.apple.quarantine ~/Downloads/codex-config.app',
       images: [
@@ -680,9 +680,9 @@ const enCopy = computed(() => ({
         `Paste the API key activated on ${apiHost.value}, set Base URL to ${apiHost.value}, click one-click config, then reopen Codex.`
       ],
       bullets: [
-        'Windows package: codex-config-Windows.zip',
-        'Mac Intel package: codex-config-macOS-x64.zip',
-        'Mac Apple Silicon package: codex-config-macOS-arm64.zip'
+        'Windows package: http://download.czroad.xyz/codex-config-Windows.zip',
+        'Mac Intel package: http://download.czroad.xyz/codex-config-macOS-intel.zip',
+        'Mac Apple Silicon package: http://download.czroad.xyz/codex-config-macOS.zip'
       ],
       callout: 'If macOS blocks the app, run: xattr -dr com.apple.quarantine ~/Downloads/codex-config.app',
       images: [
