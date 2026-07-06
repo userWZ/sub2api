@@ -106,8 +106,9 @@
           </dl>
         </section>
 
-        <section class="docs-section">
+        <section id="support" class="docs-section">
           <h2>{{ copy.needTitle }}</h2>
+          <p class="section-lead">{{ copy.needIntro }}</p>
           <div class="mt-5 grid gap-4 md:grid-cols-2">
             <a
               v-for="card in copy.needCards"
@@ -119,35 +120,60 @@
               <p class="mt-2 text-sm leading-6 text-slate-600">{{ card.description }}</p>
             </a>
           </div>
+          <div class="tutorial-image-grid mt-6">
+            <figure
+              v-for="image in copy.supportImages"
+              :key="image.src"
+              class="tutorial-image-card"
+            >
+              <img :src="image.src" :alt="image.alt" loading="lazy" />
+              <figcaption>{{ image.caption }}</figcaption>
+            </figure>
+          </div>
         </section>
 
         <section id="quick-start" class="docs-section">
           <h2>{{ copy.quickStartTitle }}</h2>
           <p class="section-lead">{{ copy.quickStartIntro }}</p>
 
-          <div class="mt-6 grid gap-4 md:grid-cols-3">
+          <div class="mt-8 space-y-8">
             <article
-              v-for="(step, index) in copy.steps"
-              :key="step.title"
-              class="step-panel"
+              v-for="section in copy.tutorialSections"
+              :id="section.id"
+              :key="section.id"
+              class="tutorial-block"
             >
-              <span class="step-number">{{ index + 1 }}</span>
-              <h3>{{ step.title }}</h3>
-              <p>{{ step.description }}</p>
+              <div class="flex flex-wrap items-center gap-3">
+                <span v-if="section.step" class="step-number">{{ section.step }}</span>
+                <span class="tutorial-label">{{ section.label }}</span>
+              </div>
+              <h3>{{ section.title }}</h3>
+              <div class="mt-4 space-y-3">
+                <p
+                  v-for="paragraph in section.paragraphs"
+                  :key="paragraph"
+                  class="tutorial-paragraph"
+                >
+                  {{ paragraph }}
+                </p>
+              </div>
+              <ul v-if="section.bullets?.length" class="tutorial-list">
+                <li v-for="bullet in section.bullets" :key="bullet">{{ bullet }}</li>
+              </ul>
+              <p v-if="section.callout" class="tutorial-callout">
+                {{ section.callout }}
+              </p>
+              <div v-if="section.images?.length" class="tutorial-image-grid mt-5">
+                <figure
+                  v-for="image in section.images"
+                  :key="image.src"
+                  class="tutorial-image-card"
+                >
+                  <img :src="image.src" :alt="image.alt" loading="lazy" />
+                  <figcaption>{{ image.caption }}</figcaption>
+                </figure>
+              </div>
             </article>
-          </div>
-
-          <div class="mt-8 space-y-5">
-            <CodeSnippet
-              v-for="block in quickStartBlocks"
-              :key="block.key"
-              :title="block.title"
-              :code="block.code"
-              :copied="copiedKey === block.key"
-              :copy-label="copy.copy"
-              :copied-label="copy.copied"
-              @copy="copyCode(block.key, block.code)"
-            />
           </div>
         </section>
 
@@ -245,11 +271,21 @@ import CodeSnippet from '@/components/common/CodeSnippet.vue'
 type NavItem = { href: string; label: string }
 type Fact = { label: string; value: string }
 type GuideCard = { href: string; title: string; description: string }
-type Step = { title: string; description: string }
 type Endpoint = { method: string; path: string; description: string }
 type ErrorRow = { code: string; meaning: string; fix: string }
 type FaqItem = { question: string; answer: string }
 type CodeBlock = { key: string; title: string; description?: string; code: string }
+type DocImage = { src: string; alt: string; caption: string }
+type TutorialSection = {
+  id: string
+  step?: string
+  label: string
+  title: string
+  paragraphs: string[]
+  bullets?: string[]
+  callout?: string
+  images?: DocImage[]
+}
 
 const appStore = useAppStore()
 const { locale } = useI18n()
@@ -284,54 +320,26 @@ const subscriptionsUrl = computed(() => `${apiHost.value}/subscriptions`)
 const redeemUrl = computed(() => `${apiHost.value}/redeem`)
 const copy = computed(() => isZh.value ? zhCopy.value : enCopy.value)
 
-const quickStartBlocks = computed<CodeBlock[]>(() => [
-  {
-    key: 'codex-entry',
-    title: isZh.value ? '常用入口' : 'Useful links',
-    code: `${siteName.value}: ${apiHost.value}
-注册账号: ${registerUrl.value}
-用户仪表盘: ${dashboardUrl.value}
-API 密钥: ${keysUrl.value}
-我的订阅: ${subscriptionsUrl.value}
-兑换码: ${redeemUrl.value}
-
-Windows Codex: https://apps.microsoft.com/detail/9plm9xgg6vks?hl=en-US&gl=US
-Codex 官网: https://openai.com/zh-Hant/codex/
-macOS Codex: https://persistent.oaistatic.com/codex-app-prod/Codex.dmg`
-  },
-  {
-    key: 'default-key',
-    title: isZh.value ? '默认 Key 获取路径' : 'Default key path',
-    code: isZh.value
-      ? `1. 登录 ${dashboardUrl.value}
-2. 在仪表盘右侧找到 default-key
-3. 点击复制 API Key
-4. 点击复制 Base URL
-5. 如需多个 Key，再到 ${keysUrl.value} 创建`
-      : `1. Sign in at ${dashboardUrl.value}
-2. Find default-key on the dashboard
-3. Copy the API key
-4. Copy the Base URL
-5. Create extra keys at ${keysUrl.value} only when needed`
-  },
-  {
-    key: 'quota-paths',
-    title: isZh.value ? '额度、订阅和兑换码' : 'Quota, subscriptions, and redemption',
-    code: isZh.value
-      ? `注册后先使用默认赠送额度体验。
-新用户可联系客服领取试用额度。
-站内购买: ${subscriptionsUrl.value}
-站外兑换码: ${redeemUrl.value}
-购买或兑换订阅后，在“我的订阅”查看分组。
-购买或兑换额度后，在左上角余额查看变化。`
-      : `Try the default sign-up credit first.
-Contact support for trial credit when available.
-Buy in-site: ${subscriptionsUrl.value}
-Redeem code: ${redeemUrl.value}
-After subscribing, check My subscriptions.
-After topping up credit, check the balance in the header.`
-  }
-])
+const imageBase = '/docs/oceanway-codex'
+const docImages = {
+  homepage: `${imageBase}/page-01-img-01-X16.png`,
+  groupQr: `${imageBase}/page-02-img-01-X43.jpg`,
+  groupQrRepeat: `${imageBase}/page-03-img-01-X43.jpg`,
+  supportQr: `${imageBase}/page-03-img-02-X46.png`,
+  register: `${imageBase}/page-04-img-01-X66.png`,
+  billing: `${imageBase}/page-05-img-01-X117.png`,
+  redeem: `${imageBase}/page-05-img-02-X127.png`,
+  redeemBalance: `${imageBase}/page-06-img-01-X131.png`,
+  redeemSubscription: `${imageBase}/page-06-img-02-X132.png`,
+  subscriptions: `${imageBase}/page-06-img-03-X135.png`,
+  dashboardKey: `${imageBase}/page-07-img-01-X148.png`,
+  apiKeys: `${imageBase}/page-07-img-02-X151.png`,
+  windowsStart: `${imageBase}/page-08-img-01-X157.jpg`,
+  windowsStore: `${imageBase}/page-08-img-02-X158.jpg`,
+  codexWebsite: `${imageBase}/page-08-img-03-X160.png`,
+  configTool: `${imageBase}/page-10-img-01-X205.png`,
+  codexReady: `${imageBase}/page-11-img-01-X212.png`
+}
 
 const clientBlocks = computed<CodeBlock[]>(() => [
   {
@@ -447,30 +455,150 @@ const zhCopy = computed(() => ({
   ] satisfies Fact[],
   nav: [
     { href: '#overview', label: '首页' },
-    { href: '#quick-start', label: '接入步骤' },
+    { href: '#support', label: '官网与支持' },
+    { href: '#quick-start', label: '图文步骤' },
     { href: '#clients', label: '一键配置' },
     { href: '#api', label: 'API 补充' },
     { href: '#errors', label: '错误排查' },
     { href: '#faq', label: 'Q&A' }
   ] satisfies NavItem[],
-  needTitle: '先确认这四件事',
+  needTitle: '官网、讨论组和客服入口',
+  needIntro: '使用 API 有任何问题，可以加入讨论组，或者扫码添加微信咨询开通与使用方式。',
   needCards: [
-    { href: '#quick-start', title: '注册账号', description: `访问 ${registerUrl.value}，用邮箱注册并登录控制台。` },
-    { href: '#quick-start', title: '获取额度', description: '新账号先使用赠送额度；也可以站内充值、购买订阅或兑换兑换码。' },
-    { href: '#quick-start', title: '复制默认 Key', description: '仪表盘中的 default-key 可以直接使用，通常无需先创建新 Key。' },
-    { href: '#clients', title: '配置 Codex', description: '完全退出 Codex 后，用一键配置软件写入 Key 和 Base URL，再重新打开验证。' }
+    { href: apiHost.value, title: '官网首页', description: `访问 ${apiHost.value} 进入 OceanWay AI。` },
+    { href: '#step-1-register', title: '注册账号', description: `访问 ${registerUrl.value}，用邮箱注册并登录控制台。` },
+    { href: '#step-2-quota', title: '额度获取使用', description: '注册赠送额度可先体验，也可以站内充值、购买订阅或兑换兑换码。' },
+    { href: '#step-6-config', title: '一键配置', description: '输入 API Key，点击一键配置，再重新打开 Codex 即可使用。' }
   ] satisfies GuideCard[],
-  quickStartTitle: '按以下步骤获取 API 密钥并接入 Codex',
-  quickStartIntro: '推荐顺序是先注册和确认额度，再复制默认 Key，最后安装 Codex 并用配置器接入。',
-  steps: [
-    { title: '注册账号', description: `访问 ${registerUrl.value}，使用邮箱注册并登录。` },
-    { title: '获取额度', description: '注册赠送额度可先体验；新用户可联系客服领取试用额度。' },
-    { title: '充值或兑换', description: '在充值/订阅页购买余额或订阅，也可以在兑换页输入兑换码。' },
-    { title: '复制默认 Key', description: '登录后在仪表盘复制 default-key 和 Base URL；多 Key 场景再去 API 密钥页创建。' },
-    { title: '安装 Codex', description: 'Windows 可通过 Microsoft Store 或官网安装；Mac 使用官方 dmg。' },
-    { title: '一键配置', description: `配置器中 API Key 填 default-key，Base URL 填 ${apiHost.value}。` },
-    { title: '重新打开验证', description: `打开 Codex 后看到 ${siteName.value} 标记，发送 hi 有回复即配置完成。` }
-  ] satisfies Step[],
+  supportImages: [
+    { src: docImages.homepage, alt: 'OceanWay AI 官网首页截图', caption: '官网首页' },
+    { src: docImages.groupQr, alt: 'OceanWay AI 讨论 2 群二维码', caption: '讨论组二维码' },
+    { src: docImages.groupQrRepeat, alt: 'OceanWay AI 讨论 2 群二维码备用图', caption: '讨论组二维码备用图' },
+    { src: docImages.supportQr, alt: '微信扫码咨询开通与使用方式二维码', caption: '微信扫码咨询开通与使用方式' }
+  ] satisfies DocImage[],
+  quickStartTitle: '按以下步骤获取 API 密钥',
+  quickStartIntro: '以下结构按原始教程重写：先注册账号和获取额度，再获取 API Key，随后安装 Codex、运行一键配置并验证可用。',
+  tutorialSections: [
+    {
+      id: 'step-1-register',
+      step: '1',
+      label: '注册账号',
+      title: '访问官网注册账号',
+      paragraphs: [`访问 ${registerUrl.value}，使用邮箱注册 OceanWay AI 账号。注册完成后登录控制台。`],
+      images: [
+        { src: docImages.register, alt: 'OceanWay AI 注册页面截图', caption: '邮箱注册页面' }
+      ]
+    },
+    {
+      id: 'step-2-quota',
+      step: '2',
+      label: '额度获取使用',
+      title: '先领取或购买可用额度',
+      paragraphs: [
+        '注册就可以获取 1 刀额度，建议先体验再充值。',
+        '新用户注册后，可以联系微信客服领取 10 刀试用额度。',
+        '系统内包括订阅和额度充值两种额度获取方式，可以通过站内充值，也可站外购买兑换码。'
+      ],
+      bullets: [
+        `站内充值/订阅：访问 ${subscriptionsUrl.value}，切换额度套餐和订阅套餐。`,
+        `站外充值：主要通过购买兑换码，再到 ${redeemUrl.value} 输入兑换码。`,
+        '兑换成功后可看到兑换结果；订阅在我的订阅中查看，额度在左上角余额查看。'
+      ],
+      images: [
+        { src: docImages.billing, alt: '充值订阅页面切换额度套餐和订阅套餐截图', caption: '站内充值/订阅入口' },
+        { src: docImages.redeem, alt: '兑换码页面输入兑换码截图', caption: '兑换码使用方式' },
+        { src: docImages.redeemBalance, alt: '兑换余额成功页面截图', caption: '兑换余额成功' },
+        { src: docImages.redeemSubscription, alt: '兑换订阅成功页面截图', caption: '兑换订阅成功' },
+        { src: docImages.subscriptions, alt: '我的订阅页面截图', caption: '我的订阅和余额变化' }
+      ]
+    },
+    {
+      id: 'step-3-key',
+      step: '3',
+      label: '获取 API KEY',
+      title: '优先使用仪表盘默认 Key',
+      paragraphs: [
+        '有别于登录使用 Codex 的方式，OceanWay AI 平台提供官方满血 GPT 最新模型 API 接入方式配置使用，因此需要在平台上获取个人 API Key。',
+        `用户注册登录到系统后，可以在仪表盘 ${dashboardUrl.value} 看到自己的默认 key，直接复制默认 key 和 Base URL 即可开始使用。`,
+        `如果需要试用多个 key，可以在 API 密钥页 ${keysUrl.value} 额外创建新的 key，点击复制图标即可复制 API 密钥。`
+      ],
+      images: [
+        { src: docImages.dashboardKey, alt: '仪表盘默认 Key 和 Base URL 复制按钮截图', caption: '仪表盘默认 Key 和 Base URL' },
+        { src: docImages.apiKeys, alt: 'API 密钥页面复制多个 Key 截图', caption: 'API 密钥页额外创建和复制 Key' }
+      ]
+    },
+    {
+      id: 'install-codex',
+      label: '下载安装 Codex',
+      title: '先安装官方 Codex 客户端',
+      paragraphs: ['完成账号、额度和 API Key 准备后，再下载安装 Codex。Windows 和 Mac 的安装方式不同，任选对应系统步骤即可。'],
+      images: [
+        { src: docImages.codexWebsite, alt: 'Codex 官网下载页面截图', caption: 'Codex 官网下载入口' }
+      ]
+    },
+    {
+      id: 'step-4-windows',
+      step: '4',
+      label: 'Windows 安装',
+      title: '通过 Microsoft Store 或官网安装',
+      paragraphs: [
+        '搜索 Microsoft Store 并打开，随后搜索 Codex 安装即可。',
+        '网页访问也可使用 Microsoft Store 链接，或者直接访问 Codex 官网，方式二选一。'
+      ],
+      bullets: [
+        'Microsoft Store: https://apps.microsoft.com/detail/9plm9xgg6vks?hl=en-US&gl=US',
+        'Codex 官网: https://openai.com/zh-Hant/codex/'
+      ],
+      callout: '安装时如果有报错，请携带错误代码和截图到群里，我们帮助解决。',
+      images: [
+        { src: docImages.windowsStart, alt: 'Windows 搜索 Microsoft Store 截图', caption: '搜索并打开 Microsoft Store' },
+        { src: docImages.windowsStore, alt: 'Microsoft Store 搜索 Codex 截图', caption: '在 Microsoft Store 搜索 Codex' }
+      ]
+    },
+    {
+      id: 'step-5-mac',
+      step: '5',
+      label: 'Mac 安装',
+      title: '下载官方 macOS 安装包',
+      paragraphs: [
+        '官方 macOS 下载链接：https://persistent.oaistatic.com/codex-app-prod/Codex.dmg',
+        '下载后双击安装，按系统提示拖入 Applications。'
+      ],
+      callout: '注意：下载完后，要完全关闭 Codex。左面右下角图标右键，exit 退出，再使用一键配置软件进行环境配置。'
+    },
+    {
+      id: 'step-6-config',
+      step: '6',
+      label: '一键配置软件',
+      title: '输入 API Key 后点击一键配置',
+      paragraphs: [
+        'OceanWay 团队开发的一键配置环境软件，免去繁琐的环境配置工作。',
+        `打开软件，输入 ${apiHost.value} 激活的 API Key，Base URL 填 ${apiHost.value}，点击一键配置，然后重新打开 Codex，用 sk 登录即可使用。`
+      ],
+      bullets: [
+        'Windows 版本配置软件：codex-config-Windows.zip',
+        'Mac Intel 版本配置软件：codex-config-macOS-x64.zip',
+        'Mac M 系列版本配置软件：codex-config-macOS-arm64.zip'
+      ],
+      callout: 'Mac 版本如无法打开，可在终端运行：xattr -dr com.apple.quarantine ~/Downloads/codex-config.app',
+      images: [
+        { src: docImages.configTool, alt: 'OceanWay AI Codex 一键配置软件截图', caption: '填写 API Key 和 Base URL 后点击一键配置' }
+      ]
+    },
+    {
+      id: 'step-7-ready',
+      step: '7',
+      label: '开启使用',
+      title: '重新打开 Codex 并验证',
+      paragraphs: [
+        '配置前别打开 Codex，如果打开了记得彻底退出。Windows 需要把任务栏里的也退出。',
+        `重新打开后，无需任何登录环节，无需任何代理服务。正常情况下可以看到 ${siteName.value} 标记，发送 hi 得到回复，即配置完毕。`
+      ],
+      images: [
+        { src: docImages.codexReady, alt: 'Codex 中显示 OceanWay 标记并可发送消息截图', caption: '看到 OceanWay 标记并发送 hi 验证' }
+      ]
+    }
+  ] satisfies TutorialSection[],
   clientsTitle: '一键配置 Codex',
   clientsIntro:
     '一键配置软件由 OceanWay 团队提供，适合不想手动编辑配置文件的用户。配置前请先完全退出 Codex。',
@@ -522,30 +650,150 @@ const enCopy = computed(() => ({
   ] satisfies Fact[],
   nav: [
     { href: '#overview', label: 'Home' },
-    { href: '#quick-start', label: 'Setup steps' },
+    { href: '#support', label: 'Site and support' },
+    { href: '#quick-start', label: 'Visual guide' },
     { href: '#clients', label: 'One-click config' },
     { href: '#api', label: 'API supplement' },
     { href: '#errors', label: 'Troubleshooting' },
     { href: '#faq', label: 'Q&A' }
   ] satisfies NavItem[],
-  needTitle: 'Check these first',
+  needTitle: 'Site, group, and support',
+  needIntro: 'If you have any issue with API usage, join the discussion group or scan the WeChat support QR code.',
   needCards: [
-    { href: '#quick-start', title: 'Register', description: `Create an account at ${registerUrl.value} and sign in.` },
-    { href: '#quick-start', title: 'Get credit', description: 'Use the sign-up credit first, then top up, subscribe, or redeem a code.' },
-    { href: '#quick-start', title: 'Copy default key', description: 'The dashboard default-key is ready to use. Extra keys are optional.' },
-    { href: '#clients', title: 'Configure Codex', description: 'Quit Codex, write the key and Base URL with the config tool, then reopen and test.' }
+    { href: apiHost.value, title: 'Official site', description: `Open ${apiHost.value} to enter OceanWay AI.` },
+    { href: '#step-1-register', title: 'Register', description: `Create an account at ${registerUrl.value} and sign in.` },
+    { href: '#step-2-quota', title: 'Get credit', description: 'Use the sign-up credit first, then top up, subscribe, or redeem a code.' },
+    { href: '#step-6-config', title: 'One-click config', description: 'Paste your API key, click one-click config, then reopen Codex.' }
   ] satisfies GuideCard[],
+  supportImages: [
+    { src: docImages.homepage, alt: 'OceanWay AI official homepage screenshot', caption: 'Official homepage' },
+    { src: docImages.groupQr, alt: 'OceanWay AI discussion group QR code', caption: 'Discussion group QR code' },
+    { src: docImages.groupQrRepeat, alt: 'OceanWay AI discussion group QR code duplicate image', caption: 'Discussion group QR code backup image' },
+    { src: docImages.supportQr, alt: 'WeChat support QR code', caption: 'WeChat support QR code' }
+  ] satisfies DocImage[],
   quickStartTitle: 'Get an API key and connect Codex',
-  quickStartIntro: 'Register and confirm credit first, copy the default key, install Codex, then configure it.',
-  steps: [
-    { title: 'Register', description: `Visit ${registerUrl.value} and register with email.` },
-    { title: 'Get credit', description: 'Try the sign-up credit first, or contact support for trial credit.' },
-    { title: 'Top up or redeem', description: 'Buy credit or a subscription in-site, or redeem an external code.' },
-    { title: 'Copy default key', description: 'Copy default-key and Base URL from the dashboard. Create extra keys only when needed.' },
-    { title: 'Install Codex', description: 'Install from Microsoft Store, the OpenAI Codex page, or the macOS dmg.' },
-    { title: 'One-click config', description: `Paste the default key and set Base URL to ${apiHost.value}.` },
-    { title: 'Reopen and test', description: `Reopen Codex, confirm the ${siteName.value} badge, and send hi.` }
-  ] satisfies Step[],
+  quickStartIntro: 'This follows the original guide order: register, get credit, copy the API key, install Codex, run one-click config, and verify.',
+  tutorialSections: [
+    {
+      id: 'step-1-register',
+      step: '1',
+      label: 'Register',
+      title: 'Create an OceanWay AI account',
+      paragraphs: [`Visit ${registerUrl.value}, register with email, then sign in to the console.`],
+      images: [
+        { src: docImages.register, alt: 'OceanWay AI registration page screenshot', caption: 'Email registration page' }
+      ]
+    },
+    {
+      id: 'step-2-quota',
+      step: '2',
+      label: 'Get credit',
+      title: 'Prepare usable credit',
+      paragraphs: [
+        'New accounts receive sign-up credit. Try it before topping up.',
+        'New users can contact WeChat support for trial credit when available.',
+        'You can buy balance or subscriptions in-site, or redeem an external redemption code.'
+      ],
+      bullets: [
+        `In-site top-up/subscription: open ${subscriptionsUrl.value} and switch between balance plans and subscription plans.`,
+        `External recharge: buy a redemption code and enter it at ${redeemUrl.value}.`,
+        'After redemption, subscriptions appear under My subscriptions and balance changes appear in the header.'
+      ],
+      images: [
+        { src: docImages.billing, alt: 'Top-up and subscription page screenshot', caption: 'In-site top-up and subscription' },
+        { src: docImages.redeem, alt: 'Redemption code page screenshot', caption: 'Redeem a code' },
+        { src: docImages.redeemBalance, alt: 'Balance redemption success screenshot', caption: 'Balance redemption success' },
+        { src: docImages.redeemSubscription, alt: 'Subscription redemption success screenshot', caption: 'Subscription redemption success' },
+        { src: docImages.subscriptions, alt: 'My subscriptions page screenshot', caption: 'My subscriptions and balance' }
+      ]
+    },
+    {
+      id: 'step-3-key',
+      step: '3',
+      label: 'Get API key',
+      title: 'Use the dashboard default key first',
+      paragraphs: [
+        'OceanWay AI connects Codex through an API key instead of direct account login.',
+        `After signing in, open ${dashboardUrl.value} and copy the default-key and Base URL. This is enough for normal use.`,
+        `If you need multiple keys, create and copy extra keys at ${keysUrl.value}.`
+      ],
+      images: [
+        { src: docImages.dashboardKey, alt: 'Dashboard default key and Base URL screenshot', caption: 'Dashboard default key and Base URL' },
+        { src: docImages.apiKeys, alt: 'API keys page screenshot', caption: 'Create and copy extra API keys' }
+      ]
+    },
+    {
+      id: 'install-codex',
+      label: 'Install Codex',
+      title: 'Install the official Codex client',
+      paragraphs: ['After account, credit, and API key are ready, install Codex for your operating system.'],
+      images: [
+        { src: docImages.codexWebsite, alt: 'Codex official download page screenshot', caption: 'Codex official download page' }
+      ]
+    },
+    {
+      id: 'step-4-windows',
+      step: '4',
+      label: 'Windows install',
+      title: 'Install from Microsoft Store or the Codex website',
+      paragraphs: [
+        'Open Microsoft Store, search for Codex, then install it.',
+        'You can also use the Microsoft Store web link or the Codex official site.'
+      ],
+      bullets: [
+        'Microsoft Store: https://apps.microsoft.com/detail/9plm9xgg6vks?hl=en-US&gl=US',
+        'Codex website: https://openai.com/zh-Hant/codex/'
+      ],
+      callout: 'If installation fails, send the error code and screenshot to the group for help.',
+      images: [
+        { src: docImages.windowsStart, alt: 'Windows Microsoft Store search screenshot', caption: 'Open Microsoft Store' },
+        { src: docImages.windowsStore, alt: 'Microsoft Store Codex search screenshot', caption: 'Search Codex in Microsoft Store' }
+      ]
+    },
+    {
+      id: 'step-5-mac',
+      step: '5',
+      label: 'Mac install',
+      title: 'Download the official macOS installer',
+      paragraphs: [
+        'Official macOS download: https://persistent.oaistatic.com/codex-app-prod/Codex.dmg',
+        'Open the dmg after download and drag Codex into Applications.'
+      ],
+      callout: 'Important: fully quit Codex before using the one-click config tool.'
+    },
+    {
+      id: 'step-6-config',
+      step: '6',
+      label: 'One-click config',
+      title: 'Paste the API key and configure',
+      paragraphs: [
+        'The OceanWay one-click config tool writes the provider settings for you.',
+        `Paste the API key activated on ${apiHost.value}, set Base URL to ${apiHost.value}, click one-click config, then reopen Codex.`
+      ],
+      bullets: [
+        'Windows package: codex-config-Windows.zip',
+        'Mac Intel package: codex-config-macOS-x64.zip',
+        'Mac Apple Silicon package: codex-config-macOS-arm64.zip'
+      ],
+      callout: 'If macOS blocks the app, run: xattr -dr com.apple.quarantine ~/Downloads/codex-config.app',
+      images: [
+        { src: docImages.configTool, alt: 'OceanWay AI Codex config tool screenshot', caption: 'Paste API key and Base URL, then click one-click config' }
+      ]
+    },
+    {
+      id: 'step-7-ready',
+      step: '7',
+      label: 'Start using',
+      title: 'Reopen Codex and verify',
+      paragraphs: [
+        'Do not keep Codex open before configuring. On Windows, quit the taskbar instance too.',
+        `After reopening, no proxy is needed. When the ${siteName.value} badge appears, send hi. A reply means setup is complete.`
+      ],
+      images: [
+        { src: docImages.codexReady, alt: 'Codex ready with OceanWay badge screenshot', caption: 'OceanWay badge and hi verification' }
+      ]
+    }
+  ] satisfies TutorialSection[],
   clientsTitle: 'One-click Codex config',
   clientsIntro:
     'The one-click config tool is the recommended path for regular Codex users. Fully quit Codex before configuring.',
@@ -774,6 +1022,87 @@ onMounted(() => {
   color: white;
   font-size: 0.875rem;
   font-weight: 800;
+}
+
+.tutorial-block {
+  border: 1px solid rgba(203, 213, 225, 0.72);
+  border-radius: 0.5rem;
+  background: rgba(255, 255, 255, 0.78);
+  padding: 1.15rem;
+}
+
+.tutorial-label {
+  color: #005db8;
+  font-size: 0.8rem;
+  font-weight: 850;
+}
+
+.tutorial-block h3 {
+  margin-top: 0.9rem;
+  color: #0f172a;
+  font-size: 1.2rem;
+  font-weight: 850;
+  letter-spacing: 0;
+}
+
+.tutorial-paragraph {
+  color: #475569;
+  font-size: 0.92rem;
+  line-height: 1.75;
+}
+
+.tutorial-list {
+  margin-top: 1rem;
+  display: grid;
+  gap: 0.55rem;
+  padding-left: 1.25rem;
+  color: #475569;
+  font-size: 0.9rem;
+  line-height: 1.7;
+  list-style: disc;
+}
+
+.tutorial-callout {
+  margin-top: 1rem;
+  border: 1px solid rgba(0, 160, 255, 0.22);
+  border-radius: 0.5rem;
+  background: rgba(232, 246, 255, 0.74);
+  padding: 0.85rem 1rem;
+  color: #0f3f6c;
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1.7;
+}
+
+.tutorial-image-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  align-items: start;
+  gap: 1rem;
+}
+
+.tutorial-image-card {
+  overflow: hidden;
+  border: 1px solid rgba(203, 213, 225, 0.72);
+  border-radius: 0.5rem;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.tutorial-image-card img {
+  display: block;
+  width: 100%;
+  max-height: 34rem;
+  object-fit: contain;
+  background: #f8fafc;
+}
+
+.tutorial-image-card figcaption {
+  border-top: 1px solid rgba(226, 232, 240, 0.88);
+  padding: 0.75rem 0.9rem;
+  color: #334155;
+  font-size: 0.82rem;
+  font-weight: 800;
+  line-height: 1.45;
 }
 
 .step-panel h3,
