@@ -64,9 +64,9 @@
 
           <div class="rounded-lg bg-slate-950 p-4 text-white">
             <p class="text-xs font-semibold uppercase tracking-[0.14em] text-sky-200">
-              Base URL
+              Codex Base URL
             </p>
-            <p class="mt-2 break-words font-mono text-sm text-slate-200">{{ endpointBase }}</p>
+            <p class="mt-2 break-words font-mono text-sm text-slate-200">{{ apiHost }}</p>
           </div>
         </nav>
       </aside>
@@ -77,7 +77,7 @@
             <span class="h-2 w-2 rounded-full bg-sky-500"></span>
             {{ copy.eyebrow }}
           </div>
-          <h1 class="mt-6 max-w-4xl text-4xl font-black leading-tight tracking-normal text-slate-950 sm:text-6xl">
+          <h1 class="mt-6 max-w-4xl text-4xl font-black leading-tight tracking-normal text-slate-950 sm:text-5xl">
             {{ copy.titleLead }}
             <span class="hero-highlight">{{ copy.titleHighlight }}</span>
           </h1>
@@ -87,7 +87,7 @@
 
           <div class="mt-8 flex flex-wrap gap-3">
             <a href="#quick-start" class="primary-action">{{ copy.quickStartAction }}</a>
-            <a href="#api" class="secondary-action">{{ copy.apiAction }}</a>
+            <a href="#clients" class="secondary-action">{{ copy.apiAction }}</a>
           </div>
 
           <dl class="mt-9 grid gap-3 md:grid-cols-3">
@@ -273,74 +273,103 @@ const endpointBase = computed(() => {
   const configured = apiBaseUrl.value.trim().replace(/\/+$/, '')
   if (configured) return configured
   const origin = getCurrentOrigin()
-  return isLocalOrigin(origin) ? 'https://oceanway.site/v1' : `${origin}/v1`
-})
-
-const managedEndpointBase = computed(() => {
-  const origin = getCurrentOrigin()
-  return isLocalOrigin(origin) ? 'https://oceanwayai.site/v1' : `${origin}/v1`
+  return isLocalOrigin(origin) ? 'https://ocean-way.top/v1' : `${origin}/v1`
 })
 
 const apiHost = computed(() => endpointBase.value.replace(/\/v1$/i, ''))
+const registerUrl = computed(() => `${apiHost.value}/register`)
+const dashboardUrl = computed(() => `${apiHost.value}/dashboard`)
+const keysUrl = computed(() => `${apiHost.value}/keys`)
+const subscriptionsUrl = computed(() => `${apiHost.value}/subscriptions`)
+const redeemUrl = computed(() => `${apiHost.value}/redeem`)
 const copy = computed(() => isZh.value ? zhCopy.value : enCopy.value)
 
 const quickStartBlocks = computed<CodeBlock[]>(() => [
   {
-    key: 'curl',
-    title: isZh.value ? '最小 curl 示例' : 'Minimal curl example',
-    code: `curl ${endpointBase.value}/chat/completions \\
-  -H "Content-Type: application/json" \\
-  -H "Authorization: Bearer sk-your-token" \\
-  -d '{
-    "model": "your-model",
-    "messages": [
-      {"role": "user", "content": "Hello from ${siteName.value}"}
-    ]
-  }'`
+    key: 'codex-entry',
+    title: isZh.value ? '常用入口' : 'Useful links',
+    code: `${siteName.value}: ${apiHost.value}
+注册账号: ${registerUrl.value}
+用户仪表盘: ${dashboardUrl.value}
+API 密钥: ${keysUrl.value}
+我的订阅: ${subscriptionsUrl.value}
+兑换码: ${redeemUrl.value}
+
+Windows Codex: https://apps.microsoft.com/detail/9plm9xgg6vks?hl=en-US&gl=US
+Codex 官网: https://openai.com/zh-Hant/codex/
+macOS Codex: https://persistent.oaistatic.com/codex-app-prod/Codex.dmg`
   },
   {
-    key: 'python',
-    title: isZh.value ? 'Python SDK 示例' : 'Python SDK example',
-    code: `from openai import OpenAI
-
-client = OpenAI(
-    api_key="sk-your-token",
-    base_url="${endpointBase.value}"
-)
-
-response = client.chat.completions.create(
-    model="your-model",
-    messages=[{"role": "user", "content": "Hello from ${siteName.value}"}]
-)
-
-print(response.choices[0].message.content)`
+    key: 'default-key',
+    title: isZh.value ? '默认 Key 获取路径' : 'Default key path',
+    code: isZh.value
+      ? `1. 登录 ${dashboardUrl.value}
+2. 在仪表盘右侧找到 default-key
+3. 点击复制 API Key
+4. 点击复制 Base URL
+5. 如需多个 Key，再到 ${keysUrl.value} 创建`
+      : `1. Sign in at ${dashboardUrl.value}
+2. Find default-key on the dashboard
+3. Copy the API key
+4. Copy the Base URL
+5. Create extra keys at ${keysUrl.value} only when needed`
   },
   {
-    key: 'node',
-    title: isZh.value ? 'Node.js SDK 示例' : 'Node.js SDK example',
-    code: `import OpenAI from "openai";
-
-const client = new OpenAI({
-  apiKey: "sk-your-token",
-  baseURL: "${endpointBase.value}",
-});
-
-const response = await client.chat.completions.create({
-  model: "your-model",
-  messages: [{ role: "user", content: "Hello from ${siteName.value}" }],
-});
-
-console.log(response.choices[0].message.content);`
+    key: 'quota-paths',
+    title: isZh.value ? '额度、订阅和兑换码' : 'Quota, subscriptions, and redemption',
+    code: isZh.value
+      ? `注册后先使用默认赠送额度体验。
+新用户可联系客服领取试用额度。
+站内购买: ${subscriptionsUrl.value}
+站外兑换码: ${redeemUrl.value}
+购买或兑换订阅后，在“我的订阅”查看分组。
+购买或兑换额度后，在左上角余额查看变化。`
+      : `Try the default sign-up credit first.
+Contact support for trial credit when available.
+Buy in-site: ${subscriptionsUrl.value}
+Redeem code: ${redeemUrl.value}
+After subscribing, check My subscriptions.
+After topping up credit, check the balance in the header.`
   }
 ])
 
 const clientBlocks = computed<CodeBlock[]>(() => [
   {
-    key: 'codex',
-    title: 'Codex',
+    key: 'one-click-config',
+    title: isZh.value ? '一键配置软件' : 'One-click Codex config tool',
     description: isZh.value
-      ? '适合 Codex CLI、桌面端和 Responses 风格 Provider。'
-      : 'Works for Codex CLI, desktop, and Responses-style providers.',
+      ? '配置前先完全退出 Codex。Windows 需要把任务栏里的 Codex 也退出。'
+      : 'Fully quit Codex before configuring. On Windows, also quit it from the taskbar.',
+    code: isZh.value
+      ? `1. 从讨论组或客服处获取对应系统的一键配置软件
+2. 解压并打开 codex-config
+3. API Key 填入仪表盘复制的 default-key
+4. Base URL 填入 ${apiHost.value}
+5. 点击测试连接
+6. 点击一键配置
+7. 重新打开 Codex，看到 ${siteName.value} 标记后发送 hi 验证`
+      : `1. Get the matching config tool from support
+2. Unzip and open codex-config
+3. Paste the default-key from the dashboard
+4. Set Base URL to ${apiHost.value}
+5. Test the connection
+6. Click one-click config
+7. Reopen Codex and send hi after the ${siteName.value} badge appears`
+  },
+  {
+    key: 'mac-quarantine',
+    title: isZh.value ? 'macOS 配置器无法打开时' : 'macOS quarantine command',
+    description: isZh.value
+      ? '如果 macOS 阻止打开配置器，在终端运行后再打开。'
+      : 'Run this in Terminal if macOS blocks the config app.',
+    code: `xattr -dr com.apple.quarantine ~/Downloads/codex-config.app`
+  },
+  {
+    key: 'codex-manual',
+    title: isZh.value ? '手动 Codex 配置备用' : 'Manual Codex config fallback',
+    description: isZh.value
+      ? '一键配置不可用时，可以按这个 Provider 结构手动配置。'
+      : 'Use this provider structure if the config tool is unavailable.',
     code: `disable_response_storage = true
 model = "your-model"
 model_provider = "${siteName.value}"
@@ -356,53 +385,10 @@ wire_api = "responses"`
     key: 'auth-json',
     title: 'auth.json',
     description: isZh.value
-      ? '鉴权文件里保持最小字段，减少读取异常。'
-      : 'Keep the auth file minimal to avoid provider parsing issues.',
+      ? 'API Key 使用默认 Key 或你在 API 密钥页额外创建的 Key。'
+      : 'Use your default key or an extra key created on the API keys page.',
     code: `{
   "OPENAI_API_KEY": "sk-your-token"
-}`
-  },
-  {
-    key: 'claude-code',
-    title: 'Claude Code',
-    description: isZh.value
-      ? '如果工具走 Anthropic 风格变量，Host 通常使用站点根域。'
-      : 'For Anthropic-style variables, the host usually uses the site root.',
-    code: `{
-  "env": {
-    "ANTHROPIC_AUTH_TOKEN": "sk-your-token",
-    "ANTHROPIC_BASE_URL": "${apiHost.value}",
-    "ANTHROPIC_MODEL": "your-model",
-    "ANTHROPIC_DEFAULT_SONNET_MODEL": "your-model",
-    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "your-model",
-    "ANTHROPIC_DEFAULT_OPUS_MODEL": "your-model"
-  }
-}`
-  },
-  {
-    key: 'opencode',
-    title: 'OpenCode',
-    description: isZh.value
-      ? '推荐用 OpenAI Compatible Provider，Provider ID 和模型前缀保持一致。'
-      : 'Use an OpenAI-compatible provider and keep provider IDs consistent.',
-    code: `{
-  "$schema": "https://opencode.ai/config.json",
-  "provider": {
-    "${siteName.value}": {
-      "npm": "@ai-sdk/openai-compatible",
-      "name": "${siteName.value}",
-      "options": {
-        "baseURL": "${endpointBase.value}"
-      },
-      "models": {
-        "your-model": {
-          "model": "your-model",
-          "name": "your-model"
-        }
-      }
-    }
-  },
-  "model": "${siteName.value}/your-model"
 }`
   }
 ])
@@ -415,6 +401,19 @@ const apiBlocks = computed<CodeBlock[]>(() => [
   -H "Authorization: Bearer sk-your-token"`
   },
   {
+    key: 'chat-completions',
+    title: 'POST /v1/chat/completions',
+    code: `curl ${endpointBase.value}/chat/completions \\
+  -H "Content-Type: application/json" \\
+  -H "Authorization: Bearer sk-your-token" \\
+  -d '{
+    "model": "your-model",
+    "messages": [
+      {"role": "user", "content": "Hello from ${siteName.value}"}
+    ]
+  }'`
+  },
+  {
     key: 'responses',
     title: 'POST /v1/responses',
     code: `curl ${endpointBase.value}/responses \\
@@ -422,155 +421,157 @@ const apiBlocks = computed<CodeBlock[]>(() => [
   -H "Authorization: Bearer sk-your-token" \\
   -d '{
     "model": "your-model",
-    "input": "Explain how to connect to ${siteName.value}.",
-    "reasoning": { "effort": "medium" },
-    "max_output_tokens": 800
+    "input": "Say hi from ${siteName.value}",
+    "reasoning": { "effort": "medium" }
   }'`
-  },
-  {
-    key: 'managed',
-    title: isZh.value ? '托管客户 Base URL' : 'Managed customer Base URL',
-    code: `${managedEndpointBase.value}
-
-Authorization: Bearer sk-managed-customer-key`
   }
 ])
 
 const zhCopy = computed(() => ({
-  headerSubtitle: 'OpenAI 兼容 API 接入文档',
+  headerSubtitle: 'Codex 接入教程',
   mainSite: '主站',
   agentsHub: 'Agents Hub',
   signIn: '登录',
   contents: '目录',
-  eyebrow: `${siteName.value} Docs`,
-  titleLead: '面向开发工具的',
-  titleHighlight: 'AI 接入文档。',
+  eyebrow: `${siteName.value} Codex`,
+  titleLead: 'OceanWay AI',
+  titleHighlight: 'Codex 接入教程',
   description:
-    `${siteName.value} 提供 OpenAI 兼容 API 网关，适配 Codex、Claude Code、OpenCode 和通用 SDK。用统一的 API Key 与 Base URL 接入可用模型。`,
-  quickStartAction: '快速开始',
-  apiAction: '查看 API',
+    `全程无需代理。按本文步骤注册账号、获取额度、复制默认 Key，然后用一键配置软件把 Codex 接入 ${siteName.value}。使用中遇到问题，可加入讨论组或联系微信客服。`,
+  quickStartAction: '按步骤接入',
+  apiAction: '查看配置',
   facts: [
-    { label: '入口', value: 'OpenAI Compatible' },
-    { label: '默认 Base URL', value: endpointBase.value },
-    { label: '文档路径', value: '/docs' }
+    { label: '官网首页', value: apiHost.value },
+    { label: 'Codex Base URL', value: apiHost.value },
+    { label: '推荐 Key', value: '仪表盘 default-key' }
   ] satisfies Fact[],
   nav: [
     { href: '#overview', label: '首页' },
-    { href: '#quick-start', label: '快速接入' },
-    { href: '#clients', label: '客户端配置' },
-    { href: '#api', label: 'API 文档' },
+    { href: '#quick-start', label: '接入步骤' },
+    { href: '#clients', label: '一键配置' },
+    { href: '#api', label: 'API 补充' },
     { href: '#errors', label: '错误排查' },
     { href: '#faq', label: 'Q&A' }
   ] satisfies NavItem[],
-  needTitle: '你可能最先需要的内容',
+  needTitle: '先确认这四件事',
   needCards: [
-    { href: '#clients', title: 'Codex 配置', description: '优先推荐，直接配置 Base URL、Provider 和令牌即可。' },
-    { href: '#api', title: 'Chat Completions', description: '兼容最广的接口，适合脚本、SDK 与通用 API 调用。' },
-    { href: '#api', title: 'Responses', description: '适合新版 OpenAI 客户端、Codex 和更统一的响应结构。' },
-    { href: '#errors', title: '常见问题', description: '接入失败、模型不可用或额度异常时，从这里开始排查。' }
+    { href: '#quick-start', title: '注册账号', description: `访问 ${registerUrl.value}，用邮箱注册并登录控制台。` },
+    { href: '#quick-start', title: '获取额度', description: '新账号先使用赠送额度；也可以站内充值、购买订阅或兑换兑换码。' },
+    { href: '#quick-start', title: '复制默认 Key', description: '仪表盘中的 default-key 可以直接使用，通常无需先创建新 Key。' },
+    { href: '#clients', title: '配置 Codex', description: '完全退出 Codex 后，用一键配置软件写入 Key 和 Base URL，再重新打开验证。' }
   ] satisfies GuideCard[],
-  quickStartTitle: '快速接入',
-  quickStartIntro: '最快只需要一个 Base URL 和一个 API Key。先验证模型列表，再接入客户端。',
+  quickStartTitle: '按以下步骤获取 API 密钥并接入 Codex',
+  quickStartIntro: '推荐顺序是先注册和确认额度，再复制默认 Key，最后安装 Codex 并用配置器接入。',
   steps: [
-    { title: '登录控制台', description: '确认你已经有可用账户，并能创建可用 API Key。' },
-    { title: '获取 API Key', description: '创建以 sk- 开头的令牌，并妥善保存。' },
-    { title: '设置 Base URL', description: `将客户端指向 ${endpointBase.value}，不要漏掉 /v1。` }
+    { title: '注册账号', description: `访问 ${registerUrl.value}，使用邮箱注册并登录。` },
+    { title: '获取额度', description: '注册赠送额度可先体验；新用户可联系客服领取试用额度。' },
+    { title: '充值或兑换', description: '在充值/订阅页购买余额或订阅，也可以在兑换页输入兑换码。' },
+    { title: '复制默认 Key', description: '登录后在仪表盘复制 default-key 和 Base URL；多 Key 场景再去 API 密钥页创建。' },
+    { title: '安装 Codex', description: 'Windows 可通过 Microsoft Store 或官网安装；Mac 使用官方 dmg。' },
+    { title: '一键配置', description: `配置器中 API Key 填 default-key，Base URL 填 ${apiHost.value}。` },
+    { title: '重新打开验证', description: `打开 Codex 后看到 ${siteName.value} 标记，发送 hi 有回复即配置完成。` }
   ] satisfies Step[],
-  clientsTitle: '客户端配置',
+  clientsTitle: '一键配置 Codex',
   clientsIntro:
-    '不同工具对 Base URL 的字段名不完全一致。OpenAI 兼容 SDK 通常填写 /v1 地址，Anthropic 风格工具通常填写根域。',
-  apiTitle: 'API 文档',
-  apiIntro: '最常用的是模型列表、Chat Completions 和 Responses。建议先测 /models，再开始正式调用。',
+    '一键配置软件由 OceanWay 团队提供，适合不想手动编辑配置文件的用户。配置前请先完全退出 Codex。',
+  apiTitle: 'API 调用补充',
+  apiIntro: '普通 Codex 用户优先使用一键配置。需要脚本或 SDK 调用时，OpenAI 兼容接口使用带 /v1 的 Base URL。',
   endpoints: [
     { method: 'GET', path: '/v1/models', description: '查看当前令牌可见模型。' },
     { method: 'POST', path: '/v1/chat/completions', description: '兼容传统 OpenAI 对话接口。' },
     { method: 'POST', path: '/v1/responses', description: '适合新版客户端和推理任务。' }
   ] satisfies Endpoint[],
   errorsTitle: '错误排查',
-  errorsIntro: '接入失败时，先看状态码和 error.code，再区分是客户端配置、令牌权限还是服务侧容量问题。',
+  errorsIntro: '如果安装或配置时报错，优先截图并记录错误代码。API 调用失败时，再按状态码排查。',
   errorRows: [
-    { code: '400', meaning: '请求参数错误', fix: '检查 JSON 结构、字段名和模型名。' },
-    { code: '401', meaning: '认证失败', fix: '确认 Authorization 使用的是当前站点生成的 API Key。' },
-    { code: '403', meaning: '权限不足', fix: '检查令牌是否有分组、订阅或模型权限。' },
-    { code: '404', meaning: '路径不存在', fix: '确认 Base URL 包含 /v1，接口路径没有重复拼接。' },
-    { code: '429', meaning: '频率超限', fix: '降低请求频率，或检查 Key / 用户 / 分组限流。' },
-    { code: '503', meaning: '服务不可用', fix: '优先确认分组内是否有可调度账号和模型容量。' }
+    { code: 'Codex 无 OceanWay 标记', meaning: '配置未生效', fix: '彻底退出 Codex 后重新运行一键配置，再重新打开。Windows 也要退出任务栏中的 Codex。' },
+    { code: '401', meaning: '认证失败', fix: '确认使用的是仪表盘 default-key 或 API 密钥页创建的有效 Key。' },
+    { code: '403', meaning: '权限不足', fix: '检查账户是否有有效订阅、余额或对应模型权限。' },
+    { code: '404', meaning: '路径不存在', fix: 'Codex 配置器填裸域；脚本调用 OpenAI 兼容 API 时填带 /v1 的地址。' },
+    { code: '429', meaning: '频率或额度限制', fix: '降低并发，或检查 Key、账户余额、订阅额度和平台限额。' },
+    { code: '503', meaning: '服务暂不可用', fix: '稍后重试；如果持续出现，带截图和请求时间联系讨论组或客服。' }
   ] satisfies ErrorRow[],
   faqTitle: 'Q&A',
   faq: [
-    { question: 'Base URL 应该填裸域名还是 /v1？', answer: 'OpenAI 兼容 SDK 通常填写带 /v1 的地址。如果工具已经自动拼接 /v1，就不要重复追加。' },
-    { question: '模型名应该怎么选？', answer: '先请求 GET /v1/models，把返回结果中的模型名写入客户端，避免凭记忆手写。' },
-    { question: '内部客户和公共用户的文档是否不同？', answer: '调用协议一致，内部客户通常使用管理员交付的托管 API Key 和对应 Base URL。' }
+    { question: '我需要自己创建 API Key 吗？', answer: '通常不需要。注册登录后，仪表盘里的 default-key 可以直接作为 Codex Key 使用。只有需要多个 Key 时，再到 API 密钥页创建。' },
+    { question: 'Codex 配置器里的 Base URL 应该填什么？', answer: `按教程填裸域 ${apiHost.value}。如果你写脚本直接调 OpenAI 兼容 API，则使用 ${endpointBase.value}。` },
+    { question: '配置前为什么要完全退出 Codex？', answer: 'Codex 可能已经读取了旧配置。完全退出后再配置、再重新打开，可以确保新 Provider 和 Key 被加载。' },
+    { question: '没有额度可以测试吗？', answer: '新注册账号可先使用默认赠送额度；如需更多试用额度，可以联系微信客服或讨论组。' }
   ] satisfies FaqItem[],
   copy: '复制',
   copied: '已复制'
 }))
 
 const enCopy = computed(() => ({
-  headerSubtitle: 'OpenAI-compatible API docs',
+  headerSubtitle: 'Codex setup guide',
   mainSite: 'Main site',
   agentsHub: 'Agents Hub',
   signIn: 'Sign in',
   contents: 'Contents',
-  eyebrow: `${siteName.value} Docs`,
-  titleLead: 'AI integration docs for',
-  titleHighlight: 'developer tools.',
+  eyebrow: `${siteName.value} Codex`,
+  titleLead: 'OceanWay AI',
+  titleHighlight: 'Codex setup guide',
   description:
-    `${siteName.value} provides an OpenAI-compatible API gateway for Codex, Claude Code, OpenCode, and common SDKs. Use one API key and one Base URL to reach available models.`,
-  quickStartAction: 'Quick start',
-  apiAction: 'View API docs',
+    `No proxy is required. Register, confirm your credit, copy the default key, then use the one-click config tool to connect Codex to ${siteName.value}.`,
+  quickStartAction: 'Setup steps',
+  apiAction: 'View config',
   facts: [
-    { label: 'Entry', value: 'OpenAI Compatible' },
-    { label: 'Default Base URL', value: endpointBase.value },
-    { label: 'Docs path', value: '/docs' }
+    { label: 'Site', value: apiHost.value },
+    { label: 'Codex Base URL', value: apiHost.value },
+    { label: 'Recommended key', value: 'Dashboard default-key' }
   ] satisfies Fact[],
   nav: [
     { href: '#overview', label: 'Home' },
-    { href: '#quick-start', label: 'Quick start' },
-    { href: '#clients', label: 'Client config' },
-    { href: '#api', label: 'API docs' },
+    { href: '#quick-start', label: 'Setup steps' },
+    { href: '#clients', label: 'One-click config' },
+    { href: '#api', label: 'API supplement' },
     { href: '#errors', label: 'Troubleshooting' },
     { href: '#faq', label: 'Q&A' }
   ] satisfies NavItem[],
-  needTitle: 'What you may need first',
+  needTitle: 'Check these first',
   needCards: [
-    { href: '#clients', title: 'Codex config', description: 'Recommended first path: configure Base URL, provider, and token.' },
-    { href: '#api', title: 'Chat Completions', description: 'The widest compatible API for scripts, SDKs, and general calls.' },
-    { href: '#api', title: 'Responses', description: 'Better for newer OpenAI clients, Codex, and unified response shapes.' },
-    { href: '#errors', title: 'Common issues', description: 'Start here for failed requests, unavailable models, or quota issues.' }
+    { href: '#quick-start', title: 'Register', description: `Create an account at ${registerUrl.value} and sign in.` },
+    { href: '#quick-start', title: 'Get credit', description: 'Use the sign-up credit first, then top up, subscribe, or redeem a code.' },
+    { href: '#quick-start', title: 'Copy default key', description: 'The dashboard default-key is ready to use. Extra keys are optional.' },
+    { href: '#clients', title: 'Configure Codex', description: 'Quit Codex, write the key and Base URL with the config tool, then reopen and test.' }
   ] satisfies GuideCard[],
-  quickStartTitle: 'Quick start',
-  quickStartIntro: 'You only need a Base URL and an API key. Check models first, then connect your client.',
+  quickStartTitle: 'Get an API key and connect Codex',
+  quickStartIntro: 'Register and confirm credit first, copy the default key, install Codex, then configure it.',
   steps: [
-    { title: 'Sign in', description: 'Make sure your account can create a usable API key.' },
-    { title: 'Create an API key', description: 'Create a token starting with sk- and store it safely.' },
-    { title: 'Set Base URL', description: `Point your client to ${endpointBase.value}. Do not omit /v1.` }
+    { title: 'Register', description: `Visit ${registerUrl.value} and register with email.` },
+    { title: 'Get credit', description: 'Try the sign-up credit first, or contact support for trial credit.' },
+    { title: 'Top up or redeem', description: 'Buy credit or a subscription in-site, or redeem an external code.' },
+    { title: 'Copy default key', description: 'Copy default-key and Base URL from the dashboard. Create extra keys only when needed.' },
+    { title: 'Install Codex', description: 'Install from Microsoft Store, the OpenAI Codex page, or the macOS dmg.' },
+    { title: 'One-click config', description: `Paste the default key and set Base URL to ${apiHost.value}.` },
+    { title: 'Reopen and test', description: `Reopen Codex, confirm the ${siteName.value} badge, and send hi.` }
   ] satisfies Step[],
-  clientsTitle: 'Client config',
+  clientsTitle: 'One-click Codex config',
   clientsIntro:
-    'Tools name the Base URL field differently. OpenAI-compatible SDKs usually use the /v1 URL, while Anthropic-style tools often use the site root.',
-  apiTitle: 'API docs',
-  apiIntro: 'The most common APIs are model listing, Chat Completions, and Responses. Test /models first.',
+    'The one-click config tool is the recommended path for regular Codex users. Fully quit Codex before configuring.',
+  apiTitle: 'API supplement',
+  apiIntro: 'Regular Codex users should use the config tool. Scripts and SDKs can use the OpenAI-compatible /v1 Base URL.',
   endpoints: [
     { method: 'GET', path: '/v1/models', description: 'List models visible to the current token.' },
     { method: 'POST', path: '/v1/chat/completions', description: 'Traditional OpenAI-compatible chat API.' },
     { method: 'POST', path: '/v1/responses', description: 'Useful for newer clients and reasoning tasks.' }
   ] satisfies Endpoint[],
   errorsTitle: 'Troubleshooting',
-  errorsIntro: 'When calls fail, check the status code and error.code before separating client, token, and capacity issues.',
+  errorsIntro: 'For install or config errors, keep the screenshot and error code. For API errors, check the status code.',
   errorRows: [
-    { code: '400', meaning: 'Invalid request', fix: 'Check JSON shape, field names, and model name.' },
-    { code: '401', meaning: 'Auth failed', fix: 'Use an API key generated by this site.' },
-    { code: '403', meaning: 'No permission', fix: 'Check group, subscription, or model permissions.' },
-    { code: '404', meaning: 'Wrong path', fix: 'Confirm the Base URL includes /v1 and paths are not duplicated.' },
-    { code: '429', meaning: 'Rate limited', fix: 'Lower request rate or inspect key, user, and group limits.' },
-    { code: '503', meaning: 'Unavailable', fix: 'Check whether the group has schedulable accounts and model capacity.' }
+    { code: 'No OceanWay badge', meaning: 'Config not loaded', fix: 'Quit Codex completely, run the config tool again, then reopen Codex.' },
+    { code: '401', meaning: 'Auth failed', fix: 'Use the dashboard default-key or a valid key from the API keys page.' },
+    { code: '403', meaning: 'No permission', fix: 'Check your subscription, balance, or model permission.' },
+    { code: '404', meaning: 'Wrong path', fix: 'Use the bare domain in the Codex config tool; use /v1 for direct OpenAI-compatible API calls.' },
+    { code: '429', meaning: 'Rate or quota limited', fix: 'Lower concurrency or check key, account balance, subscription quota, and platform limits.' },
+    { code: '503', meaning: 'Temporarily unavailable', fix: 'Retry later. If it continues, contact support with the screenshot and request time.' }
   ] satisfies ErrorRow[],
   faqTitle: 'Q&A',
   faq: [
-    { question: 'Should Base URL include /v1?', answer: 'OpenAI-compatible SDKs usually need the /v1 URL. If your tool appends /v1 automatically, do not add it twice.' },
-    { question: 'How should I choose a model name?', answer: 'Call GET /v1/models first and copy a returned model name into the client.' },
-    { question: 'Are managed customers different from retail users?', answer: 'The calling protocol is the same. Managed customers usually receive an admin-issued API key and the matching Base URL.' }
+    { question: 'Do I need to create an API key manually?', answer: 'Usually no. The dashboard default-key is ready for Codex. Create extra keys only if you need multiple keys.' },
+    { question: 'Which Base URL should I use?', answer: `Use ${apiHost.value} in the Codex config tool. Use ${endpointBase.value} for direct OpenAI-compatible API calls.` },
+    { question: 'Why must I quit Codex before configuring?', answer: 'Codex may have already loaded the old provider. Reopening it after configuration ensures the new provider and key are loaded.' },
+    { question: 'Can I test without topping up?', answer: 'Try the sign-up credit first. Contact support for trial credit when available.' }
   ] satisfies FaqItem[],
   copy: 'Copy',
   copied: 'Copied'
