@@ -524,6 +524,7 @@ const zhCopy = computed(() => ({
       label: 'Mac 安装',
       title: '下载官方 macOS 安装包',
       paragraphs: [
+        'Mac M 系列芯片下载链接：https://persistent.oaistatic.com/codex-app-prod/Codex.dmg',
         'Intel 芯片 Mac 下载链接：https://persistent.oaistatic.com/codex-app-prod/Codex-latest-x64.dmg',
         '下载后双击安装，按系统提示拖入 Applications。'
       ],
@@ -711,6 +712,7 @@ const enCopy = computed(() => ({
       label: 'Mac install',
       title: 'Download the official macOS installer',
       paragraphs: [
+        'Mac Apple Silicon download: https://persistent.oaistatic.com/codex-app-prod/Codex.dmg',
         'Intel Mac download: https://persistent.oaistatic.com/codex-app-prod/Codex-latest-x64.dmg',
         'Open the dmg after download and drag Codex into Applications.'
       ],
