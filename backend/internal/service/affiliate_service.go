@@ -778,7 +778,7 @@ func normalizeAffiliateRecordPagination(filter AffiliateRecordFilter) AffiliateR
 
 func normalizeAffiliateWalletRecordAction(action string) string {
 	switch strings.TrimSpace(action) {
-	case "discount", "discount_restore", "withdraw":
+	case "discount", "withdraw":
 		return strings.TrimSpace(action)
 	default:
 		return ""
@@ -787,7 +787,7 @@ func normalizeAffiliateWalletRecordAction(action string) string {
 
 func normalizeUserAffiliateWalletRecordAction(action string) string {
 	switch strings.TrimSpace(action) {
-	case "accrue", "discount", "discount_restore", "withdraw", "rebate_reversal":
+	case "accrue", "discount", "withdraw":
 		return strings.TrimSpace(action)
 	default:
 		return ""

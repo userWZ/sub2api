@@ -237,9 +237,7 @@ const recordActionOptions = computed<SelectOption[]>(() => [
   { value: '', label: t('affiliate.records.allTypes') },
   { value: 'accrue', label: t('affiliate.records.actions.accrue') },
   { value: 'discount', label: t('affiliate.records.actions.discount') },
-  { value: 'discount_restore', label: t('affiliate.records.actions.discountRestore') },
   { value: 'withdraw', label: t('affiliate.records.actions.withdraw') },
-  { value: 'rebate_reversal', label: t('affiliate.records.actions.rebateReversal') },
 ])
 
 function formatCount(value: number): string {
@@ -297,15 +295,13 @@ function handleRecordsPageSizeChange(size: number): void {
 }
 
 function isPositiveRecord(action: string | null | undefined): boolean {
-  return action === 'accrue' || action === 'discount_restore'
+  return action === 'accrue'
 }
 
 function recordActionLabel(action: string | null | undefined): string {
   if (action === 'accrue') return t('affiliate.records.actions.accrue')
   if (action === 'discount') return t('affiliate.records.actions.discount')
-  if (action === 'discount_restore') return t('affiliate.records.actions.discountRestore')
   if (action === 'withdraw') return t('affiliate.records.actions.withdraw')
-  if (action === 'rebate_reversal') return t('affiliate.records.actions.rebateReversal')
   return action || '-'
 }
 
@@ -339,9 +335,7 @@ function recordStatus(record: UserAffiliateLedgerRecord): string {
     }
   }
   if (record.action === 'accrue') return t('affiliate.records.status.posted')
-  if (record.action === 'discount_restore') return t('affiliate.records.status.restored')
   if (record.action === 'withdraw') return t('affiliate.records.status.withdrawn')
-  if (record.action === 'rebate_reversal') return t('affiliate.records.status.reversed')
   if (record.action === 'discount') return t('affiliate.records.status.deducted')
   return '-'
 }

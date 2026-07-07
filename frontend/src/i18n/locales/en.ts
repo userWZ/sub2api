@@ -1208,16 +1208,14 @@ export default {
 	    },
 	    records: {
 	      title: 'Rebate Credit Records',
-	      description: 'View rebate credits earned, purchase discounts, refund restores, and offline payout deductions',
+	      description: 'View rebate credits earned, purchase discounts, and offline payout deductions',
 	      loadFailed: 'Failed to load rebate credit records',
 	      empty: 'No rebate credit records yet',
 	      allTypes: 'All Types',
 	      actions: {
 	        accrue: 'Invite Rebate',
 	        discount: 'Purchase Discount',
-	        discountRestore: 'Discount Restore',
-	        withdraw: 'Offline Payout',
-	        rebateReversal: 'Rebate Reversal'
+	        withdraw: 'Offline Payout'
 	      },
 	      columns: {
 	        type: 'Type',
@@ -1231,9 +1229,7 @@ export default {
 	        posted: 'Posted',
 	        frozenUntil: 'Frozen until {time}',
 	        deducted: 'Deducted',
-	        restored: 'Restored',
-	        withdrawn: 'Paid out',
-	        reversed: 'Reversed'
+	        withdrawn: 'Paid out'
 	      }
 	    },
 	    tips: {
@@ -1865,7 +1861,7 @@ export default {
     affiliates: {
       invitesDescription: 'View site-wide inviter and invitee relationships',
       rebatesDescription: 'View recharge orders that generated affiliate rebates',
-      transfersDescription: 'View affiliate purchase discounts, discount restores, and offline payout deductions',
+      transfersDescription: 'View affiliate purchase discounts and offline payout deductions',
       errors: {
         loadFailed: 'Failed to load affiliate records'
       },
@@ -1888,7 +1884,6 @@ export default {
         action: 'Type',
         allActions: 'All Types',
         actionDiscount: 'Purchase Discount',
-        actionDiscountRestore: 'Discount Restore',
         actionWithdraw: 'Offline Payout',
         walletAmount: 'Amount',
         transferAmount: 'Amount',

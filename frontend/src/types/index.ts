@@ -148,7 +148,7 @@ export interface UserAffiliateDetail {
   invitees: AffiliateInvitee[]
 }
 
-export type UserAffiliateLedgerAction = 'accrue' | 'discount' | 'discount_restore' | 'withdraw' | 'rebate_reversal'
+export type UserAffiliateLedgerAction = 'accrue' | 'discount' | 'withdraw'
 
 export interface UserAffiliateLedgerRecord {
   ledger_id: number

@@ -13,9 +13,9 @@ func TestNormalizeAffiliateRecordFilterAction(t *testing.T) {
 		want string
 	}{
 		{name: "discount", in: "discount", want: "discount"},
-		{name: "discount restore", in: "discount_restore", want: "discount_restore"},
 		{name: "withdraw", in: "withdraw", want: "withdraw"},
 		{name: "trim spaces", in: " withdraw ", want: "withdraw"},
+		{name: "discount restore hidden", in: "discount_restore", want: ""},
 		{name: "legacy transfer hidden", in: "transfer", want: ""},
 		{name: "unknown action", in: "accrue", want: ""},
 	}
@@ -37,10 +37,10 @@ func TestNormalizeUserAffiliateRecordFilterAction(t *testing.T) {
 	}{
 		{name: "accrue", in: "accrue", want: "accrue"},
 		{name: "discount", in: "discount", want: "discount"},
-		{name: "discount restore", in: "discount_restore", want: "discount_restore"},
 		{name: "withdraw", in: "withdraw", want: "withdraw"},
-		{name: "rebate reversal", in: "rebate_reversal", want: "rebate_reversal"},
 		{name: "trim spaces", in: " accrue ", want: "accrue"},
+		{name: "discount restore hidden", in: "discount_restore", want: ""},
+		{name: "rebate reversal hidden", in: "rebate_reversal", want: ""},
 		{name: "legacy transfer hidden", in: "transfer", want: ""},
 		{name: "unknown action", in: "unknown", want: ""},
 	}

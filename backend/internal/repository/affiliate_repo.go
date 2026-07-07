@@ -929,7 +929,7 @@ FROM user_affiliate_ledger ual
 JOIN users u ON u.id = ual.user_id
 LEFT JOIN users op ON op.id = ual.operator_user_id
 LEFT JOIN payment_orders po ON po.id = ual.source_order_id
-WHERE ual.action IN ('discount', 'discount_restore', 'withdraw')`
+WHERE ual.action IN ('discount', 'withdraw')`
 	if filter.Action != "" {
 		args = append(args, filter.Action)
 		actionClause := fmt.Sprintf("ual.action = $%d", len(args))
@@ -1047,7 +1047,7 @@ func (r *affiliateRepository) ListUserAffiliateLedgerRecords(ctx context.Context
 	}
 	client := clientFromContext(ctx, r.client)
 	args := []any{userID}
-	where := "WHERE ual.user_id = $1 AND ual.action IN ('accrue', 'discount', 'discount_restore', 'withdraw', 'rebate_reversal')"
+	where := "WHERE ual.user_id = $1 AND ual.action IN ('accrue', 'discount', 'withdraw')"
 	if filter.Action != "" {
 		args = append(args, filter.Action)
 		where += fmt.Sprintf(" AND ual.action = $%d", len(args))

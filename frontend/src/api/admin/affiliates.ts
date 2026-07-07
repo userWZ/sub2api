@@ -35,7 +35,7 @@ export interface ListAffiliateRecordsParams {
   timezone?: string
 }
 
-export type AffiliateWalletAction = 'discount' | 'discount_restore' | 'withdraw'
+export type AffiliateWalletAction = 'discount' | 'withdraw'
 
 export interface AffiliateInviteRecord {
   inviter_id: number

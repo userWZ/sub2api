@@ -1212,16 +1212,14 @@ export default {
 	    },
 	    records: {
 	      title: '返利额度记录',
-	      description: '查看返利到账、购买抵扣、退款返还和线下提现扣减',
+	      description: '查看返利到账、购买抵扣和线下提现扣减',
 	      loadFailed: '加载返利额度记录失败',
 	      empty: '暂无返利额度记录',
 	      allTypes: '全部类型',
 	      actions: {
 	        accrue: '邀请返利',
 	        discount: '购买抵扣',
-	        discountRestore: '抵扣返还',
-	        withdraw: '线下提现',
-	        rebateReversal: '返利冲正'
+	        withdraw: '线下提现'
 	      },
 	      columns: {
 	        type: '类型',
@@ -1235,9 +1233,7 @@ export default {
 	        posted: '已入账',
 	        frozenUntil: '冻结至 {time}',
 	        deducted: '已扣减',
-	        restored: '已返还',
-	        withdrawn: '已提现',
-	        reversed: '已冲正'
+	        withdrawn: '已提现'
 	      }
 	    },
 	    tips: {
@@ -1886,7 +1882,7 @@ export default {
     affiliates: {
       invitesDescription: '查看全站邀请关系和被邀请用户累计返利',
       rebatesDescription: '查看每一笔产生返利的充值订单',
-      transfersDescription: '查看返利购买抵扣、抵扣返还和线下提现扣减流水',
+      transfersDescription: '查看返利购买抵扣和线下提现扣减流水',
       errors: {
         loadFailed: '加载邀请返利记录失败'
       },
@@ -1909,7 +1905,6 @@ export default {
         action: '类型',
         allActions: '全部类型',
         actionDiscount: '购买抵扣',
-        actionDiscountRestore: '抵扣返还',
         actionWithdraw: '线下提现',
         walletAmount: '金额',
         transferAmount: '金额',

@@ -336,7 +336,6 @@ const sortState = reactive(loadInitialSortState())
 const actionFilterOptions = computed<SelectOption[]>(() => [
   { value: '', label: t('admin.affiliates.records.allActions') },
   { value: 'discount', label: t('admin.affiliates.records.actionDiscount') },
-  { value: 'discount_restore', label: t('admin.affiliates.records.actionDiscountRestore') },
   { value: 'withdraw', label: t('admin.affiliates.records.actionWithdraw') },
 ])
 
@@ -442,7 +441,6 @@ function formatDateTime(value: string | null | undefined): string {
 
 function formatTransferAction(action: string | null | undefined): string {
   if (action === 'discount') return t('admin.affiliates.records.actionDiscount')
-  if (action === 'discount_restore') return t('admin.affiliates.records.actionDiscountRestore')
   if (action === 'withdraw') return t('admin.affiliates.records.actionWithdraw')
   return action || '-'
 }
