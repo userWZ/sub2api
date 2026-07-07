@@ -53,6 +53,18 @@
               @open="openUserOverview"
             />
           </template>
+          <template #cell-action="{ row }">
+            <span
+              :class="[
+                'inline-flex rounded px-2 py-0.5 text-xs font-medium',
+                row.action === 'withdraw'
+                  ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
+                  : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300',
+              ]"
+            >
+              {{ formatTransferAction(row.action) }}
+            </span>
+          </template>
           <template #cell-aff_code="{ row }">
             <span class="font-mono text-sm text-gray-700 dark:text-gray-300">{{ row.aff_code || '-' }}</span>
           </template>
@@ -95,6 +107,15 @@
           <template #cell-history_quota_after="{ row }">
             <NullableAmountText :value="row.history_quota_after" />
           </template>
+          <template #cell-operator="{ row }">
+            <span class="text-sm text-gray-700 dark:text-gray-300">{{ row.operator_email || '-' }}</span>
+          </template>
+          <template #cell-external_ref="{ row }">
+            <span class="max-w-44 truncate font-mono text-sm text-gray-700 dark:text-gray-300" :title="row.external_ref || ''">{{ row.external_ref || '-' }}</span>
+          </template>
+          <template #cell-remark="{ row }">
+            <span class="max-w-52 truncate text-sm text-gray-600 dark:text-gray-300" :title="row.remark || ''">{{ row.remark || '-' }}</span>
+          </template>
           <template #cell-created_at="{ row }">
             <span class="text-sm text-gray-700 dark:text-gray-300">{{ formatDateTime(row.created_at) }}</span>
           </template>
@@ -136,7 +157,68 @@
           <OverviewStat :label="t('admin.affiliates.overview.availableQuota')" :value="'$' + formatAmount(selectedOverview.available_quota)" />
           <OverviewStat :label="t('admin.affiliates.overview.historyQuota')" :value="'$' + formatAmount(selectedOverview.history_quota)" />
         </div>
+        <div class="flex justify-end">
+          <button
+            type="button"
+            class="btn btn-danger"
+            :disabled="selectedOverview.available_quota <= 0"
+            @click="openWithdrawDialog(selectedOverview)"
+          >
+            {{ t('admin.affiliates.withdraw.openButton') }}
+          </button>
+        </div>
       </div>
+    </BaseDialog>
+
+    <BaseDialog
+      :show="withdrawDialog"
+      :title="t('admin.affiliates.withdraw.title')"
+      width="narrow"
+      @close="closeWithdrawDialog"
+    >
+      <form v-if="withdrawTarget" id="affiliate-withdraw-form" class="space-y-4" @submit.prevent="submitWithdraw">
+        <div class="rounded-lg border border-gray-100 bg-gray-50 p-4 dark:border-dark-700 dark:bg-dark-800">
+          <div class="font-mono text-sm text-gray-900 dark:text-white">#{{ withdrawTarget.user_id }}</div>
+          <div class="mt-1 text-sm font-medium text-gray-900 dark:text-white">{{ withdrawTarget.email || '-' }}</div>
+          <div class="mt-1 text-sm text-gray-500 dark:text-dark-400">
+            {{ t('admin.affiliates.overview.availableQuota') }}:
+            <span class="font-semibold text-gray-900 dark:text-white">${{ formatAmount(withdrawTarget.available_quota) }}</span>
+          </div>
+        </div>
+        <div>
+          <label class="input-label">{{ t('admin.affiliates.withdraw.amount') }}</label>
+          <div class="flex gap-2">
+            <div class="relative flex-1">
+              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium text-gray-500">$</span>
+              <input v-model.number="withdrawForm.amount" type="number" min="0" step="0.01" required class="input pl-8" />
+            </div>
+            <button type="button" class="btn btn-secondary whitespace-nowrap" @click="fillWithdrawAll">
+              {{ t('admin.affiliates.withdraw.all') }}
+            </button>
+          </div>
+        </div>
+        <div>
+          <label class="input-label">{{ t('admin.affiliates.withdraw.externalRef') }}</label>
+          <input v-model="withdrawForm.external_ref" type="text" maxlength="128" class="input" :placeholder="t('admin.affiliates.withdraw.externalRefPlaceholder')" />
+        </div>
+        <div>
+          <label class="input-label">{{ t('admin.affiliates.withdraw.remark') }}</label>
+          <textarea v-model="withdrawForm.remark" rows="3" maxlength="500" class="input" :placeholder="t('admin.affiliates.withdraw.remarkPlaceholder')"></textarea>
+        </div>
+        <div v-if="withdrawForm.amount > 0" class="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+          {{ t('admin.affiliates.withdraw.afterQuota', { amount: formatAmount(withdrawAfterQuota) }) }}
+        </div>
+      </form>
+      <template #footer>
+        <div class="flex justify-end gap-3">
+          <button type="button" class="btn btn-secondary" @click="closeWithdrawDialog">
+            {{ t('common.cancel') }}
+          </button>
+          <button type="submit" form="affiliate-withdraw-form" class="btn btn-danger" :disabled="withdrawSubmitting || !canSubmitWithdraw">
+            {{ withdrawSubmitting ? t('common.saving') : t('admin.affiliates.withdraw.confirm') }}
+          </button>
+        </div>
+      </template>
     </BaseDialog>
   </AppLayout>
 </template>
@@ -174,6 +256,10 @@ const pagination = reactive({ page: 1, page_size: 20, total: 0 })
 const overviewDialog = ref(false)
 const overviewLoading = ref(false)
 const selectedOverview = ref<AffiliateUserOverview | null>(null)
+const withdrawDialog = ref(false)
+const withdrawSubmitting = ref(false)
+const withdrawTarget = ref<AffiliateUserOverview | null>(null)
+const withdrawForm = reactive({ amount: 0, remark: '', external_ref: '' })
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
 
 const columns = computed<Column[]>(() => {
@@ -201,11 +287,15 @@ const columns = computed<Column[]>(() => {
   }
   return [
     { key: 'user', label: t('admin.affiliates.records.user'), sortable: true },
+    { key: 'action', label: t('admin.affiliates.records.action'), sortable: true },
     { key: 'amount', label: t('admin.affiliates.records.transferAmount'), sortable: true },
     { key: 'balance_after', label: t('admin.affiliates.records.balanceAfter'), sortable: true },
     { key: 'available_quota_after', label: t('admin.affiliates.records.availableQuotaAfter'), sortable: true },
     { key: 'frozen_quota_after', label: t('admin.affiliates.records.frozenQuotaAfter'), sortable: true },
     { key: 'history_quota_after', label: t('admin.affiliates.records.historyQuotaAfter'), sortable: true },
+    { key: 'operator', label: t('admin.affiliates.records.operator') },
+    { key: 'external_ref', label: t('admin.affiliates.records.externalRef') },
+    { key: 'remark', label: t('admin.affiliates.records.remark') },
     { key: 'created_at', label: t('admin.affiliates.records.transferredAt'), sortable: true },
   ]
 })
@@ -230,6 +320,20 @@ function loadInitialSortState(): { sort_by: string; sort_order: 'asc' | 'desc' }
 }
 
 const sortState = reactive(loadInitialSortState())
+
+const withdrawAfterQuota = computed(() => {
+  const current = Number(withdrawTarget.value?.available_quota || 0)
+  const amount = Number(withdrawForm.amount || 0)
+  const next = current - amount
+  if (next <= 0 || Math.abs(next) < 1e-8) return 0
+  return next
+})
+
+const canSubmitWithdraw = computed(() => {
+  if (!withdrawTarget.value) return false
+  const amount = Number(withdrawForm.amount || 0)
+  return amount > 0 && amount <= Number(withdrawTarget.value.available_quota || 0)
+})
 
 function userTimezone(): string {
   try {
@@ -316,6 +420,12 @@ function formatDateTime(value: string | null | undefined): string {
   return value ? formatDisplayDateTime(value) : '-'
 }
 
+function formatTransferAction(action: string | null | undefined): string {
+  if (action === 'withdraw') return t('admin.affiliates.records.actionWithdraw')
+  if (action === 'transfer') return t('admin.affiliates.records.actionTransfer')
+  return action || '-'
+}
+
 async function openUserOverview(userId: number) {
   if (!userId) return
   overviewDialog.value = true
@@ -328,6 +438,55 @@ async function openUserOverview(userId: number) {
     appStore.showError(extractI18nErrorMessage(error, t, 'admin.affiliates.errors', t('common.error')))
   } finally {
     overviewLoading.value = false
+  }
+}
+
+function openWithdrawDialog(user: AffiliateUserOverview) {
+  withdrawTarget.value = user
+  withdrawForm.amount = 0
+  withdrawForm.remark = ''
+  withdrawForm.external_ref = ''
+  withdrawDialog.value = true
+}
+
+function closeWithdrawDialog() {
+  if (withdrawSubmitting.value) return
+  withdrawDialog.value = false
+  withdrawTarget.value = null
+}
+
+function fillWithdrawAll() {
+  withdrawForm.amount = Number(withdrawTarget.value?.available_quota || 0)
+}
+
+async function submitWithdraw() {
+  if (!withdrawTarget.value) return
+  if (!canSubmitWithdraw.value) {
+    appStore.showError(t('admin.affiliates.withdraw.invalidAmount'))
+    return
+  }
+  withdrawSubmitting.value = true
+  try {
+    const result = await affiliatesAPI.withdrawAffiliateQuota(withdrawTarget.value.user_id, {
+      amount: Number(withdrawForm.amount || 0),
+      remark: withdrawForm.remark.trim(),
+      external_ref: withdrawForm.external_ref.trim(),
+    })
+    appStore.showSuccess(t('admin.affiliates.withdraw.success'))
+    selectedOverview.value = {
+      ...withdrawTarget.value,
+      available_quota: result.available_quota_after,
+      history_quota: result.history_quota_after,
+    }
+    withdrawDialog.value = false
+    withdrawTarget.value = null
+    if (props.type === 'transfers') {
+      await loadRecords()
+    }
+  } catch (error) {
+    appStore.showError(extractI18nErrorMessage(error, t, 'admin.affiliates.errors', t('common.error')))
+  } finally {
+    withdrawSubmitting.value = false
   }
 }
 

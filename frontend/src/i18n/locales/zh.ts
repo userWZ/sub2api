@@ -1856,7 +1856,7 @@ export default {
     affiliates: {
       invitesDescription: '查看全站邀请关系和被邀请用户累计返利',
       rebatesDescription: '查看每一笔产生返利的充值订单',
-      transfersDescription: '查看返利额度转入账户余额的提取流水',
+      transfersDescription: '查看返利额度转入余额和线下提现扣减流水',
       errors: {
         loadFailed: '加载邀请返利记录失败'
       },
@@ -1876,11 +1876,17 @@ export default {
         rebateAmount: '返利金额',
         paymentType: '支付方式',
         orderStatus: '订单状态',
+        action: '类型',
+        actionTransfer: '转入余额',
+        actionWithdraw: '线下提现',
         transferAmount: '提取金额',
         balanceAfter: '提取后余额',
         availableQuotaAfter: '提取后可提',
         frozenQuotaAfter: '提取后冻结',
         historyQuotaAfter: '提取后历史返利',
+        operator: '操作管理员',
+        externalRef: '外部凭证',
+        remark: '备注',
         invitedAt: '邀请时间',
         rebatedAt: '返利时间',
         transferredAt: '提取时间'
@@ -1893,6 +1899,20 @@ export default {
         rebatedInviteeCount: '已产生返利人数',
         availableQuota: '可提余额',
         historyQuota: '历史返利'
+      },
+      withdraw: {
+        title: '线下提现扣减',
+        openButton: '线下提现扣减',
+        amount: '提现金额',
+        all: '全部',
+        externalRef: '外部凭证',
+        externalRefPlaceholder: '例如微信转账单号、支付宝流水号',
+        remark: '备注',
+        remarkPlaceholder: '例如：已线下打款到用户微信',
+        afterQuota: '扣减后可提余额：${amount}',
+        confirm: '确认扣减',
+        invalidAmount: '请输入不超过可提余额的正数金额',
+        success: '返利提现扣减成功'
       }
     },
 

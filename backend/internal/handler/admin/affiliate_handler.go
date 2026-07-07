@@ -7,6 +7,7 @@ import (
 
 	"github.com/Wei-Shaw/sub2api/internal/pkg/response"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/timezone"
+	middleware2 "github.com/Wei-Shaw/sub2api/internal/server/middleware"
 	"github.com/Wei-Shaw/sub2api/internal/service"
 
 	"github.com/gin-gonic/gin"
@@ -155,6 +156,47 @@ func (h *AffiliateHandler) BatchSetRate(c *gin.Context) {
 		return
 	}
 	response.Success(c, gin.H{"affected": len(req.UserIDs)})
+}
+
+// WithdrawAffiliateQuota deducts available affiliate quota after an admin has
+// paid the user offline.
+// POST /api/v1/admin/affiliates/users/:user_id/withdraw
+type WithdrawAffiliateQuotaRequest struct {
+	Amount      float64 `json:"amount" binding:"required"`
+	Remark      string  `json:"remark"`
+	ExternalRef string  `json:"external_ref"`
+}
+
+func (h *AffiliateHandler) WithdrawAffiliateQuota(c *gin.Context) {
+	userID, err := strconv.ParseInt(c.Param("user_id"), 10, 64)
+	if err != nil || userID <= 0 {
+		response.BadRequest(c, "Invalid user_id")
+		return
+	}
+	subject, ok := middleware2.GetAuthSubjectFromContext(c)
+	if !ok || subject.UserID <= 0 {
+		response.Unauthorized(c, "admin authentication required")
+		return
+	}
+
+	var req WithdrawAffiliateQuotaRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Invalid request: "+err.Error())
+		return
+	}
+	result, err := h.affiliateService.AdminWithdrawAffiliateQuota(
+		c.Request.Context(),
+		userID,
+		subject.UserID,
+		req.Amount,
+		req.Remark,
+		req.ExternalRef,
+	)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, result)
 }
 
 // AffiliateUserSummary is the minimal user shape returned by LookupUsers,

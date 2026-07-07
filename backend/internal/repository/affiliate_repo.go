@@ -341,6 +341,100 @@ VALUES ($1, 'transfer', $2, NULL, $3, $4, $5, $6, NOW(), NOW())`,
 	return transferred, newBalance, nil
 }
 
+func (r *affiliateRepository) WithdrawQuota(ctx context.Context, userID, operatorUserID int64, amount float64, remark, externalRef string) (*service.AffiliateWithdrawResult, error) {
+	if userID <= 0 {
+		return nil, service.ErrUserNotFound
+	}
+	if amount <= 0 {
+		return nil, nil
+	}
+
+	result := &service.AffiliateWithdrawResult{UserID: userID}
+	err := r.withTx(ctx, func(txCtx context.Context, txClient *dbent.Client) error {
+		if _, err := ensureUserAffiliateWithClient(txCtx, txClient, userID); err != nil {
+			return err
+		}
+		if _, err := thawFrozenQuotaTx(txCtx, txClient, userID); err != nil {
+			return fmt.Errorf("thaw before affiliate withdrawal: %w", err)
+		}
+
+		var available float64
+		rows, err := txClient.QueryContext(txCtx, `
+SELECT aff_quota::double precision
+FROM user_affiliates
+WHERE user_id = $1
+FOR UPDATE`, userID)
+		if err != nil {
+			return fmt.Errorf("lock affiliate withdrawal quota: %w", err)
+		}
+		if !rows.Next() {
+			_ = rows.Close()
+			return service.ErrAffiliateProfileNotFound
+		}
+		if err := rows.Scan(&available); err != nil {
+			_ = rows.Close()
+			return err
+		}
+		if err := rows.Close(); err != nil {
+			return err
+		}
+		if available+0.00000001 < amount {
+			return service.ErrAffiliateQuotaInsufficient
+		}
+
+		if _, err := txClient.ExecContext(txCtx, `
+UPDATE user_affiliates
+SET aff_quota = aff_quota - $1,
+    updated_at = NOW()
+WHERE user_id = $2`, amount, userID); err != nil {
+			return fmt.Errorf("withdraw affiliate quota: %w", err)
+		}
+
+		snapshot, err := queryAffiliateTransferSnapshot(txCtx, txClient, userID)
+		if err != nil {
+			return err
+		}
+		if _, err := txClient.ExecContext(txCtx, `
+INSERT INTO user_affiliate_ledger (
+    user_id,
+    action,
+    amount,
+    operator_user_id,
+    remark,
+    external_ref,
+    balance_after,
+    aff_quota_after,
+    aff_frozen_quota_after,
+    aff_history_quota_after,
+    created_at,
+    updated_at
+)
+VALUES ($1, 'withdraw', $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())`,
+			userID,
+			amount,
+			operatorUserID,
+			nullableStringArg(remark),
+			nullableStringArg(externalRef),
+			snapshot.BalanceAfter,
+			snapshot.AvailableQuotaAfter,
+			snapshot.FrozenQuotaAfter,
+			snapshot.HistoryQuotaAfter,
+		); err != nil {
+			return fmt.Errorf("insert affiliate withdrawal ledger: %w", err)
+		}
+
+		result.Amount = amount
+		result.AvailableQuotaAfter = snapshot.AvailableQuotaAfter
+		result.FrozenQuotaAfter = snapshot.FrozenQuotaAfter
+		result.HistoryQuotaAfter = snapshot.HistoryQuotaAfter
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
 func (r *affiliateRepository) GetAvailableDiscountQuota(ctx context.Context, userID int64) (float64, error) {
 	if userID <= 0 {
 		return 0, service.ErrUserNotFound
@@ -828,12 +922,13 @@ LIMIT $`+fmt.Sprint(len(args)-1)+` OFFSET $`+fmt.Sprint(len(args)), args...)
 func (r *affiliateRepository) ListAffiliateTransferRecords(ctx context.Context, filter service.AffiliateRecordFilter) ([]service.AffiliateTransferRecord, int64, error) {
 	client := clientFromContext(ctx, r.client)
 	where, args := buildAffiliateRecordWhere(filter, "ual.created_at", []string{
-		"u.email", "u.username", "u.id::text",
+		"u.email", "u.username", "u.id::text", "op.email", "op.username", "ual.remark", "ual.external_ref",
 	})
 	baseJoin := `
 FROM user_affiliate_ledger ual
 JOIN users u ON u.id = ual.user_id
-WHERE ual.action = 'transfer'`
+LEFT JOIN users op ON op.id = ual.operator_user_id
+WHERE ual.action IN ('transfer', 'withdraw')`
 	if where != "" {
 		where = strings.Replace(where, "WHERE ", " AND ", 1)
 	}
@@ -845,6 +940,7 @@ WHERE ual.action = 'transfer'`
 
 	orderBy := buildAffiliateRecordOrderBy(filter, map[string]string{
 		"user":                  "u.email",
+		"action":                "ual.action",
 		"amount":                "ual.amount",
 		"balance_after":         "ual.balance_after",
 		"available_quota_after": "ual.aff_quota_after",
@@ -858,7 +954,12 @@ SELECT ual.id,
        ual.user_id,
        COALESCE(u.email, ''),
        COALESCE(u.username, ''),
+       ual.action,
        ual.amount::double precision,
+       ual.operator_user_id,
+       op.email,
+       ual.remark,
+       ual.external_ref,
        ual.balance_after::double precision,
        ual.aff_quota_after::double precision,
        ual.aff_frozen_quota_after::double precision,
@@ -875,6 +976,10 @@ LIMIT $`+fmt.Sprint(len(args)-1)+` OFFSET $`+fmt.Sprint(len(args)), args...)
 	items := make([]service.AffiliateTransferRecord, 0)
 	for rows.Next() {
 		var item service.AffiliateTransferRecord
+		var operatorUserID sql.NullInt64
+		var operatorEmail sql.NullString
+		var remark sql.NullString
+		var externalRef sql.NullString
 		var balanceAfter sql.NullFloat64
 		var availableQuotaAfter sql.NullFloat64
 		var frozenQuotaAfter sql.NullFloat64
@@ -884,7 +989,12 @@ LIMIT $`+fmt.Sprint(len(args)-1)+` OFFSET $`+fmt.Sprint(len(args)), args...)
 			&item.UserID,
 			&item.UserEmail,
 			&item.Username,
+			&item.Action,
 			&item.Amount,
+			&operatorUserID,
+			&operatorEmail,
+			&remark,
+			&externalRef,
 			&balanceAfter,
 			&availableQuotaAfter,
 			&frozenQuotaAfter,
@@ -893,6 +1003,10 @@ LIMIT $`+fmt.Sprint(len(args)-1)+` OFFSET $`+fmt.Sprint(len(args)), args...)
 		); err != nil {
 			return nil, 0, err
 		}
+		item.OperatorUserID = nullableInt64Ptr(operatorUserID)
+		item.OperatorEmail = nullableStringPtr(operatorEmail)
+		item.Remark = nullableStringPtr(remark)
+		item.ExternalRef = nullableStringPtr(externalRef)
 		item.BalanceAfter = nullableFloat64Ptr(balanceAfter)
 		item.AvailableQuotaAfter = nullableFloat64Ptr(availableQuotaAfter)
 		item.FrozenQuotaAfter = nullableFloat64Ptr(frozenQuotaAfter)
@@ -1237,6 +1351,20 @@ func nullableFloat64Ptr(v sql.NullFloat64) *float64 {
 	return &v.Float64
 }
 
+func nullableInt64Ptr(v sql.NullInt64) *int64 {
+	if !v.Valid {
+		return nil
+	}
+	return &v.Int64
+}
+
+func nullableStringPtr(v sql.NullString) *string {
+	if !v.Valid {
+		return nil
+	}
+	return &v.String
+}
+
 func generateAffiliateCode() (string, error) {
 	buf := make([]byte, affiliateCodeLength)
 	if _, err := rand.Read(buf); err != nil {
@@ -1407,6 +1535,14 @@ func nullableSQLInt64Arg(v sql.NullInt64) any {
 		return nil
 	}
 	return v.Int64
+}
+
+func nullableStringArg(v string) any {
+	v = strings.TrimSpace(v)
+	if v == "" {
+		return nil
+	}
+	return v
 }
 
 // ListUsersWithCustomSettings 列出有专属配置（自定义码或专属比例）的用户。

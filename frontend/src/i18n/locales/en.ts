@@ -1835,7 +1835,7 @@ export default {
     affiliates: {
       invitesDescription: 'View site-wide inviter and invitee relationships',
       rebatesDescription: 'View recharge orders that generated affiliate rebates',
-      transfersDescription: 'View affiliate quota transfers into account balance',
+      transfersDescription: 'View affiliate quota balance transfers and offline payout deductions',
       errors: {
         loadFailed: 'Failed to load affiliate records'
       },
@@ -1855,11 +1855,17 @@ export default {
         rebateAmount: 'Rebate Amount',
         paymentType: 'Payment Method',
         orderStatus: 'Order Status',
+        action: 'Type',
+        actionTransfer: 'Balance Transfer',
+        actionWithdraw: 'Offline Payout',
         transferAmount: 'Transfer Amount',
         balanceAfter: 'Balance After',
         availableQuotaAfter: 'Available After',
         frozenQuotaAfter: 'Frozen After',
         historyQuotaAfter: 'Historical Rebate After',
+        operator: 'Admin',
+        externalRef: 'External Ref',
+        remark: 'Remark',
         invitedAt: 'Invited At',
         rebatedAt: 'Rebated At',
         transferredAt: 'Transferred At'
@@ -1872,6 +1878,20 @@ export default {
         rebatedInviteeCount: 'Rebated Invitees',
         availableQuota: 'Available Quota',
         historyQuota: 'Historical Rebate'
+      },
+      withdraw: {
+        title: 'Offline Payout Deduction',
+        openButton: 'Deduct Offline Payout',
+        amount: 'Payout Amount',
+        all: 'All',
+        externalRef: 'External Reference',
+        externalRefPlaceholder: 'e.g. WeChat transfer ID or Alipay transaction ID',
+        remark: 'Remark',
+        remarkPlaceholder: 'e.g. Paid offline to the user via WeChat',
+        afterQuota: 'Available quota after deduction: ${amount}',
+        confirm: 'Confirm Deduction',
+        invalidAmount: 'Enter a positive amount no greater than available quota',
+        success: 'Affiliate payout deducted'
       }
     },
 

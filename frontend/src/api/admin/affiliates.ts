@@ -68,7 +68,12 @@ export interface AffiliateTransferRecord {
   user_id: number
   user_email: string
   username: string
+  action: 'transfer' | 'withdraw' | string
   amount: number
+  operator_user_id?: number | null
+  operator_email?: string | null
+  remark?: string | null
+  external_ref?: string | null
   balance_after?: number | null
   available_quota_after?: number | null
   frozen_quota_after?: number | null
@@ -87,6 +92,20 @@ export interface AffiliateUserOverview {
   rebated_invitee_count: number
   available_quota: number
   history_quota: number
+}
+
+export interface AffiliateWithdrawRequest {
+  amount: number
+  remark?: string
+  external_ref?: string
+}
+
+export interface AffiliateWithdrawResult {
+  user_id: number
+  amount: number
+  available_quota_after: number
+  frozen_quota_after: number
+  history_quota_after: number
 }
 
 export interface UpdateAffiliateUserRequest {
@@ -215,6 +234,17 @@ export async function getUserOverview(
   return data
 }
 
+export async function withdrawAffiliateQuota(
+  userId: number,
+  payload: AffiliateWithdrawRequest,
+): Promise<AffiliateWithdrawResult> {
+  const { data } = await apiClient.post<AffiliateWithdrawResult>(
+    `/admin/affiliates/users/${userId}/withdraw`,
+    payload,
+  )
+  return data
+}
+
 export const affiliatesAPI = {
   listUsers,
   lookupUsers,
@@ -225,6 +255,7 @@ export const affiliatesAPI = {
   listRebateRecords,
   listTransferRecords,
   getUserOverview,
+  withdrawAffiliateQuota,
 }
 
 export default affiliatesAPI
