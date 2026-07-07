@@ -57,7 +57,7 @@
             <span
               :class="[
                 'inline-flex rounded px-2 py-0.5 text-xs font-medium',
-                row.action === 'withdraw'
+                ['withdraw', 'discount', 'transfer'].includes(row.action)
                   ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
                   : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300',
               ]"
@@ -73,6 +73,13 @@
               <div class="font-mono text-sm text-gray-900 dark:text-white">#{{ row.order_id }}</div>
               <div class="max-w-56 truncate text-sm text-gray-500 dark:text-dark-400">{{ row.out_trade_no }}</div>
             </div>
+          </template>
+          <template #cell-source_order="{ row }">
+            <div v-if="row.source_order_id" class="space-y-0.5">
+              <div class="font-mono text-sm text-gray-900 dark:text-white">#{{ row.source_order_id }}</div>
+              <div class="max-w-44 truncate text-sm text-gray-500 dark:text-dark-400">{{ row.out_trade_no || '-' }}</div>
+            </div>
+            <span v-else class="text-sm text-gray-400 dark:text-dark-500">-</span>
           </template>
           <template #cell-payment_type="{ row }">
             {{ t('payment.methods.' + row.payment_type, row.payment_type || '-') }}
@@ -288,7 +295,8 @@ const columns = computed<Column[]>(() => {
   return [
     { key: 'user', label: t('admin.affiliates.records.user'), sortable: true },
     { key: 'action', label: t('admin.affiliates.records.action'), sortable: true },
-    { key: 'amount', label: t('admin.affiliates.records.transferAmount'), sortable: true },
+    { key: 'amount', label: t('admin.affiliates.records.walletAmount'), sortable: true },
+    { key: 'source_order', label: t('admin.affiliates.records.sourceOrder'), sortable: true },
     { key: 'balance_after', label: t('admin.affiliates.records.balanceAfter'), sortable: true },
     { key: 'available_quota_after', label: t('admin.affiliates.records.availableQuotaAfter'), sortable: true },
     { key: 'frozen_quota_after', label: t('admin.affiliates.records.frozenQuotaAfter'), sortable: true },
@@ -421,8 +429,10 @@ function formatDateTime(value: string | null | undefined): string {
 }
 
 function formatTransferAction(action: string | null | undefined): string {
+  if (action === 'discount') return t('admin.affiliates.records.actionDiscount')
+  if (action === 'discount_restore') return t('admin.affiliates.records.actionDiscountRestore')
   if (action === 'withdraw') return t('admin.affiliates.records.actionWithdraw')
-  if (action === 'transfer') return t('admin.affiliates.records.actionTransfer')
+  if (action === 'transfer') return t('admin.affiliates.records.actionTransferLegacy')
   return action || '-'
 }
 

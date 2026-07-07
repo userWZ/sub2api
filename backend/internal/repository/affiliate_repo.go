@@ -922,13 +922,14 @@ LIMIT $`+fmt.Sprint(len(args)-1)+` OFFSET $`+fmt.Sprint(len(args)), args...)
 func (r *affiliateRepository) ListAffiliateTransferRecords(ctx context.Context, filter service.AffiliateRecordFilter) ([]service.AffiliateTransferRecord, int64, error) {
 	client := clientFromContext(ctx, r.client)
 	where, args := buildAffiliateRecordWhere(filter, "ual.created_at", []string{
-		"u.email", "u.username", "u.id::text", "op.email", "op.username", "ual.remark", "ual.external_ref",
+		"u.email", "u.username", "u.id::text", "op.email", "op.username", "ual.remark", "ual.external_ref", "po.out_trade_no", "po.id::text",
 	})
 	baseJoin := `
 FROM user_affiliate_ledger ual
 JOIN users u ON u.id = ual.user_id
 LEFT JOIN users op ON op.id = ual.operator_user_id
-WHERE ual.action IN ('transfer', 'withdraw')`
+LEFT JOIN payment_orders po ON po.id = ual.source_order_id
+WHERE ual.action IN ('discount', 'discount_restore', 'withdraw', 'transfer')`
 	if where != "" {
 		where = strings.Replace(where, "WHERE ", " AND ", 1)
 	}
@@ -942,6 +943,7 @@ WHERE ual.action IN ('transfer', 'withdraw')`
 		"user":                  "u.email",
 		"action":                "ual.action",
 		"amount":                "ual.amount",
+		"source_order":          "ual.source_order_id",
 		"balance_after":         "ual.balance_after",
 		"available_quota_after": "ual.aff_quota_after",
 		"frozen_quota_after":    "ual.aff_frozen_quota_after",
@@ -956,6 +958,8 @@ SELECT ual.id,
        COALESCE(u.username, ''),
        ual.action,
        ual.amount::double precision,
+       ual.source_order_id,
+       po.out_trade_no,
        ual.operator_user_id,
        op.email,
        ual.remark,
@@ -976,6 +980,8 @@ LIMIT $`+fmt.Sprint(len(args)-1)+` OFFSET $`+fmt.Sprint(len(args)), args...)
 	items := make([]service.AffiliateTransferRecord, 0)
 	for rows.Next() {
 		var item service.AffiliateTransferRecord
+		var sourceOrderID sql.NullInt64
+		var outTradeNo sql.NullString
 		var operatorUserID sql.NullInt64
 		var operatorEmail sql.NullString
 		var remark sql.NullString
@@ -991,6 +997,8 @@ LIMIT $`+fmt.Sprint(len(args)-1)+` OFFSET $`+fmt.Sprint(len(args)), args...)
 			&item.Username,
 			&item.Action,
 			&item.Amount,
+			&sourceOrderID,
+			&outTradeNo,
 			&operatorUserID,
 			&operatorEmail,
 			&remark,
@@ -1003,6 +1011,8 @@ LIMIT $`+fmt.Sprint(len(args)-1)+` OFFSET $`+fmt.Sprint(len(args)), args...)
 		); err != nil {
 			return nil, 0, err
 		}
+		item.SourceOrderID = nullableInt64Ptr(sourceOrderID)
+		item.OutTradeNo = nullableStringPtr(outTradeNo)
 		item.OperatorUserID = nullableInt64Ptr(operatorUserID)
 		item.OperatorEmail = nullableStringPtr(operatorEmail)
 		item.Remark = nullableStringPtr(remark)

@@ -189,6 +189,8 @@ type AffiliateTransferRecord struct {
 	Username            string    `json:"username"`
 	Action              string    `json:"action"`
 	Amount              float64   `json:"amount"`
+	SourceOrderID       *int64    `json:"source_order_id,omitempty"`
+	OutTradeNo          *string   `json:"out_trade_no,omitempty"`
 	OperatorUserID      *int64    `json:"operator_user_id,omitempty"`
 	OperatorEmail       *string   `json:"operator_email,omitempty"`
 	Remark              *string   `json:"remark,omitempty"`
