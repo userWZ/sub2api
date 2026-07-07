@@ -1200,19 +1200,49 @@ export default {
       empty: '当前没有可用抵扣额度',
       success: '已抵扣：{amount}'
     },
-    invitees: {
-      title: '已邀请用户',
-      empty: '暂无邀请记录',
-      columns: {
-        email: '邮箱',
-        username: '用户名',
-        rebate: '返利明细',
-        joinedAt: '注册时间'
-      }
-    },
-    tips: {
-      title: '使用说明',
-      line1: '将邀请码或邀请链接分享给新用户。',
+	    invitees: {
+	      title: '已邀请用户',
+	      empty: '暂无邀请记录',
+	      columns: {
+	        email: '邮箱',
+	        username: '用户名',
+	        rebate: '返利明细',
+	        joinedAt: '注册时间'
+	      }
+	    },
+	    records: {
+	      title: '返利额度记录',
+	      description: '查看返利到账、购买抵扣、退款返还和线下提现扣减',
+	      loadFailed: '加载返利额度记录失败',
+	      empty: '暂无返利额度记录',
+	      allTypes: '全部类型',
+	      actions: {
+	        accrue: '邀请返利',
+	        discount: '购买抵扣',
+	        discountRestore: '抵扣返还',
+	        withdraw: '线下提现',
+	        rebateReversal: '返利冲正'
+	      },
+	      columns: {
+	        type: '类型',
+	        amount: '金额',
+	        sourceOrder: '关联订单',
+	        availableAfter: '可用额度',
+	        status: '状态',
+	        createdAt: '时间'
+	      },
+	      status: {
+	        posted: '已入账',
+	        frozenUntil: '冻结至 {time}',
+	        deducted: '已扣减',
+	        restored: '已返还',
+	        withdrawn: '已提现',
+	        reversed: '已冲正'
+	      }
+	    },
+	    tips: {
+	      title: '使用说明',
+	      line1: '将邀请码或邀请链接分享给新用户。',
       line2: '被邀请用户充值后，你可获得 {rate} 的返利额度。',
       line3: '可用返利会在购买余额或订阅时自动作为抵扣选项。',
       line4: '新产生的返利需要经过冻结期后才能用于抵扣。'

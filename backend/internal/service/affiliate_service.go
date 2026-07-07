@@ -122,6 +122,7 @@ type AffiliateRepository interface {
 	ListAffiliateInviteRecords(ctx context.Context, filter AffiliateRecordFilter) ([]AffiliateInviteRecord, int64, error)
 	ListAffiliateRebateRecords(ctx context.Context, filter AffiliateRecordFilter) ([]AffiliateRebateRecord, int64, error)
 	ListAffiliateTransferRecords(ctx context.Context, filter AffiliateRecordFilter) ([]AffiliateTransferRecord, int64, error)
+	ListUserAffiliateLedgerRecords(ctx context.Context, userID int64, filter AffiliateRecordFilter) ([]AffiliateLedgerRecord, int64, error)
 	GetAffiliateUserOverview(ctx context.Context, userID int64) (*AffiliateUserOverview, error)
 }
 
@@ -206,6 +207,20 @@ type AffiliateTransferRecord struct {
 	FrozenQuota         float64   `json:"-"`
 	HistoryQuota        float64   `json:"-"`
 	CreatedAt           time.Time `json:"created_at"`
+}
+
+type AffiliateLedgerRecord struct {
+	LedgerID            int64      `json:"ledger_id"`
+	Action              string     `json:"action"`
+	Amount              float64    `json:"amount"`
+	SourceOrderID       *int64     `json:"source_order_id,omitempty"`
+	OutTradeNo          *string    `json:"out_trade_no,omitempty"`
+	Remark              *string    `json:"remark,omitempty"`
+	AvailableQuotaAfter *float64   `json:"available_quota_after,omitempty"`
+	FrozenQuotaAfter    *float64   `json:"frozen_quota_after,omitempty"`
+	HistoryQuotaAfter   *float64   `json:"history_quota_after,omitempty"`
+	FrozenUntil         *time.Time `json:"frozen_until,omitempty"`
+	CreatedAt           time.Time  `json:"created_at"`
 }
 
 type AffiliateWithdrawResult struct {
@@ -667,6 +682,16 @@ func (s *AffiliateService) AdminListTransferRecords(ctx context.Context, filter 
 	return s.repo.ListAffiliateTransferRecords(ctx, normalizeAffiliateRecordFilter(filter))
 }
 
+func (s *AffiliateService) ListUserAffiliateRecords(ctx context.Context, userID int64, filter AffiliateRecordFilter) ([]AffiliateLedgerRecord, int64, error) {
+	if userID <= 0 {
+		return nil, 0, infraerrors.BadRequest("INVALID_USER", "invalid user")
+	}
+	if s == nil || s.repo == nil {
+		return nil, 0, infraerrors.ServiceUnavailable("SERVICE_UNAVAILABLE", "affiliate service unavailable")
+	}
+	return s.repo.ListUserAffiliateLedgerRecords(ctx, userID, normalizeUserAffiliateRecordFilter(filter))
+}
+
 func (s *AffiliateService) AdminWithdrawAffiliateQuota(ctx context.Context, userID, operatorUserID int64, amount float64, remark, externalRef string) (*AffiliateWithdrawResult, error) {
 	if userID <= 0 {
 		return nil, infraerrors.BadRequest("INVALID_USER", "invalid user")
@@ -725,6 +750,18 @@ func (s *AffiliateService) AdminGetUserOverview(ctx context.Context, userID int6
 }
 
 func normalizeAffiliateRecordFilter(filter AffiliateRecordFilter) AffiliateRecordFilter {
+	filter = normalizeAffiliateRecordPagination(filter)
+	filter.Action = normalizeAffiliateWalletRecordAction(filter.Action)
+	return filter
+}
+
+func normalizeUserAffiliateRecordFilter(filter AffiliateRecordFilter) AffiliateRecordFilter {
+	filter = normalizeAffiliateRecordPagination(filter)
+	filter.Action = normalizeUserAffiliateWalletRecordAction(filter.Action)
+	return filter
+}
+
+func normalizeAffiliateRecordPagination(filter AffiliateRecordFilter) AffiliateRecordFilter {
 	if filter.Page <= 0 {
 		filter.Page = 1
 	}
@@ -736,13 +773,21 @@ func normalizeAffiliateRecordFilter(filter AffiliateRecordFilter) AffiliateRecor
 	}
 	filter.Search = strings.TrimSpace(filter.Search)
 	filter.SortBy = strings.TrimSpace(filter.SortBy)
-	filter.Action = normalizeAffiliateWalletRecordAction(filter.Action)
 	return filter
 }
 
 func normalizeAffiliateWalletRecordAction(action string) string {
 	switch strings.TrimSpace(action) {
 	case "discount", "discount_restore", "withdraw":
+		return strings.TrimSpace(action)
+	default:
+		return ""
+	}
+}
+
+func normalizeUserAffiliateWalletRecordAction(action string) string {
+	switch strings.TrimSpace(action) {
+	case "accrue", "discount", "discount_restore", "withdraw", "rebate_reversal":
 		return strings.TrimSpace(action)
 	default:
 		return ""

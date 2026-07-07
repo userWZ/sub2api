@@ -160,6 +160,10 @@ func (r *paymentFulfillmentAffiliateRepoStub) ListAffiliateTransferRecords(conte
 	panic("unexpected ListAffiliateTransferRecords call")
 }
 
+func (r *paymentFulfillmentAffiliateRepoStub) ListUserAffiliateLedgerRecords(context.Context, int64, AffiliateRecordFilter) ([]AffiliateLedgerRecord, int64, error) {
+	panic("unexpected ListUserAffiliateLedgerRecords call")
+}
+
 func (r *paymentFulfillmentAffiliateRepoStub) GetAffiliateUserOverview(context.Context, int64) (*AffiliateUserOverview, error) {
 	panic("unexpected GetAffiliateUserOverview call")
 }

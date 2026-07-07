@@ -15,7 +15,10 @@ import type {
   NotifyEmailEntry,
   UserAuthProvider,
   UserAffiliateDetail,
+  UserAffiliateLedgerAction,
+  UserAffiliateLedgerRecord,
   PlatformQuotasResponse,
+  PaginatedResponse,
 } from '@/types'
 
 /**
@@ -180,6 +183,21 @@ export async function getAffiliateDetail(): Promise<UserAffiliateDetail> {
   return data
 }
 
+export async function getAffiliateRecords(params: {
+  page?: number
+  page_size?: number
+  action?: UserAffiliateLedgerAction | ''
+} = {}): Promise<PaginatedResponse<UserAffiliateLedgerRecord>> {
+  const { data } = await apiClient.get<PaginatedResponse<UserAffiliateLedgerRecord>>('/user/aff/records', {
+    params: {
+      page: params.page ?? 1,
+      page_size: params.page_size ?? 10,
+      action: params.action || undefined,
+    },
+  })
+  return data
+}
+
 /**
  * 获取当前用户的平台限额 + 用量。
  */
@@ -202,6 +220,7 @@ export const userAPI = {
   buildOAuthBindingStartURL,
   startOAuthBinding,
   getAffiliateDetail,
+  getAffiliateRecords,
   getMyPlatformQuotas,
 }
 

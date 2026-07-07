@@ -28,3 +28,28 @@ func TestNormalizeAffiliateRecordFilterAction(t *testing.T) {
 		})
 	}
 }
+
+func TestNormalizeUserAffiliateRecordFilterAction(t *testing.T) {
+	cases := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{name: "accrue", in: "accrue", want: "accrue"},
+		{name: "discount", in: "discount", want: "discount"},
+		{name: "discount restore", in: "discount_restore", want: "discount_restore"},
+		{name: "withdraw", in: "withdraw", want: "withdraw"},
+		{name: "rebate reversal", in: "rebate_reversal", want: "rebate_reversal"},
+		{name: "trim spaces", in: " accrue ", want: "accrue"},
+		{name: "legacy transfer hidden", in: "transfer", want: ""},
+		{name: "unknown action", in: "unknown", want: ""},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			got := normalizeUserAffiliateRecordFilter(AffiliateRecordFilter{Action: tc.in})
+			require.Equal(t, tc.want, got.Action)
+		})
+	}
+}

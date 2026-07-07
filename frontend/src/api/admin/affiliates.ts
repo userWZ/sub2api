@@ -193,6 +193,7 @@ function recordParams(params: ListAffiliateRecordsParams = {}) {
     search: params.search ?? '',
     start_at: params.start_at || undefined,
     end_at: params.end_at || undefined,
+    action: params.action || undefined,
     sort_by: params.sort_by || undefined,
     sort_order: params.sort_order || undefined,
     timezone: params.timezone || undefined,

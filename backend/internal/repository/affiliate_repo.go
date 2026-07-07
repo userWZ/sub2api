@@ -1041,6 +1041,92 @@ LIMIT $`+fmt.Sprint(len(args)-1)+` OFFSET $`+fmt.Sprint(len(args)), args...)
 	return items, total, nil
 }
 
+func (r *affiliateRepository) ListUserAffiliateLedgerRecords(ctx context.Context, userID int64, filter service.AffiliateRecordFilter) ([]service.AffiliateLedgerRecord, int64, error) {
+	if userID <= 0 {
+		return nil, 0, service.ErrUserNotFound
+	}
+	client := clientFromContext(ctx, r.client)
+	args := []any{userID}
+	where := "WHERE ual.user_id = $1 AND ual.action IN ('accrue', 'discount', 'discount_restore', 'withdraw', 'rebate_reversal')"
+	if filter.Action != "" {
+		args = append(args, filter.Action)
+		where += fmt.Sprintf(" AND ual.action = $%d", len(args))
+	}
+
+	total, err := queryAffiliateRecordCount(ctx, client, `
+SELECT COUNT(*)
+FROM user_affiliate_ledger ual
+LEFT JOIN payment_orders po ON po.id = ual.source_order_id
+`+where, args...)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	args = append(args, filter.PageSize, (filter.Page-1)*filter.PageSize)
+	rows, err := client.QueryContext(ctx, `
+SELECT ual.id,
+       ual.action,
+       ual.amount::double precision,
+       ual.source_order_id,
+       po.out_trade_no,
+       ual.remark,
+       ual.aff_quota_after::double precision,
+       ual.aff_frozen_quota_after::double precision,
+       ual.aff_history_quota_after::double precision,
+       ual.frozen_until,
+       ual.created_at
+FROM user_affiliate_ledger ual
+LEFT JOIN payment_orders po ON po.id = ual.source_order_id
+`+where+`
+ORDER BY ual.created_at DESC NULLS LAST
+LIMIT $`+fmt.Sprint(len(args)-1)+` OFFSET $`+fmt.Sprint(len(args)), args...)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer func() { _ = rows.Close() }()
+
+	items := make([]service.AffiliateLedgerRecord, 0)
+	for rows.Next() {
+		var item service.AffiliateLedgerRecord
+		var sourceOrderID sql.NullInt64
+		var outTradeNo sql.NullString
+		var remark sql.NullString
+		var availableQuotaAfter sql.NullFloat64
+		var frozenQuotaAfter sql.NullFloat64
+		var historyQuotaAfter sql.NullFloat64
+		var frozenUntil sql.NullTime
+		if err := rows.Scan(
+			&item.LedgerID,
+			&item.Action,
+			&item.Amount,
+			&sourceOrderID,
+			&outTradeNo,
+			&remark,
+			&availableQuotaAfter,
+			&frozenQuotaAfter,
+			&historyQuotaAfter,
+			&frozenUntil,
+			&item.CreatedAt,
+		); err != nil {
+			return nil, 0, err
+		}
+		item.SourceOrderID = nullableInt64Ptr(sourceOrderID)
+		item.OutTradeNo = nullableStringPtr(outTradeNo)
+		item.Remark = nullableStringPtr(remark)
+		item.AvailableQuotaAfter = nullableFloat64Ptr(availableQuotaAfter)
+		item.FrozenQuotaAfter = nullableFloat64Ptr(frozenQuotaAfter)
+		item.HistoryQuotaAfter = nullableFloat64Ptr(historyQuotaAfter)
+		if frozenUntil.Valid {
+			item.FrozenUntil = &frozenUntil.Time
+		}
+		items = append(items, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
+	return items, total, nil
+}
+
 func (r *affiliateRepository) GetAffiliateUserOverview(ctx context.Context, userID int64) (*service.AffiliateUserOverview, error) {
 	if userID <= 0 {
 		return nil, service.ErrUserNotFound

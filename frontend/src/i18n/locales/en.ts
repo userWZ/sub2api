@@ -1196,19 +1196,49 @@ export default {
       empty: 'No available discount credit',
       success: '{amount} discount applied'
     },
-    invitees: {
-      title: 'Invited Users',
-      empty: 'No invited users yet',
-      columns: {
-        email: 'Email',
-        username: 'Username',
-        rebate: 'Rebate',
-        joinedAt: 'Joined At'
-      }
-    },
-    tips: {
-      title: 'How It Works',
-      line1: 'Share your affiliate code or invite link with new users.',
+	    invitees: {
+	      title: 'Invited Users',
+	      empty: 'No invited users yet',
+	      columns: {
+	        email: 'Email',
+	        username: 'Username',
+	        rebate: 'Rebate',
+	        joinedAt: 'Joined At'
+	      }
+	    },
+	    records: {
+	      title: 'Rebate Credit Records',
+	      description: 'View rebate credits earned, purchase discounts, refund restores, and offline payout deductions',
+	      loadFailed: 'Failed to load rebate credit records',
+	      empty: 'No rebate credit records yet',
+	      allTypes: 'All Types',
+	      actions: {
+	        accrue: 'Invite Rebate',
+	        discount: 'Purchase Discount',
+	        discountRestore: 'Discount Restore',
+	        withdraw: 'Offline Payout',
+	        rebateReversal: 'Rebate Reversal'
+	      },
+	      columns: {
+	        type: 'Type',
+	        amount: 'Amount',
+	        sourceOrder: 'Source Order',
+	        availableAfter: 'Available Credit',
+	        status: 'Status',
+	        createdAt: 'Time'
+	      },
+	      status: {
+	        posted: 'Posted',
+	        frozenUntil: 'Frozen until {time}',
+	        deducted: 'Deducted',
+	        restored: 'Restored',
+	        withdrawn: 'Paid out',
+	        reversed: 'Reversed'
+	      }
+	    },
+	    tips: {
+	      title: 'How It Works',
+	      line1: 'Share your affiliate code or invite link with new users.',
       line2: 'When invitees recharge, you receive {rate} of the recharge as rebate quota.',
       line3: 'Available rebate credit can be used as a discount when buying balance or plans.',
       line4: 'Newly earned rebates may have a waiting period before they can be used.'

@@ -211,6 +211,31 @@ func (h *UserHandler) GetAffiliate(c *gin.Context) {
 	response.Success(c, detail)
 }
 
+// GetAffiliateRecords returns the current user's affiliate wallet ledger.
+// GET /api/v1/user/aff/records
+func (h *UserHandler) GetAffiliateRecords(c *gin.Context) {
+	subject, ok := middleware2.GetAuthSubjectFromContext(c)
+	if !ok {
+		response.Unauthorized(c, "User not authenticated")
+		return
+	}
+
+	page, pageSize := response.ParsePagination(c)
+	if pageSize > 100 {
+		pageSize = 100
+	}
+	items, total, err := h.affiliateService.ListUserAffiliateRecords(c.Request.Context(), subject.UserID, service.AffiliateRecordFilter{
+		Page:     page,
+		PageSize: pageSize,
+		Action:   c.Query("action"),
+	})
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Paginated(c, items, total, page, pageSize)
+}
+
 // TransferAffiliateQuota transfers all available affiliate quota into current balance.
 // POST /api/v1/user/aff/transfer
 func (h *UserHandler) TransferAffiliateQuota(c *gin.Context) {

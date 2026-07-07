@@ -463,6 +463,10 @@ func (r *oauthEmailAffiliateRepoStub) ListAffiliateTransferRecords(context.Conte
 	panic("unexpected ListAffiliateTransferRecords call")
 }
 
+func (r *oauthEmailAffiliateRepoStub) ListUserAffiliateLedgerRecords(context.Context, int64, service.AffiliateRecordFilter) ([]service.AffiliateLedgerRecord, int64, error) {
+	panic("unexpected ListUserAffiliateLedgerRecords call")
+}
+
 func (r *oauthEmailAffiliateRepoStub) GetAffiliateUserOverview(context.Context, int64) (*service.AffiliateUserOverview, error) {
 	panic("unexpected GetAffiliateUserOverview call")
 }

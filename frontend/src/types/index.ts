@@ -148,6 +148,22 @@ export interface UserAffiliateDetail {
   invitees: AffiliateInvitee[]
 }
 
+export type UserAffiliateLedgerAction = 'accrue' | 'discount' | 'discount_restore' | 'withdraw' | 'rebate_reversal'
+
+export interface UserAffiliateLedgerRecord {
+  ledger_id: number
+  action: UserAffiliateLedgerAction | string
+  amount: number
+  source_order_id?: number | null
+  out_trade_no?: string | null
+  remark?: string | null
+  available_quota_after?: number | null
+  frozen_quota_after?: number | null
+  history_quota_after?: number | null
+  frozen_until?: string | null
+  created_at: string
+}
+
 export interface SendVerifyCodeRequest {
   email: string
   turnstile_token?: string
