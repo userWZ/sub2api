@@ -1835,7 +1835,7 @@ export default {
     affiliates: {
       invitesDescription: 'View site-wide inviter and invitee relationships',
       rebatesDescription: 'View recharge orders that generated affiliate rebates',
-      transfersDescription: 'View affiliate purchase discounts, discount restores, offline payout deductions, and legacy balance transfers',
+      transfersDescription: 'View affiliate purchase discounts, discount restores, and offline payout deductions',
       errors: {
         loadFailed: 'Failed to load affiliate records'
       },
@@ -1859,11 +1859,9 @@ export default {
         actionDiscount: 'Purchase Discount',
         actionDiscountRestore: 'Discount Restore',
         actionWithdraw: 'Offline Payout',
-        actionTransferLegacy: 'Legacy Balance Transfer',
         walletAmount: 'Amount',
         transferAmount: 'Amount',
         sourceOrder: 'Source Order',
-        balanceAfter: 'Balance After',
         availableQuotaAfter: 'Available Rebate After',
         frozenQuotaAfter: 'Frozen After',
         historyQuotaAfter: 'Historical Rebate',
@@ -1872,7 +1870,7 @@ export default {
         remark: 'Remark',
         invitedAt: 'Invited At',
         rebatedAt: 'Rebated At',
-        transferredAt: 'Transferred At'
+        transferredAt: 'Recorded At'
       },
       overview: {
         title: 'Affiliate User Overview',

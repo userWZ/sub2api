@@ -57,7 +57,7 @@
             <span
               :class="[
                 'inline-flex rounded px-2 py-0.5 text-xs font-medium',
-                ['withdraw', 'discount', 'transfer'].includes(row.action)
+                ['withdraw', 'discount'].includes(row.action)
                   ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
                   : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300',
               ]"
@@ -101,9 +101,6 @@
           </template>
           <template #cell-amount="{ row }">
             <AmountText :value="row.amount" strong />
-          </template>
-          <template #cell-balance_after="{ row }">
-            <NullableAmountText :value="row.balance_after" />
           </template>
           <template #cell-available_quota_after="{ row }">
             <NullableAmountText :value="row.available_quota_after" />
@@ -297,7 +294,6 @@ const columns = computed<Column[]>(() => {
     { key: 'action', label: t('admin.affiliates.records.action'), sortable: true },
     { key: 'amount', label: t('admin.affiliates.records.walletAmount'), sortable: true },
     { key: 'source_order', label: t('admin.affiliates.records.sourceOrder'), sortable: true },
-    { key: 'balance_after', label: t('admin.affiliates.records.balanceAfter'), sortable: true },
     { key: 'available_quota_after', label: t('admin.affiliates.records.availableQuotaAfter'), sortable: true },
     { key: 'frozen_quota_after', label: t('admin.affiliates.records.frozenQuotaAfter'), sortable: true },
     { key: 'history_quota_after', label: t('admin.affiliates.records.historyQuotaAfter'), sortable: true },
@@ -432,7 +428,6 @@ function formatTransferAction(action: string | null | undefined): string {
   if (action === 'discount') return t('admin.affiliates.records.actionDiscount')
   if (action === 'discount_restore') return t('admin.affiliates.records.actionDiscountRestore')
   if (action === 'withdraw') return t('admin.affiliates.records.actionWithdraw')
-  if (action === 'transfer') return t('admin.affiliates.records.actionTransferLegacy')
   return action || '-'
 }
 

@@ -929,7 +929,7 @@ FROM user_affiliate_ledger ual
 JOIN users u ON u.id = ual.user_id
 LEFT JOIN users op ON op.id = ual.operator_user_id
 LEFT JOIN payment_orders po ON po.id = ual.source_order_id
-WHERE ual.action IN ('discount', 'discount_restore', 'withdraw', 'transfer')`
+WHERE ual.action IN ('discount', 'discount_restore', 'withdraw')`
 	if where != "" {
 		where = strings.Replace(where, "WHERE ", " AND ", 1)
 	}
@@ -944,7 +944,6 @@ WHERE ual.action IN ('discount', 'discount_restore', 'withdraw', 'transfer')`
 		"action":                "ual.action",
 		"amount":                "ual.amount",
 		"source_order":          "ual.source_order_id",
-		"balance_after":         "ual.balance_after",
 		"available_quota_after": "ual.aff_quota_after",
 		"frozen_quota_after":    "ual.aff_frozen_quota_after",
 		"history_quota_after":   "ual.aff_history_quota_after",

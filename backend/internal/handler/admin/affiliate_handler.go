@@ -269,7 +269,7 @@ func (h *AffiliateHandler) ListRebateRecords(c *gin.Context) {
 	response.Paginated(c, items, total, filter.Page, filter.PageSize)
 }
 
-// ListTransferRecords returns all affiliate quota-to-balance transfer records.
+// ListTransferRecords returns affiliate wallet discount, restore, and payout records.
 // GET /api/v1/admin/affiliates/transfers
 func (h *AffiliateHandler) ListTransferRecords(c *gin.Context) {
 	page, pageSize := response.ParsePagination(c)

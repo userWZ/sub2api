@@ -1856,7 +1856,7 @@ export default {
     affiliates: {
       invitesDescription: '查看全站邀请关系和被邀请用户累计返利',
       rebatesDescription: '查看每一笔产生返利的充值订单',
-      transfersDescription: '查看返利购买抵扣、抵扣返还、线下提现扣减和历史转余额流水',
+      transfersDescription: '查看返利购买抵扣、抵扣返还和线下提现扣减流水',
       errors: {
         loadFailed: '加载邀请返利记录失败'
       },
@@ -1880,11 +1880,9 @@ export default {
         actionDiscount: '购买抵扣',
         actionDiscountRestore: '抵扣返还',
         actionWithdraw: '线下提现',
-        actionTransferLegacy: '历史转余额',
         walletAmount: '金额',
         transferAmount: '金额',
         sourceOrder: '关联订单',
-        balanceAfter: '操作后余额',
         availableQuotaAfter: '操作后可用返利',
         frozenQuotaAfter: '操作后冻结',
         historyQuotaAfter: '历史返利',
@@ -1893,7 +1891,7 @@ export default {
         remark: '备注',
         invitedAt: '邀请时间',
         rebatedAt: '返利时间',
-        transferredAt: '提取时间'
+        transferredAt: '记录时间'
       },
       overview: {
         title: '用户返利概览',

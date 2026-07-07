@@ -68,7 +68,7 @@ export interface AffiliateTransferRecord {
   user_id: number
   user_email: string
   username: string
-  action: 'discount' | 'discount_restore' | 'withdraw' | 'transfer' | string
+  action: 'discount' | 'discount_restore' | 'withdraw' | string
   amount: number
   source_order_id?: number | null
   out_trade_no?: string | null
@@ -76,7 +76,6 @@ export interface AffiliateTransferRecord {
   operator_email?: string | null
   remark?: string | null
   external_ref?: string | null
-  balance_after?: number | null
   available_quota_after?: number | null
   frozen_quota_after?: number | null
   history_quota_after?: number | null
