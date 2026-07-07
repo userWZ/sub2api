@@ -7484,6 +7484,7 @@ export default {
       creditedAmount: '到账金额',
       fee: '手续费',
       baseAmount: '充值金额',
+      affiliateDiscount: '返利抵扣',
       includedInPayAmount: '已含在实付金额中',
       status: '状态',
       paymentMethod: '支付方式',

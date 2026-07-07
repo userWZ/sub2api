@@ -522,6 +522,8 @@ func buildPublicOrderResult(order *dbent.PaymentOrder) PublicOrderResult {
 		ID:                  order.ID,
 		OutTradeNo:          order.OutTradeNo,
 		Amount:              order.Amount,
+		OriginalAmount:      service.PaymentOrderOriginalAmountForResponse(order),
+		AffiliateDiscount:   order.AffiliateDiscount,
 		PayAmount:           order.PayAmount,
 		FeeRate:             order.FeeRate,
 		Currency:            service.PaymentOrderCurrency(order),

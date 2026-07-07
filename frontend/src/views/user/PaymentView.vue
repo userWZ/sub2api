@@ -46,8 +46,8 @@
 
         <div class="confirm-grid">
           <div class="confirm-detail">
-            <span>{{ copy.payAmount }}</span>
-            <strong>{{ selectedPayableText }}</strong>
+            <span>{{ copy.productAmount }}</span>
+            <strong>{{ selectedOriginalAmountText }}</strong>
           </div>
           <div class="confirm-detail">
             <span>{{ copy.arrival }}</span>
@@ -55,20 +55,38 @@
           </div>
         </div>
 
-        <div v-if="affiliateDiscountVisible" class="affiliate-discount-panel">
-          <label class="affiliate-discount-toggle">
-            <input
-              v-model="useAffiliateDiscount"
-              type="checkbox"
-            />
-            <span>{{ copy.useAffiliateDiscount }}</span>
-          </label>
-          <div class="affiliate-discount-summary">
-            <span>{{ copy.availableDiscount }}: {{ formatCnyPrice(affiliateAvailableQuota) }}</span>
-            <span v-if="selectedAffiliateDiscount > 0">
-              {{ copy.discountApplied }}: -{{ formatCnyPrice(selectedAffiliateDiscount) }}
-            </span>
-            <span v-else>{{ copy.discountNotApplied }}</span>
+        <div class="checkout-summary">
+          <div class="checkout-summary-row">
+            <span>{{ copy.orderAmount }}</span>
+            <strong>{{ selectedOriginalAmountText }}</strong>
+          </div>
+
+          <div v-if="affiliateDiscountVisible" class="affiliate-discount-panel">
+            <label class="affiliate-discount-toggle">
+              <input
+                v-model="useAffiliateDiscount"
+                type="checkbox"
+                :disabled="!affiliateDiscountSelectable"
+              />
+              <span class="affiliate-discount-copy">
+                <strong>{{ copy.useAffiliateDiscount }}</strong>
+                <small>{{ copy.availableDiscount }}: {{ formatCnyPrice(affiliateAvailableQuota) }}</small>
+              </span>
+            </label>
+            <div class="affiliate-discount-summary">
+              <span>{{ selectedAffiliateDiscountStatus }}</span>
+              <strong>{{ selectedAffiliateDiscountText }}</strong>
+            </div>
+          </div>
+
+          <div v-if="selectedFeeAmount > 0" class="checkout-summary-row">
+            <span>{{ copy.fee }}</span>
+            <strong>{{ formatCnyPrice(selectedFeeAmount) }}</strong>
+          </div>
+
+          <div class="checkout-summary-row checkout-summary-total">
+            <span>{{ copy.payAmount }}</span>
+            <strong>{{ selectedPayableText }}</strong>
           </div>
         </div>
 
@@ -155,6 +173,7 @@
 
                 <div class="mt-5">
                   <span class="text-3xl font-black text-slate-950 dark:text-white">{{ plan.priceText }}</span>
+                  <span v-if="plan.originalPriceText" class="original-price">{{ plan.originalPriceText }}</span>
                   <span class="ml-1 text-sm font-semibold text-slate-500 dark:text-slate-400">{{ plan.period }}</span>
                 </div>
 
@@ -231,6 +250,7 @@ import {
   buildPaymentErrorToastMessage,
   describePaymentScenarioError,
 } from './paymentUx'
+import { formatPaymentAmount } from '@/components/payment/currency'
 import {
   hasWechatResumeQuery,
   parseWechatResumeRoute,
@@ -251,6 +271,7 @@ type CashierProduct = {
   name: string
   description: string
   priceText: string
+  originalPriceText?: string
   period: string
   badge?: string
   highlight?: boolean
@@ -326,16 +347,50 @@ const affiliateDiscountVisible = computed(() => {
 })
 
 const selectedAffiliateDiscount = computed(() => {
-  if (!selectedProduct.value || !affiliateDiscountVisible.value || !useAffiliateDiscount.value) return 0
+  if (!useAffiliateDiscount.value) return 0
+  return selectedAffiliateDiscountPreview.value
+})
+
+const selectedAffiliateDiscountPreview = computed(() => {
+  if (!selectedProduct.value || !affiliateDiscountVisible.value) return 0
   return estimateAffiliateDiscount(selectedProduct.value.amount)
 })
 
-const selectedPayableAmount = computed(() => {
+const affiliateDiscountSelectable = computed(() => {
+  return affiliateDiscountVisible.value && selectedAffiliateDiscountPreview.value > 0
+})
+
+const selectedOriginalAmountText = computed(() => {
+  if (!selectedProduct.value) return formatCnyPrice(0)
+  return formatCnyPrice(selectedProduct.value.amount)
+})
+
+const selectedDiscountedBaseAmount = computed(() => {
   if (!selectedProduct.value) return 0
   return roundMoney(Math.max(0, selectedProduct.value.amount - selectedAffiliateDiscount.value))
 })
 
+const selectedFeeAmount = computed(() => {
+  const rate = Number(checkoutInfo.value?.recharge_fee_rate || 0)
+  if (!Number.isFinite(rate) || rate <= 0) return 0
+  return roundMoney(selectedDiscountedBaseAmount.value * rate / 100)
+})
+
+const selectedPayableAmount = computed(() => {
+  return roundMoney(selectedDiscountedBaseAmount.value + selectedFeeAmount.value)
+})
+
 const selectedPayableText = computed(() => formatCnyPrice(selectedPayableAmount.value))
+
+const selectedAffiliateDiscountText = computed(() => {
+  return selectedAffiliateDiscount.value > 0 ? `-${formatCnyPrice(selectedAffiliateDiscount.value)}` : formatCnyPrice(0)
+})
+
+const selectedAffiliateDiscountStatus = computed(() => {
+  if (!affiliateDiscountSelectable.value) return copy.value.discountUnavailable
+  if (!useAffiliateDiscount.value) return copy.value.discountNotApplied
+  return copy.value.discountApplied
+})
 
 const pricingHeader = computed(() => {
   return {
@@ -353,6 +408,10 @@ const availablePaymentMethods = computed<VisibleLocalPaymentMethod[]>(() => {
 
 const visibleMethodLimits = computed<Record<string, MethodLimit>>(() => {
   return getVisibleMethods(checkoutInfo.value?.methods || {})
+})
+
+const selectedPaymentCurrency = computed(() => {
+  return visibleMethodLimits.value[selectedPaymentMethod.value]?.currency || 'CNY'
 })
 
 const renderedPricingGroups = computed<PriceGroup[]>(() => {
@@ -484,6 +543,7 @@ function buildBalanceProducts(): CashierProduct[] {
         name: normalizeCreditText(pickHomePricingText(card.name)),
         description: normalizeCreditText(pickHomePricingText(card.description)),
         priceText: formatCnyPrice(amount),
+        originalPriceText: '',
         period: pickHomePricingText(card.period),
         badge: pickHomePricingOptionalText(card.badge),
         highlight: card.highlight,
@@ -510,12 +570,14 @@ function buildServiceProducts(): CashierProduct[] {
       const plan = planById.get(card.subscription_plan_id)
       if (!plan) return null
       const amount = Number(plan.price || card.price || 0)
+      const originalAmount = Number(card.original_price || plan.original_price || 0)
       return {
         id: `service-${card.id}`,
         kind: 'subscription' as const,
         name: pickHomePricingText(card.name) || plan.name,
         description: pickHomePricingText(card.description) || plan.description,
         priceText: formatCnyPrice(amount),
+        originalPriceText: originalAmount > amount ? formatCnyPrice(originalAmount) : '',
         period: pickHomePricingText(card.period) || formatPlanPeriod(plan),
         badge: pickHomePricingOptionalText(card.badge),
         highlight: card.highlight,
@@ -670,7 +732,7 @@ async function submitSelectedOrder() {
     orderType: selectedProduct.value.kind,
     paymentType: selectedPaymentMethod.value,
     planId: selectedProduct.value.planId,
-    useAffiliateDiscount: useAffiliateDiscount.value,
+    useAffiliateDiscount: affiliateDiscountSelectable.value && useAffiliateDiscount.value,
   })
 }
 
@@ -711,12 +773,14 @@ async function createAndLaunchOrder(input: {
       isMobile: mobile,
       isWechatBrowser: inWechat,
       planId: input.planId,
+      useAffiliateDiscount: input.useAffiliateDiscount,
     })
   } catch (error) {
     const recovered = await retryWithQrFallbackIfNeeded(error, payload, {
       paymentType: input.paymentType,
       orderType: input.orderType,
       planId: input.planId,
+      useAffiliateDiscount: input.useAffiliateDiscount,
     })
     if (!recovered) {
       showPaymentError(error, input.paymentType, mobile, inWechat)
@@ -730,7 +794,7 @@ async function createAndLaunchOrder(input: {
 async function retryWithQrFallbackIfNeeded(
   error: unknown,
   payload: CreateOrderRequest,
-  context: { paymentType: string; orderType: OrderType; planId?: number },
+  context: { paymentType: string; orderType: OrderType; planId?: number; useAffiliateDiscount?: boolean },
 ): Promise<boolean> {
   if (normalizeVisibleMethod(payload.payment_type) !== 'wxpay') return false
   if (extractApiErrorCode(error) !== 'WECHAT_H5_NOT_AUTHORIZED') return false
@@ -748,6 +812,7 @@ async function retryWithQrFallbackIfNeeded(
     isMobile: false,
     isWechatBrowser: false,
     planId: context.planId,
+    useAffiliateDiscount: context.useAffiliateDiscount,
   })
   return true
 }
@@ -760,6 +825,7 @@ async function handleOrderResult(
     isMobile: boolean
     isWechatBrowser: boolean
     planId?: number
+    useAffiliateDiscount?: boolean
   },
 ) {
   const visibleMethod = normalizeVisibleMethod(result.payment_type || context.paymentType) || context.paymentType
@@ -776,6 +842,7 @@ async function handleOrderResult(
       paymentType: visibleMethod,
       orderType: context.orderType,
       planId: context.planId,
+      useAffiliateDiscount: context.useAffiliateDiscount,
     })
     return
   }
@@ -884,6 +951,7 @@ async function resumeWechatPayment(parsed: ParsedWechatResumeRoute) {
     planId: parsed.planId,
     openid: parsed.openid,
     wechatResumeToken: parsed.wechatResumeToken,
+    useAffiliateDiscount: parsed.useAffiliateDiscount,
   })
 }
 
@@ -900,7 +968,7 @@ function buildQrRouteQuery(state: PaymentRecoverySnapshot) {
 
 function buildWechatAuthorizeUrl(
   authorizeUrl: string,
-  context: { paymentType: string; orderType: OrderType; planId?: number },
+  context: { paymentType: string; orderType: OrderType; planId?: number; useAffiliateDiscount?: boolean },
 ): string {
   const url = new URL(authorizeUrl, window.location.origin)
   const redirect = new URLSearchParams()
@@ -908,6 +976,9 @@ function buildWechatAuthorizeUrl(
   redirect.set('payment_type', normalizeVisibleMethod(context.paymentType) || context.paymentType)
   redirect.set('order_type', context.orderType)
   if (context.planId) redirect.set('plan_id', String(context.planId))
+  if (typeof context.useAffiliateDiscount === 'boolean') {
+    redirect.set('use_affiliate_discount', String(context.useAffiliateDiscount))
+  }
   url.searchParams.set('redirect', `/purchase?${redirect.toString()}`)
   return url.toString()
 }
@@ -958,8 +1029,7 @@ function pickHomePricingOptionalText(value?: HomePricingLocalizedText | null) {
 }
 
 function formatCnyPrice(value: number) {
-  if (!Number.isFinite(value) || value <= 0) return '¥0'
-  return `¥${Number.isInteger(value) ? value.toFixed(0) : value.toFixed(1)}`
+  return formatPaymentAmount(roundMoney(Number.isFinite(value) && value > 0 ? value : 0), selectedPaymentCurrency.value, localeValue.value)
 }
 
 function roundMoney(value: number) {
@@ -1006,12 +1076,16 @@ const zhCopy = {
   rechargeAction: '立即充值',
   buyAction: '立即购买',
   confirmEyebrow: '确认支付',
-  payAmount: '支付金额',
+  productAmount: '商品金额',
+  orderAmount: '订单金额',
+  payAmount: '实付金额',
   arrival: '到账内容',
-  useAffiliateDiscount: '使用返利抵扣',
-  availableDiscount: '可用抵扣金',
-  discountApplied: '本单抵扣',
-  discountNotApplied: '本单不使用抵扣',
+  fee: '手续费',
+  useAffiliateDiscount: '使用返利折扣余额',
+  availableDiscount: '可用返利',
+  discountApplied: '返利抵扣',
+  discountNotApplied: '未使用返利抵扣',
+  discountUnavailable: '本单暂无可用抵扣',
   confirmPay: '确认并支付',
   creatingOrder: '正在创建订单...',
   methodUnavailable: '该支付方式暂不可用',
@@ -1051,12 +1125,16 @@ const enCopy = {
   rechargeAction: 'Top Up Now',
   buyAction: 'Buy Now',
   confirmEyebrow: 'Confirm Payment',
-  payAmount: 'Pay Amount',
+  productAmount: 'Item Amount',
+  orderAmount: 'Order Amount',
+  payAmount: 'Amount Due',
   arrival: 'Credit Received',
-  useAffiliateDiscount: 'Use referral credit',
-  availableDiscount: 'Available credit',
-  discountApplied: 'Applied',
-  discountNotApplied: 'No referral credit applied',
+  fee: 'Fee',
+  useAffiliateDiscount: 'Use referral discount credit',
+  availableDiscount: 'Available rebate',
+  discountApplied: 'Referral discount',
+  discountNotApplied: 'Referral discount not used',
+  discountUnavailable: 'No discount available for this order',
   confirmPay: 'Confirm and Pay',
   creatingOrder: 'Creating order...',
   methodUnavailable: 'This payment method is unavailable.',
@@ -1354,6 +1432,14 @@ const enCopy = {
   font-weight: 900;
 }
 
+.original-price {
+  margin-left: 0.5rem;
+  color: #94a3b8;
+  font-size: 1rem;
+  font-weight: 800;
+  text-decoration: line-through;
+}
+
 .plan-metrics {
   margin: 1rem 0;
   display: grid;
@@ -1460,15 +1546,53 @@ const enCopy = {
   font-weight: 950;
 }
 
+.checkout-summary {
+  display: grid;
+  gap: 0.65rem;
+  margin: -0.15rem 0 1rem;
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  border-radius: 0.65rem;
+  background: #f8fafc;
+  padding: 0.85rem;
+}
+
+.checkout-summary-row {
+  display: flex;
+  min-height: 1.75rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  color: #475569;
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.checkout-summary-row strong {
+  color: #0f172a;
+  font-size: 0.95rem;
+  font-weight: 950;
+  text-align: right;
+}
+
+.checkout-summary-total {
+  border-top: 1px solid rgba(203, 213, 225, 0.85);
+  padding-top: 0.65rem;
+  color: #0f172a;
+}
+
+.checkout-summary-total strong {
+  color: #006fd6;
+  font-size: 1.2rem;
+}
+
 .affiliate-discount-panel {
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
-  margin: -0.15rem 0 1rem;
+  gap: 0.6rem;
   border: 1px solid rgba(16, 185, 129, 0.28);
   border-radius: 0.6rem;
   background: rgba(236, 253, 245, 0.72);
-  padding: 0.85rem;
+  padding: 0.75rem;
 }
 
 .affiliate-discount-toggle {
@@ -1486,13 +1610,43 @@ const enCopy = {
   accent-color: #059669;
 }
 
+.affiliate-discount-toggle input:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+.affiliate-discount-copy {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.12rem;
+}
+
+.affiliate-discount-copy strong {
+  overflow-wrap: anywhere;
+}
+
+.affiliate-discount-copy small {
+  color: #047857;
+  font-size: 0.76rem;
+  font-weight: 750;
+}
+
 .affiliate-discount-summary {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem 1rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
   color: #047857;
   font-size: 0.8rem;
   font-weight: 750;
+}
+
+.affiliate-discount-summary strong {
+  color: #047857;
+  font-size: 0.95rem;
+  font-weight: 950;
 }
 
 .method-warning {
@@ -1546,6 +1700,7 @@ const enCopy = {
 :global(.dark .pricing-card),
 :global(.dark .confirm-panel),
 :global(.dark .confirm-detail),
+:global(.dark .checkout-summary),
 :global(.dark .method-pill),
 :global(.dark .method-button) {
   border-color: rgba(71, 85, 105, 0.75);
@@ -1578,8 +1733,27 @@ const enCopy = {
 }
 
 :global(.dark .affiliate-discount-toggle),
-:global(.dark .affiliate-discount-summary) {
+:global(.dark .affiliate-discount-summary),
+:global(.dark .affiliate-discount-copy small),
+:global(.dark .affiliate-discount-summary strong) {
   color: #a7f3d0;
+}
+
+:global(.dark .checkout-summary-row),
+:global(.dark .checkout-summary-total) {
+  color: #cbd5e1;
+}
+
+:global(.dark .checkout-summary-row strong) {
+  color: #f8fafc;
+}
+
+:global(.dark .checkout-summary-total) {
+  border-top-color: rgba(71, 85, 105, 0.85);
+}
+
+:global(.dark .checkout-summary-total strong) {
+  color: #7dd3fc;
 }
 
 :global(.dark .pricing-tabs) {
@@ -1603,6 +1777,10 @@ const enCopy = {
 :global(.dark .plan-badge) {
   background: rgba(14, 116, 144, 0.28);
   color: #bae6fd;
+}
+
+:global(.dark .original-price) {
+  color: #64748b;
 }
 
 :global(.dark .plan-metric-row) {

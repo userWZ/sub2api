@@ -48,7 +48,7 @@ import PaymentResultView from '../PaymentResultView.vue'
 import { PAYMENT_RECOVERY_STORAGE_KEY } from '@/components/payment/paymentFlow'
 import { formatPaymentAmount } from '@/components/payment/currency'
 
-const orderFactory = (status: string) => ({
+const orderFactory = (status: string, overrides: Record<string, unknown> = {}) => ({
   id: 42,
   user_id: 9,
   amount: 88,
@@ -61,6 +61,7 @@ const orderFactory = (status: string) => ({
   created_at: '2026-04-20T12:00:00Z',
   expires_at: '2026-04-20T12:30:00Z',
   refund_amount: 0,
+  ...overrides,
 })
 
 const recoverySnapshotFactory = (resumeToken: string) => ({
@@ -194,6 +195,40 @@ describe('PaymentResultView', () => {
     expect(wrapper.text()).toContain('103.00')
     expect(wrapper.text()).toContain('100.00')
     expect(window.localStorage.getItem(PAYMENT_RECOVERY_STORAGE_KEY)).toBeNull()
+  })
+
+  it('shows affiliate discount amount from the resolved order', async () => {
+    routeState.query = {
+      resume_token: 'resume-affiliate-discount',
+    }
+    window.localStorage.setItem(
+      PAYMENT_RECOVERY_STORAGE_KEY,
+      JSON.stringify(recoverySnapshotFactory('resume-affiliate-discount')),
+    )
+    resolveOrderPublicByResumeToken.mockResolvedValue({
+      data: orderFactory('PAID', {
+        original_amount: 100,
+        affiliate_discount: 40,
+        pay_amount: 60,
+        amount: 100,
+      }),
+    })
+
+    const wrapper = mount(PaymentResultView, {
+      global: {
+        stubs: {
+          OrderStatusBadge: true,
+        },
+      },
+    })
+
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('payment.orders.baseAmount')
+    expect(wrapper.text()).toContain(formatPaymentAmount(100, 'CNY'))
+    expect(wrapper.text()).toContain('payment.orders.affiliateDiscount')
+    expect(wrapper.text()).toContain(formatPaymentAmount(40, 'CNY'))
+    expect(wrapper.text()).toContain(formatPaymentAmount(60, 'CNY'))
   })
 
   it('refreshes a pending resume-token result until the order becomes paid', async () => {

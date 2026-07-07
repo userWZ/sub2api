@@ -7305,6 +7305,7 @@ export default {
       creditedAmount: 'Credited Amount',
       fee: 'Fee',
       baseAmount: 'Base Amount',
+      affiliateDiscount: 'Referral Discount',
       includedInPayAmount: 'included in paid amount',
       status: 'Status',
       paymentMethod: 'Payment Method',

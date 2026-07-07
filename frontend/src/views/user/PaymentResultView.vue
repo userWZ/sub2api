@@ -45,7 +45,11 @@
             </div>
             <div v-if="hasAmountFields(order)" class="flex justify-between">
               <span class="text-gray-500 dark:text-gray-400">{{ t('payment.orders.baseAmount') }}</span>
-              <span class="font-medium text-gray-900 dark:text-white">{{ formatGatewayAmount(baseAmount) }}</span>
+              <span class="font-medium text-gray-900 dark:text-white">{{ formatGatewayAmount(originalOrderAmount) }}</span>
+            </div>
+            <div v-if="hasAmountFields(order) && affiliateDiscountAmount > 0" class="flex justify-between">
+              <span class="text-gray-500 dark:text-gray-400">{{ t('payment.orders.affiliateDiscount') }}</span>
+              <span class="font-medium text-emerald-600 dark:text-emerald-400">-{{ formatGatewayAmount(affiliateDiscountAmount) }}</span>
             </div>
             <div v-if="hasAmountFields(order) && order.fee_rate > 0" class="flex justify-between">
               <span class="text-gray-500 dark:text-gray-400">{{ t('payment.orders.fee') }} ({{ order.fee_rate }}%)</span>
@@ -149,6 +153,16 @@ const baseAmount = computed(() => {
   return Math.round((order.value.pay_amount / (1 + feeRate / 100)) * 100) / 100
 })
 
+const affiliateDiscountAmount = computed(() => {
+  return readNumericOrderField(order.value, 'affiliate_discount')
+})
+
+const originalOrderAmount = computed(() => {
+  const original = readNumericOrderField(order.value, 'original_amount')
+  if (original > 0) return original
+  return Math.round((baseAmount.value + affiliateDiscountAmount.value) * 100) / 100
+})
+
 /** 手续费 = pay_amount - baseAmount */
 const feeAmount = computed(() => {
   if (!hasAmountFields(order.value)) return 0
@@ -209,6 +223,12 @@ function hasAmountFields(nextOrder: ResolvedOrder | null): nextOrder is PaymentO
 
 function hasPaymentType(nextOrder: ResolvedOrder | null): nextOrder is PaymentOrder {
   return !!nextOrder && 'payment_type' in nextOrder && typeof nextOrder.payment_type === 'string' && nextOrder.payment_type.trim() !== ''
+}
+
+function readNumericOrderField(nextOrder: ResolvedOrder | null, key: string): number {
+  if (!nextOrder || !(key in nextOrder)) return 0
+  const value = (nextOrder as unknown as Record<string, unknown>)[key]
+  return typeof value === 'number' && Number.isFinite(value) ? value : 0
 }
 
 function normalizeOrderStatus(status: string | null | undefined): string {

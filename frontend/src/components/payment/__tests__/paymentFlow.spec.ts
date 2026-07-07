@@ -304,6 +304,20 @@ describe('buildCreateOrderPayload', () => {
     })
   })
 
+  it('passes an explicit affiliate discount opt-out', () => {
+    expect(buildCreateOrderPayload({
+      amount: 128,
+      paymentType: 'wxpay',
+      orderType: 'subscription',
+      origin: 'https://app.example.com',
+      isMobile: true,
+      isWechatBrowser: false,
+      useAffiliateDiscount: false,
+    })).toMatchObject({
+      use_affiliate_discount: false,
+    })
+  })
+
   it('passes is_mobile: false when forceQRCode is enabled for alipay', () => {
     expect(buildCreateOrderPayload({
       amount: 50,

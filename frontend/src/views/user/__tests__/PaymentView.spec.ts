@@ -20,7 +20,37 @@ const showError = vi.hoisted(() => vi.fn())
 const showInfo = vi.hoisted(() => vi.fn())
 const showWarning = vi.hoisted(() => vi.fn())
 const getCheckoutInfo = vi.hoisted(() => vi.fn())
+const getAffiliateDetail = vi.hoisted(() => vi.fn())
 const bridgeInvoke = vi.hoisted(() => vi.fn())
+const fetchPublicSettings = vi.hoisted(() => vi.fn().mockResolvedValue(undefined))
+const cachedPublicSettings = vi.hoisted(() => ({
+  home_pricing_config: {
+    eyebrow: { zh: '', en: '' },
+    title: { zh: '', en: '' },
+    description: { zh: '', en: '' },
+    subscription_group: {
+      title: { zh: '订阅', en: 'Subscriptions' },
+      description: { zh: '适合持续使用，按服务套餐提供周期内额度。', en: 'Subscription packages.' },
+    },
+    credit_group: {
+      title: { zh: '充值额度', en: 'Balance Credit' },
+      description: { zh: '适合灵活补充。', en: 'Flexible top-ups.' },
+    },
+    subscription_cards: [{
+      id: 'starter-card',
+      enabled: true,
+      sort_order: 10,
+      subscription_plan_id: 7,
+      name: { zh: '', en: '' },
+      description: { zh: '', en: '' },
+      badge: { zh: '', en: '' },
+      period: { zh: '', en: '' },
+      highlight: false,
+      metrics: [],
+    }],
+    credit_cards: [],
+  },
+}))
 
 vi.mock('vue-router', async () => {
   const actual = await vi.importActual<typeof import('vue-router')>('vue-router')
@@ -70,6 +100,8 @@ vi.mock('@/stores/subscriptions', () => ({
 
 vi.mock('@/stores', () => ({
   useAppStore: () => ({
+    cachedPublicSettings,
+    fetchPublicSettings,
     showError,
     showInfo,
     showWarning,
@@ -79,6 +111,12 @@ vi.mock('@/stores', () => ({
 vi.mock('@/api/payment', () => ({
   paymentAPI: {
     getCheckoutInfo,
+  },
+}))
+
+vi.mock('@/api/user', () => ({
+  default: {
+    getAffiliateDetail,
   },
 }))
 
@@ -198,12 +236,19 @@ function oauthOrderFixture() {
   }
 }
 
-async function mountSubscriptionConfirm(options: Parameters<typeof checkoutInfoWithPlansFixture>[0] = {}) {
+async function mountSubscriptionConfirm(
+  options: Parameters<typeof checkoutInfoWithPlansFixture>[0] & {
+    affiliateQuota?: number
+    routeQuery?: Record<string, unknown>
+  } = {},
+) {
   vi.useRealTimers()
+  const { affiliateQuota = 0, routeQuery, ...fixtureOptions } = options
   routeState.path = '/purchase'
-  routeState.query = {
+  routeState.query = routeQuery || {
     tab: 'subscription',
     group: '3',
+    plan_id: '7',
   }
   routerReplace.mockReset().mockResolvedValue(undefined)
   routerPush.mockReset().mockResolvedValue(undefined)
@@ -214,7 +259,19 @@ async function mountSubscriptionConfirm(options: Parameters<typeof checkoutInfoW
   showError.mockReset()
   showInfo.mockReset()
   showWarning.mockReset()
-  getCheckoutInfo.mockReset().mockResolvedValue(checkoutInfoWithPlansFixture(options))
+  fetchPublicSettings.mockReset().mockResolvedValue(undefined)
+  getCheckoutInfo.mockReset().mockResolvedValue(checkoutInfoWithPlansFixture(fixtureOptions))
+  getAffiliateDetail.mockReset().mockResolvedValue({
+    user_id: 1,
+    aff_code: 'AFF-DEMO',
+    inviter_id: null,
+    aff_count: 0,
+    aff_quota: affiliateQuota,
+    aff_frozen_quota: 0,
+    aff_history_quota: affiliateQuota,
+    effective_rebate_rate_percent: 10,
+    invitees: [],
+  })
   bridgeInvoke.mockReset()
   window.localStorage.clear()
   ;(window as Window & { WeixinJSBridge?: { invoke: typeof bridgeInvoke } }).WeixinJSBridge = undefined
@@ -258,7 +315,6 @@ describe('PaymentView subscription confirmation amounts', () => {
     expect(text).toContain(planPrice)
     expect(text).toContain(originalPrice)
     expect(text).not.toContain(convertedByRechargeMultiplier)
-    expect(wrapper.findAll('button').some(button => button.text().includes(planPrice))).toBe(true)
   })
 
   it('keeps plan price when multiplier is not configured or payment currency is not CNY', async () => {
@@ -316,7 +372,63 @@ describe('PaymentView subscription confirmation amounts', () => {
     expect(text).toContain(price)
     expect(text).toContain(fee)
     expect(text).toContain(total)
-    expect(wrapper.findAll('button').some(button => button.text().includes(total))).toBe(true)
+  })
+})
+
+describe('PaymentView affiliate discount option', () => {
+  it('shows the estimated rebate discount and submits opt-out when unchecked', async () => {
+    const wrapper = await mountSubscriptionConfirm({
+      affiliateQuota: 80,
+      checkout: {
+        affiliate_discount: {
+          enabled: true,
+          max_percent: 50,
+          min_pay_amount: 1,
+        },
+      },
+      method: {
+        currency: 'CNY',
+      },
+      plan: {
+        price: 100,
+      },
+    })
+
+    expect(wrapper.text()).toContain('使用返利折扣余额')
+    expect(wrapper.text()).toContain(`可用返利: ${formatPaymentAmount(80, 'CNY')}`)
+    expect(wrapper.text()).toContain('返利抵扣')
+    expect(wrapper.text()).toContain(`-${formatPaymentAmount(50, 'CNY')}`)
+    expect(wrapper.text()).toContain('实付金额')
+    expect(wrapper.text()).toContain(formatPaymentAmount(50, 'CNY'))
+
+    const checkbox = wrapper.find('input[type="checkbox"]')
+    expect((checkbox.element as HTMLInputElement).checked).toBe(true)
+    await checkbox.setValue(false)
+
+    expect(wrapper.text()).toContain('未使用返利抵扣')
+    expect(wrapper.text()).toContain('实付金额')
+    expect(wrapper.text()).toContain(formatPaymentAmount(100, 'CNY'))
+
+    createOrder.mockResolvedValue({
+      order_id: 901,
+      amount: 100,
+      pay_amount: 100,
+      fee_rate: 0,
+      expires_at: '2099-01-01T00:10:00.000Z',
+      payment_type: 'wxpay',
+      qr_code: 'weixin://wxpay/bizpayurl?pr=affiliate-opt-out',
+      out_trade_no: 'sub2_affiliate_opt_out',
+    })
+
+    await wrapper.find('[data-testid="selected-product-submit"]').trigger('click')
+    await flushPromises()
+
+    expect(createOrder).toHaveBeenCalledWith(expect.objectContaining({
+      amount: 100,
+      order_type: 'subscription',
+      plan_id: 7,
+      use_affiliate_discount: false,
+    }))
   })
 })
 
