@@ -7,6 +7,13 @@
             <Icon name="search" size="md" class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input v-model="filters.search" type="text" class="input pl-10" :placeholder="t('admin.affiliates.records.searchPlaceholder')" @input="debounceLoad" />
           </div>
+          <Select
+            v-if="props.type === 'transfers'"
+            v-model="filters.action"
+            :options="actionFilterOptions"
+            class="w-full sm:w-44"
+            @change="reloadFromFirstPage"
+          />
           <input v-model="filters.start_at" type="date" class="input w-full sm:w-44" :title="t('admin.affiliates.records.startAt')" @change="reloadFromFirstPage" />
           <input v-model="filters.end_at" type="date" class="input w-full sm:w-44" :title="t('admin.affiliates.records.endAt')" @change="reloadFromFirstPage" />
           <button class="btn btn-secondary px-2 md:px-3" :disabled="loading" :title="t('common.refresh')" @click="loadRecords">
@@ -235,11 +242,12 @@ import TablePageLayout from '@/components/layout/TablePageLayout.vue'
 import DataTable from '@/components/common/DataTable.vue'
 import Pagination from '@/components/common/Pagination.vue'
 import BaseDialog from '@/components/common/BaseDialog.vue'
+import Select, { type SelectOption } from '@/components/common/Select.vue'
 import Icon from '@/components/icons/Icon.vue'
 import OrderStatusBadge from '@/components/payment/OrderStatusBadge.vue'
 import type { Column } from '@/components/common/types'
 import { useAppStore } from '@/stores/app'
-import { affiliatesAPI, type AffiliateInviteRecord, type AffiliateRebateRecord, type AffiliateTransferRecord, type AffiliateUserOverview, type ListAffiliateRecordsParams } from '@/api/admin/affiliates'
+import { affiliatesAPI, type AffiliateInviteRecord, type AffiliateRebateRecord, type AffiliateTransferRecord, type AffiliateUserOverview, type AffiliateWalletAction, type ListAffiliateRecordsParams } from '@/api/admin/affiliates'
 import type { PaginatedResponse } from '@/types'
 import { extractI18nErrorMessage } from '@/utils/apiError'
 import { formatDateTime as formatDisplayDateTime } from '@/utils/format'
@@ -255,7 +263,7 @@ const { t } = useI18n()
 const appStore = useAppStore()
 const loading = ref(false)
 const records = ref<AffiliateRecord[]>([])
-const filters = reactive({ search: '', start_at: '', end_at: '' })
+const filters = reactive<{ search: string; start_at: string; end_at: string; action: AffiliateWalletAction | '' }>({ search: '', start_at: '', end_at: '', action: '' })
 const pagination = reactive({ page: 1, page_size: 20, total: 0 })
 const overviewDialog = ref(false)
 const overviewLoading = ref(false)
@@ -325,6 +333,13 @@ function loadInitialSortState(): { sort_by: string; sort_order: 'asc' | 'desc' }
 
 const sortState = reactive(loadInitialSortState())
 
+const actionFilterOptions = computed<SelectOption[]>(() => [
+  { value: '', label: t('admin.affiliates.records.allActions') },
+  { value: 'discount', label: t('admin.affiliates.records.actionDiscount') },
+  { value: 'discount_restore', label: t('admin.affiliates.records.actionDiscountRestore') },
+  { value: 'withdraw', label: t('admin.affiliates.records.actionWithdraw') },
+])
+
 const withdrawAfterQuota = computed(() => {
   const current = Number(withdrawTarget.value?.available_quota || 0)
   const amount = Number(withdrawForm.amount || 0)
@@ -354,6 +369,7 @@ function buildParams(): ListAffiliateRecordsParams {
     search: filters.search.trim() || undefined,
     start_at: filters.start_at || undefined,
     end_at: filters.end_at || undefined,
+    action: props.type === 'transfers' ? filters.action || undefined : undefined,
     sort_by: sortState.sort_by,
     sort_order: sortState.sort_order,
     timezone: userTimezone(),

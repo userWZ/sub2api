@@ -1856,6 +1856,7 @@ export default {
         paymentType: 'Payment Method',
         orderStatus: 'Order Status',
         action: 'Type',
+        allActions: 'All Types',
         actionDiscount: 'Purchase Discount',
         actionDiscountRestore: 'Discount Restore',
         actionWithdraw: 'Offline Payout',

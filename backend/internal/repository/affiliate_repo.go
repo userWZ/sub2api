@@ -930,6 +930,15 @@ JOIN users u ON u.id = ual.user_id
 LEFT JOIN users op ON op.id = ual.operator_user_id
 LEFT JOIN payment_orders po ON po.id = ual.source_order_id
 WHERE ual.action IN ('discount', 'discount_restore', 'withdraw')`
+	if filter.Action != "" {
+		args = append(args, filter.Action)
+		actionClause := fmt.Sprintf("ual.action = $%d", len(args))
+		if where == "" {
+			where = "WHERE " + actionClause
+		} else {
+			where += " AND " + actionClause
+		}
+	}
 	if where != "" {
 		where = strings.Replace(where, "WHERE ", " AND ", 1)
 	}

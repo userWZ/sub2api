@@ -29,10 +29,13 @@ export interface ListAffiliateRecordsParams {
   search?: string
   start_at?: string
   end_at?: string
+  action?: AffiliateWalletAction | ''
   sort_by?: string
   sort_order?: 'asc' | 'desc'
   timezone?: string
 }
+
+export type AffiliateWalletAction = 'discount' | 'discount_restore' | 'withdraw'
 
 export interface AffiliateInviteRecord {
   inviter_id: number
@@ -68,7 +71,7 @@ export interface AffiliateTransferRecord {
   user_id: number
   user_email: string
   username: string
-  action: 'discount' | 'discount_restore' | 'withdraw' | string
+  action: AffiliateWalletAction | string
   amount: number
   source_order_id?: number | null
   out_trade_no?: string | null

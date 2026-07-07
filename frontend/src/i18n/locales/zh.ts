@@ -1877,6 +1877,7 @@ export default {
         paymentType: '支付方式',
         orderStatus: '订单状态',
         action: '类型',
+        allActions: '全部类型',
         actionDiscount: '购买抵扣',
         actionDiscountRestore: '抵扣返还',
         actionWithdraw: '线下提现',

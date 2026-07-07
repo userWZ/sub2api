@@ -149,6 +149,7 @@ type AffiliateRecordFilter struct {
 	PageSize int
 	StartAt  *time.Time
 	EndAt    *time.Time
+	Action   string
 	SortBy   string
 	SortDesc bool
 }
@@ -735,5 +736,15 @@ func normalizeAffiliateRecordFilter(filter AffiliateRecordFilter) AffiliateRecor
 	}
 	filter.Search = strings.TrimSpace(filter.Search)
 	filter.SortBy = strings.TrimSpace(filter.SortBy)
+	filter.Action = normalizeAffiliateWalletRecordAction(filter.Action)
 	return filter
+}
+
+func normalizeAffiliateWalletRecordAction(action string) string {
+	switch strings.TrimSpace(action) {
+	case "discount", "discount_restore", "withdraw":
+		return strings.TrimSpace(action)
+	default:
+		return ""
+	}
 }

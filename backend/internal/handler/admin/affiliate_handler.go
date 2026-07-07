@@ -287,6 +287,7 @@ func parseAffiliateRecordFilter(c *gin.Context, page, pageSize int) service.Affi
 		Search:   c.Query("search"),
 		Page:     page,
 		PageSize: pageSize,
+		Action:   c.Query("action"),
 		SortBy:   c.Query("sort_by"),
 		SortDesc: c.Query("sort_order") != "asc",
 	}
