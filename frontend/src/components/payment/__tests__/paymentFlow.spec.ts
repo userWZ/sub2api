@@ -70,6 +70,18 @@ describe('getVisibleMethods', () => {
 
     expect(visible.alipay.available).toBe(true)
   })
+
+  it('keeps custom EasyPay methods as visible methods', () => {
+    const visible = getVisibleMethods({
+      ldc: methodLimit({ single_min: 3 }),
+      usdt_trc20: methodLimit({ fee_rate: 1 }),
+    })
+
+    expect(visible).toEqual({
+      ldc: methodLimit({ single_min: 3 }),
+      usdt_trc20: methodLimit({ fee_rate: 1 }),
+    })
+  })
 })
 
 describe('decidePaymentLaunch', () => {

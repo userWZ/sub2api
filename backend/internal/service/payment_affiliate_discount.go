@@ -107,10 +107,7 @@ func affiliateDiscountRefundAmount(order *dbent.PaymentOrder, refundAmount float
 	if order == nil || order.AffiliateDiscount <= 0 || refundAmount <= 0 {
 		return 0
 	}
-	base := order.Amount
-	if base <= 0 {
-		base = paymentOrderOriginalAmount(order)
-	}
+	base := paymentOrderOriginalAmount(order)
 	if base <= 0 {
 		return 0
 	}

@@ -6,6 +6,7 @@ import UsageView from '../UsageView.vue'
 const {
   query,
   getStats,
+  getStatsByDateRange,
   getDashboardModels,
   getDashboardSnapshotV2,
   list,
@@ -17,6 +18,7 @@ const {
 } = vi.hoisted(() => ({
   query: vi.fn(),
   getStats: vi.fn(),
+  getStatsByDateRange: vi.fn(),
   getDashboardModels: vi.fn(),
   getDashboardSnapshotV2: vi.fn(),
   list: vi.fn(),
@@ -68,6 +70,7 @@ vi.mock('@/api', () => ({
   usageAPI: {
     query,
     getStats,
+    getStatsByDateRange,
     getDashboardModels,
     getDashboardSnapshotV2,
   },
@@ -151,6 +154,7 @@ describe('user UsageView', () => {
   beforeEach(() => {
     query.mockReset()
     getStats.mockReset()
+    getStatsByDateRange.mockReset()
     getDashboardModels.mockReset()
     getDashboardSnapshotV2.mockReset()
     list.mockReset()
@@ -161,7 +165,7 @@ describe('user UsageView', () => {
     showInfo.mockReset()
 
     query.mockResolvedValue({ items: [usageLog], total: 1, pages: 1 })
-    getStats.mockResolvedValue({
+    getStatsByDateRange.mockResolvedValue({
       total_requests: 1,
       total_input_tokens: 10,
       total_output_tokens: 20,
@@ -196,15 +200,8 @@ describe('user UsageView', () => {
     await flushPromises()
 
     expect(query).toHaveBeenCalled()
-    expect(getStats).toHaveBeenCalled()
-    expect(getDashboardModels).toHaveBeenCalled()
-    expect(getDashboardSnapshotV2).toHaveBeenCalledWith(expect.objectContaining({
-      include_trend: true,
-      include_model_stats: false,
-      include_group_stats: true,
-    }))
+    expect(getStatsByDateRange).toHaveBeenCalled()
     expect(list).toHaveBeenCalledWith(1, 100)
-    expect(getAvailable).toHaveBeenCalled()
   })
 
   it('exports csv with current filters and without admin-only fields', async () => {
@@ -237,8 +234,12 @@ describe('user UsageView', () => {
     }))
     expect(clickSpy).toHaveBeenCalled()
     expect(showSuccess).toHaveBeenCalled()
-    expect(csvContent).toContain('IP Address')
-    expect(csvContent).toContain('203.0.113.10')
+    expect(csvContent).toBe([
+      'Time,API Key Name,Model,Reasoning Effort,Inbound Endpoint,Type,Billing Mode,Input Tokens,Output Tokens,Cache Read Tokens,Cache Creation Tokens,Rate Multiplier,Billed Cost,Original Cost,First Token (ms),Duration (ms)',
+      '2026-03-08T00:00:00Z,demo-key,gpt-5.4,"\'-",,Sync,Token,4057,101,278272,4,1,0.09288300,0.09288300,12,345',
+    ].join('\n'))
+    expect(csvContent).not.toContain('IP Address')
+    expect(csvContent).not.toContain('203.0.113.10')
     expect(csvContent).toContain('Billed Cost')
     expect(csvContent).toContain('Original Cost')
     expect(csvContent).not.toContain('Upstream Endpoint')

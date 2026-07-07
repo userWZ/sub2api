@@ -69,6 +69,7 @@
       :show="showPlanDialog"
       :plan="editingPlan"
       :groups="groups"
+      :payment-config="paymentConfig"
       @close="showPlanDialog = false"
       @saved="handlePlanSaved"
     />
@@ -81,6 +82,7 @@ import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
 import { adminAPI } from '@/api/admin'
 import { adminPaymentAPI } from '@/api/admin/payment'
+import type { AdminPaymentConfig } from '@/api/admin/payment'
 import { extractI18nErrorMessage } from '@/utils/apiError'
 import type { SubscriptionPlan } from '@/types/payment'
 import type { AdminGroup } from '@/types'
@@ -90,6 +92,15 @@ import PlanEditDialog from './PlanEditDialog.vue'
 
 const { t } = useI18n()
 const appStore = useAppStore()
+const paymentConfig = ref<AdminPaymentConfig | null>(null)
+
+async function loadPaymentConfig() {
+  try {
+    const res = await adminPaymentAPI.getConfig()
+    paymentConfig.value = res.data
+  } catch { /* preview only */ }
+}
+
 const plans = ref<SubscriptionPlan[]>([])
 const groups = ref<AdminGroup[]>([])
 const plansLoading = ref(false)
@@ -165,6 +176,7 @@ function unitLabel(unit?: string) {
 }
 
 onMounted(() => {
+  loadPaymentConfig()
   loadPlans()
   loadGroups()
 })

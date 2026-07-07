@@ -250,7 +250,11 @@ import {
   buildPaymentErrorToastMessage,
   describePaymentScenarioError,
 } from './paymentUx'
-import { formatPaymentAmount } from '@/components/payment/currency'
+import {
+  DEFAULT_PAYMENT_CURRENCY,
+  formatPaymentAmount,
+  normalizePaymentCurrency,
+} from '@/components/payment/currency'
 import {
   hasWechatResumeQuery,
   parseWechatResumeRoute,
@@ -353,7 +357,7 @@ const selectedAffiliateDiscount = computed(() => {
 
 const selectedAffiliateDiscountPreview = computed(() => {
   if (!selectedProduct.value || !affiliateDiscountVisible.value) return 0
-  return estimateAffiliateDiscount(selectedProduct.value.amount)
+  return estimateAffiliateDiscount(paymentBaseAmountForProduct(selectedProduct.value))
 })
 
 const affiliateDiscountSelectable = computed(() => {
@@ -362,22 +366,22 @@ const affiliateDiscountSelectable = computed(() => {
 
 const selectedOriginalAmountText = computed(() => {
   if (!selectedProduct.value) return formatCnyPrice(0)
-  return formatCnyPrice(selectedProduct.value.amount)
+  return formatCnyPrice(paymentBaseAmountForProduct(selectedProduct.value))
 })
 
 const selectedDiscountedBaseAmount = computed(() => {
   if (!selectedProduct.value) return 0
-  return roundMoney(Math.max(0, selectedProduct.value.amount - selectedAffiliateDiscount.value))
+  return roundPaymentAmount(Math.max(0, paymentBaseAmountForProduct(selectedProduct.value) - selectedAffiliateDiscount.value))
 })
 
 const selectedFeeAmount = computed(() => {
   const rate = Number(checkoutInfo.value?.recharge_fee_rate || 0)
   if (!Number.isFinite(rate) || rate <= 0) return 0
-  return roundMoney(selectedDiscountedBaseAmount.value * rate / 100)
+  return ceilPaymentAmount(selectedDiscountedBaseAmount.value * rate / 100)
 })
 
 const selectedPayableAmount = computed(() => {
-  return roundMoney(selectedDiscountedBaseAmount.value + selectedFeeAmount.value)
+  return roundPaymentAmount(selectedDiscountedBaseAmount.value + selectedFeeAmount.value)
 })
 
 const selectedPayableText = computed(() => formatCnyPrice(selectedPayableAmount.value))
@@ -411,7 +415,12 @@ const visibleMethodLimits = computed<Record<string, MethodLimit>>(() => {
 })
 
 const selectedPaymentCurrency = computed(() => {
-  return visibleMethodLimits.value[selectedPaymentMethod.value]?.currency || 'CNY'
+  return normalizePaymentCurrency(visibleMethodLimits.value[selectedPaymentMethod.value]?.currency)
+})
+
+const subscriptionUsdToCnyRate = computed(() => {
+  const rate = Number(checkoutInfo.value?.subscription_usd_to_cny_rate || 0)
+  return Number.isFinite(rate) && rate > 0 ? rate : 0
 })
 
 const renderedPricingGroups = computed<PriceGroup[]>(() => {
@@ -571,13 +580,17 @@ function buildServiceProducts(): CashierProduct[] {
       if (!plan) return null
       const amount = Number(plan.price || card.price || 0)
       const originalAmount = Number(card.original_price || plan.original_price || 0)
+      const paymentAmount = subscriptionPaymentBaseAmount(amount)
+      const originalPaymentAmount = originalAmount > amount
+        ? subscriptionPaymentBaseAmount(originalAmount)
+        : 0
       return {
         id: `service-${card.id}`,
         kind: 'subscription' as const,
         name: pickHomePricingText(card.name) || plan.name,
         description: pickHomePricingText(card.description) || plan.description,
-        priceText: formatCnyPrice(amount),
-        originalPriceText: originalAmount > amount ? formatCnyPrice(originalAmount) : '',
+        priceText: formatCnyPrice(paymentAmount),
+        originalPriceText: originalPaymentAmount > paymentAmount ? formatCnyPrice(originalPaymentAmount) : '',
         period: pickHomePricingText(card.period) || formatPlanPeriod(plan),
         badge: pickHomePricingOptionalText(card.badge),
         highlight: card.highlight,
@@ -647,6 +660,44 @@ function calculateBalanceCreditAmount(paymentAmount: number) {
   return Math.round(paymentAmount * safeMultiplier * 100) / 100
 }
 
+function currencyFractionDigits(currency = selectedPaymentCurrency.value) {
+  try {
+    return new Intl.NumberFormat(undefined, {
+      style: 'currency',
+      currency: normalizePaymentCurrency(currency),
+    }).resolvedOptions().maximumFractionDigits ?? 2
+  } catch {
+    return 2
+  }
+}
+
+function roundPaymentAmount(value: number, currency = selectedPaymentCurrency.value) {
+  if (!Number.isFinite(value)) return 0
+  const factor = 10 ** currencyFractionDigits(currency)
+  return Math.round(value * factor) / factor
+}
+
+function ceilPaymentAmount(value: number, currency = selectedPaymentCurrency.value) {
+  if (!Number.isFinite(value)) return 0
+  const factor = 10 ** currencyFractionDigits(currency)
+  return Math.ceil(value * factor) / factor
+}
+
+function subscriptionPaymentBaseAmount(amount: number, currency = selectedPaymentCurrency.value) {
+  const normalizedCurrency = normalizePaymentCurrency(currency)
+  const safeAmount = Number.isFinite(amount) && amount > 0 ? amount : 0
+  const rate = subscriptionUsdToCnyRate.value
+  if (rate <= 0 || normalizedCurrency !== DEFAULT_PAYMENT_CURRENCY) {
+    return roundPaymentAmount(safeAmount, normalizedCurrency)
+  }
+  return roundPaymentAmount(safeAmount * rate, normalizedCurrency)
+}
+
+function paymentBaseAmountForProduct(product: CashierProduct) {
+  if (product.kind === 'subscription') return subscriptionPaymentBaseAmount(product.amount)
+  return roundPaymentAmount(product.amount)
+}
+
 function estimateAffiliateDiscount(amount: number) {
   const settings = affiliateDiscountSettings.value
   if (!settings?.enabled || affiliateAvailableQuota.value <= 0 || amount <= 0) return 0
@@ -658,7 +709,7 @@ function estimateAffiliateDiscount(amount: number) {
 }
 
 function effectivePaymentAmountForProduct(product: CashierProduct) {
-  if (selectedProduct.value?.id !== product.id) return product.amount
+  if (selectedProduct.value?.id !== product.id) return paymentBaseAmountForProduct(product)
   return selectedPayableAmount.value
 }
 
@@ -1029,7 +1080,7 @@ function pickHomePricingOptionalText(value?: HomePricingLocalizedText | null) {
 }
 
 function formatCnyPrice(value: number) {
-  return formatPaymentAmount(roundMoney(Number.isFinite(value) && value > 0 ? value : 0), selectedPaymentCurrency.value, localeValue.value)
+  return formatPaymentAmount(roundPaymentAmount(Number.isFinite(value) && value > 0 ? value : 0), selectedPaymentCurrency.value, localeValue.value)
 }
 
 function roundMoney(value: number) {
