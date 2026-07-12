@@ -372,6 +372,13 @@
             <span class="rounded bg-gray-100 px-1.5 py-0.5 dark:bg-gray-800" :title="t('usage.accountBilled')">
               A ${{ formatWindowCost(grokLocalUsage) }}
             </span>
+            <span
+              v-if="grokLocalUsage.user_cost != null"
+              class="rounded bg-gray-100 px-1.5 py-0.5 dark:bg-gray-800"
+              :title="t('usage.userBilled')"
+            >
+              U ${{ formatWindowUserCost(grokLocalUsage) }}
+            </span>
           </div>
         </div>
         <UsageProgressBar
@@ -1031,7 +1038,7 @@ const makeGrokQuotaBar = (quota?: { limit?: number | null; remaining?: number | 
   if (!quota || quota.limit == null || quota.remaining == null || quota.limit <= 0) return null
   const used = Math.max(0, quota.limit - quota.remaining)
   return {
-    utilization: Math.min(100, (used / quota.limit) * 100),
+    utilization: (used / quota.limit) * 100,
     resetsAt: quota.reset_at || null
   }
 }
@@ -1087,6 +1094,7 @@ const grokRetryAfterLabel = computed(() => {
 const formatWindowRequests = (stats: WindowStats) => formatCompactNumber(stats.requests, { allowBillions: false })
 const formatWindowTokens = (stats: WindowStats) => formatCompactNumber(stats.tokens)
 const formatWindowCost = (stats: WindowStats) => stats.cost.toFixed(2)
+const formatWindowUserCost = (stats: WindowStats) => (stats.user_cost ?? 0).toFixed(2)
 
 // 账户类型显示标签
 const antigravityTierLabel = computed(() => {
@@ -1194,8 +1202,8 @@ const loadUsage = async (options?: { source?: 'passive' | 'active'; bypassCache?
   error.value = null
 
   try {
-    const fetchFn = () => options?.source
-      ? adminAPI.accounts.getUsage(props.account.id, options.source)
+    const fetchFn = () => props.account.platform === 'openai' || options?.source
+      ? adminAPI.accounts.getUsage(props.account.id, options?.source)
       : adminAPI.accounts.getUsage(props.account.id)
     const result = await enqueueUsageRequest(props.account, fetchFn)
     if (!unmounted.value) {
@@ -1386,20 +1394,6 @@ watch(openAIUsageRefreshKey, (nextKey, prevKey) => {
   _usageCache.delete(props.account.id)
   requestAutoLoad()
 })
-
-watch(
-  () => [props.account.id, props.account.updated_at] as const,
-  ([nextId, nextUpdatedAt], [prevId, prevUpdatedAt]) => {
-    if (nextId === prevId && nextUpdatedAt === prevUpdatedAt) return
-    if (!shouldFetchUsage.value) return
-
-    const source = isAnthropicOAuthOrSetupToken.value ? 'passive' : undefined
-    _usageCache.delete(props.account.id)
-    loadUsage({ source, bypassCache: true }).catch((e) => {
-      console.error('Failed to refresh usage after account row update:', e)
-    })
-  }
-)
 
 watch(
   () => props.manualRefreshToken,

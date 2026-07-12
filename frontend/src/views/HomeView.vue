@@ -387,6 +387,7 @@ import { useAppStore } from '@/stores'
 import LocaleSwitcher from '@/components/common/LocaleSwitcher.vue'
 import type { HomePricingLocalizedText } from '@/types'
 import { formatPoints } from '@/utils/format'
+import { sanitizeUrl } from '@/utils/url'
 
 type TextPair = {
   label: string
@@ -448,8 +449,8 @@ const siteName = computed(() => {
   const configured = appStore.cachedPublicSettings?.site_name || appStore.siteName
   return configured?.trim() || 'OceanWay AI'
 })
-const siteLogo = computed(() => appStore.cachedPublicSettings?.site_logo || appStore.siteLogo || '')
-const docUrl = computed(() => appStore.cachedPublicSettings?.doc_url || appStore.docUrl || '')
+const siteLogo = computed(() => sanitizeUrl(appStore.cachedPublicSettings?.site_logo || appStore.siteLogo || '', { allowRelative: true, allowDataUrl: true }))
+const docUrl = computed(() => sanitizeUrl(appStore.cachedPublicSettings?.doc_url || appStore.docUrl || ''))
 const contactInfo = computed(() => appStore.cachedPublicSettings?.contact_info || appStore.contactInfo || '')
 const apiBaseUrl = computed(() => appStore.cachedPublicSettings?.api_base_url || appStore.apiBaseUrl || '')
 

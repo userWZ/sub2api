@@ -766,7 +766,6 @@ const formatDuration = (ms: number | null | undefined): string => {
   return `${(ms / 1000).toFixed(2)}s`
 }
 
-
 const formatUserAgent = (ua: string): string => {
   return ua
 }
