@@ -21,6 +21,11 @@ ARG NPM_CONFIG_REGISTRY=
 FROM ${NODE_IMAGE} AS frontend-builder
 ARG NPM_CONFIG_REGISTRY
 
+# The production frontend exceeds Node's container-detected default heap on
+# small amd64 build hosts. Keep the limit explicit so the video build server
+# can use its configured swap instead of aborting near the 1 GiB mark.
+ENV NODE_OPTIONS=--max-old-space-size=2048
+
 WORKDIR /app/frontend
 
 # Install pnpm (pinned to v9 to match CI and keep builds reproducible)
