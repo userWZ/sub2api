@@ -108,6 +108,7 @@ import { useSubscriptionStore } from '@/stores/subscriptions'
 import { useClipboard } from '@/composables/useClipboard'
 import type { ApiKey, PublicSettings, UsageLog, TrendDataPoint, ModelStat, PlatformQuotaItem, UserSubscription } from '@/types'
 import { getMyPlatformQuotas } from '@/api/user'
+import { formatDateLocalInput } from '@/utils/format'
 
 const { locale } = useI18n()
 const authStore = useAuthStore()
@@ -123,8 +124,7 @@ const apiKeys = ref<ApiKey[]>([])
 const publicSettings = ref<PublicSettings | null>(null)
 const activeSubscriptions = ref<UserSubscription[]>([])
 
-const formatLD = (d: Date) => d.toISOString().split('T')[0]
-const startDate = ref(formatLD(new Date(Date.now() - 6 * 86400000))); const endDate = ref(formatLD(new Date())); const granularity = ref('day')
+const startDate = ref(formatDateLocalInput(new Date(Date.now() - 6 * 86400000))); const endDate = ref(formatDateLocalInput(new Date())); const granularity = ref('day')
 
 const isZh = computed(() => locale.value.toLowerCase().startsWith('zh'))
 const copy = computed(() => isZh.value ? zhCopy : enCopy)
