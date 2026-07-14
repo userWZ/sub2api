@@ -930,6 +930,53 @@ func TestExecuteSubscriptionFulfillmentAppliesAffiliateRebate(t *testing.T) {
 	require.Contains(t, applied.Detail, `"rebateAmount":1.4985`)
 }
 
+func TestAffiliateRebateBaseAmountUsesCanonicalOrderAmount(t *testing.T) {
+	tests := []struct {
+		name  string
+		order *dbent.PaymentOrder
+		want  float64
+	}{
+		{
+			name: "nil order",
+		},
+		{
+			name: "balance ignores checkout amounts",
+			order: &dbent.PaymentOrder{
+				OrderType:         payment.OrderTypeBalance,
+				Amount:            100,
+				OriginalAmount:    80,
+				AffiliateDiscount: 20,
+				PayAmount:         63,
+			},
+			want: 100,
+		},
+		{
+			name: "subscription ignores currency conversion",
+			order: &dbent.PaymentOrder{
+				OrderType:         payment.OrderTypeSubscription,
+				Amount:            9.99,
+				OriginalAmount:    71.36,
+				AffiliateDiscount: 10,
+				PayAmount:         61.36,
+			},
+			want: 9.99,
+		},
+		{
+			name: "unsupported order type",
+			order: &dbent.PaymentOrder{
+				OrderType: "unsupported",
+				Amount:    100,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.want, affiliateRebateBaseAmount(tt.order))
+		})
+	}
+}
+
 func TestExecuteSubscriptionFulfillmentDoesNotDuplicateWorkAfterLegacySuccessAudit(t *testing.T) {
 	ctx := context.Background()
 	client := newPaymentConfigServiceTestClient(t)
