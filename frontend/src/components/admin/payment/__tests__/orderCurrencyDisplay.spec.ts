@@ -52,7 +52,7 @@ function orderFactory(overrides: Partial<PaymentOrder> = {}): PaymentOrder {
 }
 
 describe('admin order currency display', () => {
-  it('uses order currency for paid/base/fee amounts and USD for credited/refund amounts', () => {
+  it('uses the order currency for every subscription amount', () => {
     const wrapper = mount(AdminOrderDetail, {
       props: {
         show: true,
@@ -69,16 +69,17 @@ describe('admin order currency display', () => {
     expect(text).toContain('¥100.00')
     expect(text).toContain('¥8.00')
     expect(text).toContain('¥108.00')
-    expect(text).toContain('$100.00')
-    expect(text).toContain('$25.00')
+    expect(text).toContain('¥25.00')
+    expect(text).not.toContain('$')
   })
 
-  it('uses order currency for pay_amount and USD for refundable balance amounts', () => {
+  it('shows balance-order credited and refund amounts as points', () => {
     const wrapper = mount(AdminRefundDialog, {
       props: {
         show: true,
         order: orderFactory({
-          currency: 'USD',
+          currency: 'CNY',
+          order_type: 'balance',
           status: 'PARTIALLY_REFUNDED',
           refund_amount: 20,
         }),
@@ -92,11 +93,12 @@ describe('admin order currency display', () => {
     })
 
     const text = wrapper.text()
-    expect(text).toContain('$108.00')
-    expect(text).toContain('$100.00')
-    expect(text).toContain('$20.00')
-    expect(text).toContain('$80.00')
-    expect(text).toContain('$200.00')
+    expect(text).toContain('¥108.00')
+    expect(text).toContain('100.00 credits')
+    expect(text).toContain('20.00 credits')
+    expect(text).toContain('80.00 credits')
+    expect(text).toContain('200.00 credits')
+    expect(text).not.toContain('$')
   })
 
   it('renders payment currency consistently in the shared order table', () => {
@@ -104,7 +106,7 @@ describe('admin order currency display', () => {
       props: {
         orders: [
           orderFactory({ id: 1, currency: 'USD', amount: 100, pay_amount: 108 }),
-          orderFactory({ id: 2, currency: 'CNY', amount: 100, pay_amount: 108 }),
+          orderFactory({ id: 2, currency: 'CNY', order_type: 'balance', amount: 100, pay_amount: 108 }),
         ],
         loading: false,
         showUser: true,
@@ -121,6 +123,7 @@ describe('admin order currency display', () => {
     expect(text).toContain('$108.00')
     expect(text).toContain('¥108.00')
     expect(text).toContain('$100.00')
+    expect(text).toContain('100.00 credits')
   })
 
   it('renders payment currency consistently in the admin order table', () => {
@@ -128,7 +131,7 @@ describe('admin order currency display', () => {
       props: {
         orders: [
           orderFactory({ id: 1, currency: 'USD', amount: 100, pay_amount: 108 }),
-          orderFactory({ id: 2, currency: 'CNY', amount: 100, pay_amount: 108 }),
+          orderFactory({ id: 2, currency: 'CNY', order_type: 'balance', amount: 100, pay_amount: 108 }),
         ],
         loading: false,
         page: 1,
@@ -149,5 +152,6 @@ describe('admin order currency display', () => {
     expect(text).toContain('$108.00')
     expect(text).toContain('¥108.00')
     expect(text).toContain('$100.00')
+    expect(text).toContain('100.00 credits')
   })
 })

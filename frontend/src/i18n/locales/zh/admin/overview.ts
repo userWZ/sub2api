@@ -373,7 +373,7 @@ export default {
     affiliates: {
       invitesDescription: '查看全站邀请关系和被邀请用户累计返利',
       rebatesDescription: '查看每一笔产生返利的充值订单',
-      transfersDescription: '查看返利额度转入账户余额的提取流水',
+      transfersDescription: '查看返利钱包的订单抵扣与管理员提现流水',
       errors: {
         loadFailed: '加载邀请返利记录失败'
       },
@@ -393,14 +393,21 @@ export default {
         rebateAmount: '返利金额',
         paymentType: '支付方式',
         orderStatus: '订单状态',
-        transferAmount: '提取金额',
-        balanceAfter: '提取后余额',
-        availableQuotaAfter: '提取后可提',
-        frozenQuotaAfter: '提取后冻结',
-        historyQuotaAfter: '提取后历史返利',
+        allActions: '全部类型',
+        action: '变动类型',
+        actionDiscount: '订单抵扣',
+        actionWithdraw: '管理员提现',
+        walletAmount: '变动金额',
+        sourceOrder: '关联订单',
+        availableQuotaAfter: '操作后可用返利',
+        frozenQuotaAfter: '操作后冻结返利',
+        historyQuotaAfter: '操作后累计返利',
+        operator: '操作管理员',
+        externalRef: '外部凭证',
+        remark: '备注',
         invitedAt: '邀请时间',
         rebatedAt: '返利时间',
-        transferredAt: '提取时间'
+        transferredAt: '操作时间'
       },
       overview: {
         title: '用户返利概览',
@@ -408,8 +415,22 @@ export default {
         rebateRate: '返利比例',
         invitedCount: '邀请人数',
         rebatedInviteeCount: '已产生返利人数',
-        availableQuota: '可提余额',
-        historyQuota: '历史返利'
+        availableQuota: '可用返利余额',
+        historyQuota: '累计返利'
+      },
+      withdraw: {
+        openButton: '发起提现',
+        title: '返利钱包提现',
+        amount: '提现金额',
+        all: '全部提现',
+        externalRef: '打款凭证',
+        externalRefPlaceholder: '填写线下打款单号或转账凭证（选填）',
+        remark: '提现备注',
+        remarkPlaceholder: '填写收款方式、收款账号或审核说明（选填）',
+        afterQuota: '提现后可用返利：¥{amount}',
+        confirm: '确认提现',
+        invalidAmount: '提现金额必须大于 0 且不能超过可用返利余额',
+        success: '返利提现记录已创建'
       }
     },
 

@@ -107,7 +107,11 @@ func affiliateDiscountRefundAmount(order *dbent.PaymentOrder, refundAmount float
 	if order == nil || order.AffiliateDiscount <= 0 || refundAmount <= 0 {
 		return 0
 	}
-	base := paymentOrderOriginalAmount(order)
+	// refundAmount uses the same unit as order.Amount: points for balance orders
+	// and payment currency for subscription orders. Using OriginalAmount here
+	// mixes CNY with points for balance packages and also breaks renewed plans
+	// whose discounted order amount differs from the list price.
+	base := order.Amount
 	if base <= 0 {
 		return 0
 	}

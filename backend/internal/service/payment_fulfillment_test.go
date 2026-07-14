@@ -54,6 +54,8 @@ type paymentFulfillmentAffiliateRepoStub struct {
 	inviterSummary         *AffiliateSummary
 	availableDiscountQuota float64
 	accrueCalls            []paymentFulfillmentAffiliateAccrueCall
+	restoreDiscountErr     error
+	reverseRebateErr       error
 }
 
 func (r *paymentFulfillmentAffiliateRepoStub) EnsureUserAffiliate(_ context.Context, userID int64) (*AffiliateSummary, error) {
@@ -118,11 +120,11 @@ func (r *paymentFulfillmentAffiliateRepoStub) ClaimDiscountForOrder(context.Cont
 }
 
 func (r *paymentFulfillmentAffiliateRepoStub) RestoreDiscountForOrder(context.Context, int64, float64, int64) (bool, error) {
-	panic("unexpected RestoreDiscountForOrder call")
+	return false, r.restoreDiscountErr
 }
 
 func (r *paymentFulfillmentAffiliateRepoStub) ReverseAccruedRebateForOrder(context.Context, int64) (float64, error) {
-	return 0, nil
+	return 0, r.reverseRebateErr
 }
 
 func (r *paymentFulfillmentAffiliateRepoStub) ListInvitees(context.Context, int64, int) ([]AffiliateInvitee, error) {
@@ -917,7 +919,7 @@ func TestExecuteSubscriptionFulfillmentAppliesAffiliateRebate(t *testing.T) {
 	require.Len(t, affiliateRepo.accrueCalls, 1)
 	require.Equal(t, inviterID, affiliateRepo.accrueCalls[0].inviterID)
 	require.Equal(t, user.ID, affiliateRepo.accrueCalls[0].inviteeUserID)
-	require.InDelta(t, 1.4985, affiliateRepo.accrueCalls[0].amount, 0.00000001)
+	require.InDelta(t, 10.704, affiliateRepo.accrueCalls[0].amount, 0.00000001)
 	require.NotNil(t, affiliateRepo.accrueCalls[0].sourceOrderID)
 	require.Equal(t, order.ID, *affiliateRepo.accrueCalls[0].sourceOrderID)
 	require.Equal(t, 1, subRepo.createCalls)
@@ -926,11 +928,11 @@ func TestExecuteSubscriptionFulfillmentAppliesAffiliateRebate(t *testing.T) {
 		Where(paymentauditlog.OrderIDEQ(strconv.FormatInt(order.ID, 10)), paymentauditlog.ActionEQ("AFFILIATE_REBATE_APPLIED")).
 		Only(ctx)
 	require.NoError(t, err)
-	require.Contains(t, applied.Detail, `"baseAmount":9.99`)
-	require.Contains(t, applied.Detail, `"rebateAmount":1.4985`)
+	require.Contains(t, applied.Detail, `"baseAmount":71.36`)
+	require.Contains(t, applied.Detail, `"rebateAmount":10.704`)
 }
 
-func TestAffiliateRebateBaseAmountUsesCanonicalOrderAmount(t *testing.T) {
+func TestAffiliateRebateBaseAmountUsesActualPaidAmount(t *testing.T) {
 	tests := []struct {
 		name  string
 		order *dbent.PaymentOrder
@@ -940,7 +942,7 @@ func TestAffiliateRebateBaseAmountUsesCanonicalOrderAmount(t *testing.T) {
 			name: "nil order",
 		},
 		{
-			name: "balance ignores checkout amounts",
+			name: "balance uses actual cash payment instead of credited points",
 			order: &dbent.PaymentOrder{
 				OrderType:         payment.OrderTypeBalance,
 				Amount:            100,
@@ -948,10 +950,10 @@ func TestAffiliateRebateBaseAmountUsesCanonicalOrderAmount(t *testing.T) {
 				AffiliateDiscount: 20,
 				PayAmount:         63,
 			},
-			want: 100,
+			want: 63,
 		},
 		{
-			name: "subscription ignores currency conversion",
+			name: "subscription uses actual payment after discount",
 			order: &dbent.PaymentOrder{
 				OrderType:         payment.OrderTypeSubscription,
 				Amount:            9.99,
@@ -959,7 +961,15 @@ func TestAffiliateRebateBaseAmountUsesCanonicalOrderAmount(t *testing.T) {
 				AffiliateDiscount: 10,
 				PayAmount:         61.36,
 			},
-			want: 9.99,
+			want: 61.36,
+		},
+		{
+			name: "non-positive payment is ineligible",
+			order: &dbent.PaymentOrder{
+				OrderType: payment.OrderTypeBalance,
+				Amount:    100,
+				PayAmount: 0,
+			},
 		},
 		{
 			name: "unsupported order type",

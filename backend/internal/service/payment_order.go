@@ -17,7 +17,6 @@ import (
 	"github.com/Wei-Shaw/sub2api/internal/payment/provider"
 	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/servertiming"
-	"github.com/shopspring/decimal"
 )
 
 // --- Order Creation ---
@@ -73,7 +72,7 @@ func (s *PaymentService) CreateOrder(ctx context.Context, req CreateOrderRequest
 			return nil, err
 		}
 	}
-	gatewayBaseAmount := calculateCreateOrderGatewayBaseAmount(limitAmount, methodCurrency, req.OrderType, cfg.SubscriptionUSDToCNYRate)
+	gatewayBaseAmount := limitAmount
 	discountQuote, err := s.quoteAffiliateDiscount(ctx, req, gatewayBaseAmount)
 	if err != nil {
 		return nil, err
@@ -95,7 +94,7 @@ func (s *PaymentService) CreateOrder(ctx context.Context, req CreateOrderRequest
 		selectedCurrency = paymentProviderConfigCurrency(sel.ProviderKey, sel.Config)
 	}
 	if selectedCurrency != methodCurrency {
-		gatewayBaseAmount = calculateCreateOrderGatewayBaseAmount(limitAmount, selectedCurrency, req.OrderType, cfg.SubscriptionUSDToCNYRate)
+		gatewayBaseAmount = limitAmount
 		discountQuote, err = s.quoteAffiliateDiscount(ctx, req, gatewayBaseAmount)
 		if err != nil {
 			return nil, err
@@ -686,32 +685,6 @@ func calculateCreateOrderPayAmount(limitAmount, feeRate float64, currency string
 			WithMetadata(map[string]string{"currency": currency})
 	}
 	return payAmountStr, payAmount, nil
-}
-
-func calculateCreateOrderPayAmountForOrderType(limitAmount, feeRate float64, currency, orderType string, usdToCnyRate float64) (string, float64, error) {
-	paymentAmount := calculateCreateOrderGatewayBaseAmount(limitAmount, currency, orderType, usdToCnyRate)
-	return calculateCreateOrderPayAmount(paymentAmount, feeRate, currency)
-}
-
-func calculateCreateOrderGatewayBaseAmount(limitAmount float64, currency, orderType string, usdToCnyRate float64) float64 {
-	if orderType == payment.OrderTypeSubscription {
-		return calculateSubscriptionGatewayBaseAmount(limitAmount, usdToCnyRate, currency)
-	}
-	return limitAmount
-}
-
-// calculateSubscriptionGatewayBaseAmount 计算订阅订单的网关扣款基数。
-// 换算是显式 opt-in：仅当管理员配置了订阅汇率（rate > 0，1 USD = rate CNY）
-// 且网关币种为 CNY 时，按 price × rate 换算；未配置时保持 price 直付的存量行为。
-func calculateSubscriptionGatewayBaseAmount(amount, usdToCnyRate float64, currency string) float64 {
-	rate := normalizeSubscriptionUSDToCNYRate(usdToCnyRate)
-	if rate <= 0 || currency != payment.DefaultPaymentCurrency {
-		return amount
-	}
-	return decimal.NewFromFloat(amount).
-		Mul(decimal.NewFromFloat(rate)).
-		Round(int32(payment.CurrencyMaxFractionDigits(currency))).
-		InexactFloat64()
 }
 
 func validateCreateOrderAmountCurrency(amount float64, currency string) error {

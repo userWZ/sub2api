@@ -165,8 +165,8 @@
           <OverviewStat :label="t('admin.affiliates.overview.rebateRate')" :value="formatPercent(selectedOverview.rebate_rate_percent)" />
           <OverviewStat :label="t('admin.affiliates.overview.invitedCount')" :value="String(selectedOverview.invited_count)" />
           <OverviewStat :label="t('admin.affiliates.overview.rebatedInviteeCount')" :value="String(selectedOverview.rebated_invitee_count)" />
-          <OverviewStat :label="t('admin.affiliates.overview.availableQuota')" :value="'$' + formatAmount(selectedOverview.available_quota)" />
-          <OverviewStat :label="t('admin.affiliates.overview.historyQuota')" :value="'$' + formatAmount(selectedOverview.history_quota)" />
+          <OverviewStat :label="t('admin.affiliates.overview.availableQuota')" :value="'¥' + formatAmount(selectedOverview.available_quota)" />
+          <OverviewStat :label="t('admin.affiliates.overview.historyQuota')" :value="'¥' + formatAmount(selectedOverview.history_quota)" />
         </div>
         <div class="flex justify-end">
           <button
@@ -193,14 +193,14 @@
           <div class="mt-1 text-sm font-medium text-gray-900 dark:text-white">{{ withdrawTarget.email || '-' }}</div>
           <div class="mt-1 text-sm text-gray-500 dark:text-dark-400">
             {{ t('admin.affiliates.overview.availableQuota') }}:
-            <span class="font-semibold text-gray-900 dark:text-white">${{ formatAmount(withdrawTarget.available_quota) }}</span>
+            <span class="font-semibold text-gray-900 dark:text-white">¥{{ formatAmount(withdrawTarget.available_quota) }}</span>
           </div>
         </div>
         <div>
           <label class="input-label">{{ t('admin.affiliates.withdraw.amount') }}</label>
           <div class="flex gap-2">
             <div class="relative flex-1">
-              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium text-gray-500">$</span>
+              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium text-gray-500">¥</span>
               <input v-model.number="withdrawForm.amount" type="number" min="0" step="0.01" required class="input pl-8" />
             </div>
             <button type="button" class="btn btn-secondary whitespace-nowrap" @click="fillWithdrawAll">
@@ -542,7 +542,7 @@ const AmountText = defineComponent({
       class: amountProps.strong
         ? 'text-sm font-semibold text-emerald-600 dark:text-emerald-400'
         : 'text-sm text-gray-900 dark:text-white',
-    }, `$${formatAmount(amountProps.value)}`)
+    }, `¥${formatAmount(amountProps.value)}`)
   },
 })
 

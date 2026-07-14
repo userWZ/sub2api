@@ -702,7 +702,10 @@ func affiliateRebateBaseAmount(o *dbent.PaymentOrder) float64 {
 	}
 	switch o.OrderType {
 	case payment.OrderTypeBalance, payment.OrderTypeSubscription:
-		return o.Amount
+		if math.IsNaN(o.PayAmount) || math.IsInf(o.PayAmount, 0) || o.PayAmount <= 0 {
+			return 0
+		}
+		return o.PayAmount
 	default:
 		return 0
 	}

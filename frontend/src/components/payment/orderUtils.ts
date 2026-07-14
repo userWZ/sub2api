@@ -3,6 +3,10 @@
  * Used by AdminOrderDetail, AdminOrderTable, AdminRefundDialog, AdminOrdersView, etc.
  */
 
+import type { PaymentOrder } from '@/types/payment'
+import { formatPaymentAmount } from '@/components/payment/currency'
+import { formatPoints } from '@/utils/format'
+
 const STATUS_BADGE_MAP: Record<string, string> = {
   PENDING: 'badge-warning',
   PAID: 'badge-info',
@@ -32,4 +36,14 @@ export function canRefund(status: string): boolean {
 export function formatOrderDateTime(dateStr: string): string {
   if (!dateStr) return '-'
   return new Date(dateStr).toLocaleString()
+}
+
+export function formatOrderAmount(
+  order: Pick<PaymentOrder, 'order_type' | 'currency'> | null | undefined,
+  amount: number | null | undefined,
+): string {
+  if (order?.order_type === 'balance') {
+    return formatPoints(amount, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  }
+  return formatPaymentAmount(Number(amount || 0), order?.currency)
 }

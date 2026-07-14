@@ -30,16 +30,16 @@
           <div class="card p-5">
             <p class="text-sm text-gray-500 dark:text-dark-400">{{ t('affiliate.stats.availableQuota') }}</p>
             <p class="mt-2 text-2xl font-semibold text-emerald-600 dark:text-emerald-400">
-              {{ formatCurrency(detail.aff_quota) }}
+              {{ formatCnyCurrency(detail.aff_quota) }}
             </p>
           </div>
           <div class="card p-5">
             <p class="text-sm text-gray-500 dark:text-dark-400">{{ t('affiliate.stats.totalQuota') }}</p>
             <p class="mt-2 text-2xl font-semibold text-gray-900 dark:text-white">
-              {{ formatCurrency(detail.aff_history_quota) }}
+              {{ formatCnyCurrency(detail.aff_history_quota) }}
             </p>
             <p v-if="detail.aff_frozen_quota > 0" class="mt-1 text-xs text-amber-600 dark:text-amber-400">
-              {{ t('affiliate.stats.frozenQuota') }}: {{ formatCurrency(detail.aff_frozen_quota) }}
+              {{ t('affiliate.stats.frozenQuota') }}: {{ formatCnyCurrency(detail.aff_frozen_quota) }}
             </p>
           </div>
         </div>
@@ -182,7 +182,7 @@
                 >
                   <td class="px-3 py-3 text-gray-900 dark:text-white">{{ item.email || '-' }}</td>
                   <td class="px-3 py-3 text-gray-700 dark:text-gray-300">{{ item.username || '-' }}</td>
-                  <td class="px-3 py-3 text-right font-medium text-emerald-600 dark:text-emerald-400">{{ formatCurrency(item.total_rebate) }}</td>
+                  <td class="px-3 py-3 text-right font-medium text-emerald-600 dark:text-emerald-400">{{ formatCnyCurrency(item.total_rebate) }}</td>
                   <td class="px-3 py-3 text-gray-700 dark:text-gray-300">{{ formatDateTime(item.created_at) || '-' }}</td>
                 </tr>
               </tbody>
@@ -242,6 +242,10 @@ const recordActionOptions = computed<SelectOption[]>(() => [
 
 function formatCount(value: number): string {
   return value.toLocaleString()
+}
+
+function formatCnyCurrency(value: number | null | undefined): string {
+  return formatCurrency(value, 'CNY')
 }
 
 async function loadAffiliateDetail(silent = false): Promise<void> {
@@ -320,11 +324,11 @@ function recordAmountClass(action: string | null | undefined): string {
 function formatRecordAmount(record: UserAffiliateLedgerRecord): string {
   const amount = Math.abs(Number(record.amount || 0))
   const sign = isPositiveRecord(record.action) ? '+' : '-'
-  return `${sign}${formatCurrency(amount)}`
+  return `${sign}${formatCnyCurrency(amount)}`
 }
 
 function formatOptionalCurrency(value: number | null | undefined): string {
-  return value === null || value === undefined ? '-' : formatCurrency(value)
+  return value === null || value === undefined ? '-' : formatCnyCurrency(value)
 }
 
 function recordStatus(record: UserAffiliateLedgerRecord): string {

@@ -251,7 +251,6 @@ import {
   describePaymentScenarioError,
 } from './paymentUx'
 import {
-  DEFAULT_PAYMENT_CURRENCY,
   formatPaymentAmount,
   normalizePaymentCurrency,
 } from '@/components/payment/currency'
@@ -416,11 +415,6 @@ const visibleMethodLimits = computed<Record<string, MethodLimit>>(() => {
 
 const selectedPaymentCurrency = computed(() => {
   return normalizePaymentCurrency(visibleMethodLimits.value[selectedPaymentMethod.value]?.currency)
-})
-
-const subscriptionUsdToCnyRate = computed(() => {
-  const rate = Number(checkoutInfo.value?.subscription_usd_to_cny_rate || 0)
-  return Number.isFinite(rate) && rate > 0 ? rate : 0
 })
 
 const renderedPricingGroups = computed<PriceGroup[]>(() => {
@@ -686,11 +680,7 @@ function ceilPaymentAmount(value: number, currency = selectedPaymentCurrency.val
 function subscriptionPaymentBaseAmount(amount: number, currency = selectedPaymentCurrency.value) {
   const normalizedCurrency = normalizePaymentCurrency(currency)
   const safeAmount = Number.isFinite(amount) && amount > 0 ? amount : 0
-  const rate = subscriptionUsdToCnyRate.value
-  if (rate <= 0 || normalizedCurrency !== DEFAULT_PAYMENT_CURRENCY) {
-    return roundPaymentAmount(safeAmount, normalizedCurrency)
-  }
-  return roundPaymentAmount(safeAmount * rate, normalizedCurrency)
+  return roundPaymentAmount(safeAmount, normalizedCurrency)
 }
 
 function paymentBaseAmountForProduct(product: CashierProduct) {

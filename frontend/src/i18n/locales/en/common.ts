@@ -158,7 +158,7 @@ export default {
     affiliateManagement: 'Affiliate Rebates',
     affiliateInviteRecords: 'Invite Records',
     affiliateRebateRecords: 'Rebate Records',
-    affiliateTransferRecords: 'Transfer Records',
+    affiliateTransferRecords: 'Rebate Wallet Records',
     profile: 'Profile',
 	users: 'Users',
 	managedKeys: 'Managed Users',

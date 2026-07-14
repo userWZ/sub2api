@@ -4,6 +4,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"strconv"
 	"testing"
 	"time"
@@ -117,6 +118,174 @@ func TestPrepareRefundRejectsLegacyGuessedProviderInstance(t *testing.T) {
 	require.Nil(t, result)
 	require.Error(t, err)
 	require.Equal(t, "REFUND_DISABLED", infraerrors.Reason(err))
+}
+
+func TestPrepareAndFinalizeSecondPartialRefundAccumulates(t *testing.T) {
+	ctx := context.Background()
+	client := newPaymentConfigServiceTestClient(t)
+
+	user, err := client.User.Create().
+		SetEmail("refund-second-partial@example.com").
+		SetPasswordHash("hash").
+		SetUsername("refund-second-partial-user").
+		Save(ctx)
+	require.NoError(t, err)
+	inst, err := client.PaymentProviderInstance.Create().
+		SetProviderKey(payment.TypeStripe).
+		SetName("refund-second-partial-provider").
+		SetConfig("{}").
+		SetSupportedTypes("stripe").
+		SetEnabled(true).
+		SetRefundEnabled(true).
+		Save(ctx)
+	require.NoError(t, err)
+	order, err := client.PaymentOrder.Create().
+		SetUserID(user.ID).
+		SetUserEmail(user.Email).
+		SetUserName(user.Username).
+		SetAmount(45).
+		SetOriginalAmount(20).
+		SetPayAmount(20).
+		SetFeeRate(0).
+		SetRechargeCode("REFUND-SECOND-PARTIAL").
+		SetOutTradeNo("sub2_refund_second_partial").
+		SetPaymentType(payment.TypeStripe).
+		SetPaymentTradeNo("pi_refund_second_partial").
+		SetOrderType(payment.OrderTypeBalance).
+		SetStatus(OrderStatusPartiallyRefunded).
+		SetRefundAmount(22.5).
+		SetExpiresAt(time.Now().Add(time.Hour)).
+		SetPaidAt(time.Now()).
+		SetClientIP("127.0.0.1").
+		SetSrcHost("api.example.com").
+		SetProviderInstanceID(strconv.FormatInt(inst.ID, 10)).
+		Save(ctx)
+	require.NoError(t, err)
+
+	svc := &PaymentService{entClient: client}
+	plan, early, err := svc.PrepareRefund(ctx, order.ID, 22.5, "refund remainder", false, false)
+	require.NoError(t, err)
+	require.Nil(t, early)
+	require.Equal(t, 22.5, plan.RefundAmount)
+	require.Equal(t, 22.5, plan.PreviousRefundAmount)
+	require.Equal(t, 45.0, plan.TotalRefundAmount)
+	require.Equal(t, 10.0, plan.GatewayAmount)
+	require.Equal(t, OrderStatusPartiallyRefunded, plan.OriginalStatus)
+
+	result, err := svc.markRefundOk(ctx, plan)
+	require.NoError(t, err)
+	require.True(t, result.Success)
+	reloaded, err := client.PaymentOrder.Get(ctx, order.ID)
+	require.NoError(t, err)
+	require.Equal(t, OrderStatusRefunded, reloaded.Status)
+	require.Equal(t, 45.0, reloaded.RefundAmount)
+}
+
+func TestPrepareRefundRejectsAmountBeyondRemainingBalance(t *testing.T) {
+	ctx := context.Background()
+	client := newPaymentConfigServiceTestClient(t)
+
+	user, err := client.User.Create().
+		SetEmail("refund-over-remaining@example.com").
+		SetPasswordHash("hash").
+		SetUsername("refund-over-remaining-user").
+		Save(ctx)
+	require.NoError(t, err)
+	inst, err := client.PaymentProviderInstance.Create().
+		SetProviderKey(payment.TypeStripe).
+		SetName("refund-over-remaining-provider").
+		SetConfig("{}").
+		SetSupportedTypes("stripe").
+		SetEnabled(true).
+		SetRefundEnabled(true).
+		Save(ctx)
+	require.NoError(t, err)
+	order, err := client.PaymentOrder.Create().
+		SetUserID(user.ID).
+		SetUserEmail(user.Email).
+		SetUserName(user.Username).
+		SetAmount(100).
+		SetPayAmount(100).
+		SetFeeRate(0).
+		SetRechargeCode("REFUND-OVER-REMAINING").
+		SetOutTradeNo("sub2_refund_over_remaining").
+		SetPaymentType(payment.TypeStripe).
+		SetPaymentTradeNo("pi_refund_over_remaining").
+		SetOrderType(payment.OrderTypeBalance).
+		SetStatus(OrderStatusPartiallyRefunded).
+		SetRefundAmount(40).
+		SetExpiresAt(time.Now().Add(time.Hour)).
+		SetPaidAt(time.Now()).
+		SetClientIP("127.0.0.1").
+		SetSrcHost("api.example.com").
+		SetProviderInstanceID(strconv.FormatInt(inst.ID, 10)).
+		Save(ctx)
+	require.NoError(t, err)
+
+	plan, early, err := (&PaymentService{entClient: client}).PrepareRefund(ctx, order.ID, 60.02, "too much", false, false)
+	require.Nil(t, plan)
+	require.Nil(t, early)
+	require.Error(t, err)
+	require.Equal(t, "REFUND_AMOUNT_EXCEEDED", infraerrors.Reason(err))
+}
+
+func TestPrepDeductRejectsAutomaticBenefitDeductionForPartialSubscriptionRefund(t *testing.T) {
+	order := &dbent.PaymentOrder{Amount: 100, OrderType: payment.OrderTypeSubscription}
+	plan := &RefundPlan{Order: order, RefundAmount: 50, DeductionType: payment.DeductionTypeNone}
+
+	result := (&PaymentService{}).prepDeduct(context.Background(), order, plan, false)
+	require.NotNil(t, result)
+	require.False(t, result.Success)
+	require.Contains(t, result.Warning, "partial subscription refunds")
+	require.Equal(t, payment.DeductionTypeNone, plan.DeductionType)
+}
+
+func TestRefundFinalizePlanPreservesGoodwillRefundWithoutBenefitDeduction(t *testing.T) {
+	deduct := false
+	order := &dbent.PaymentOrder{
+		ID:        99,
+		Amount:    100,
+		PayAmount: 100,
+		OrderType: payment.OrderTypeSubscription,
+	}
+	detail := refundPendingAuditDetail{
+		RefundAmount:        25,
+		TotalRefundAmount:   25,
+		GatewayAmount:       25,
+		DeductBalance:       &deduct,
+		DeductionType:       payment.DeductionTypeNone,
+		DeductionRollbackOK: true,
+	}
+
+	plan := (&PaymentService{}).refundFinalizePlan(order, detail)
+	require.False(t, plan.DeductBalance)
+	require.Equal(t, payment.DeductionTypeNone, plan.DeductionType)
+	require.Zero(t, plan.BalanceToDeduct)
+}
+
+func TestHasUnresolvedRefundRollbackFailureUsesLatestOutcome(t *testing.T) {
+	ctx := context.Background()
+	client := newPaymentConfigServiceTestClient(t)
+	svc := &PaymentService{entClient: client}
+	const orderID = int64(4242)
+
+	_, err := client.PaymentAuditLog.Create().
+		SetOrderID(strconv.FormatInt(orderID, 10)).
+		SetAction("REFUND_ROLLBACK_FAILED").
+		SetOperator("admin").
+		SetDetail(`{"rollbackError":"temporary"}`).
+		Save(ctx)
+	require.NoError(t, err)
+	require.True(t, svc.hasUnresolvedRefundRollbackFailure(ctx, orderID))
+
+	_, err = client.PaymentAuditLog.Create().
+		SetOrderID(strconv.FormatInt(orderID, 10)).
+		SetAction("REFUND_SUCCESS").
+		SetOperator("admin").
+		SetDetail(`{"totalRefundAmount":50}`).
+		Save(ctx)
+	require.NoError(t, err)
+	require.False(t, svc.hasUnresolvedRefundRollbackFailure(ctx, orderID))
 }
 
 func TestGwRefundRejectsAlipayMerchantIdentitySnapshotMismatch(t *testing.T) {
@@ -360,6 +529,71 @@ func TestFinishRefundSuccessStatusesFinalize(t *testing.T) {
 	}
 }
 
+func TestMarkRefundOkReportsAffiliateLedgerFailureAsWarning(t *testing.T) {
+	ctx := context.Background()
+	client := newPaymentConfigServiceTestClient(t)
+	user, err := client.User.Create().
+		SetEmail("refund-affiliate-warning@example.com").
+		SetPasswordHash("hash").
+		SetUsername("refund-affiliate-warning-user").
+		Save(ctx)
+	require.NoError(t, err)
+	order, err := client.PaymentOrder.Create().
+		SetUserID(user.ID).
+		SetUserEmail(user.Email).
+		SetUserName(user.Username).
+		SetAmount(100).
+		SetOriginalAmount(100).
+		SetAffiliateDiscount(10).
+		SetPayAmount(90).
+		SetFeeRate(0).
+		SetRechargeCode("REFUND-AFFILIATE-WARNING").
+		SetOutTradeNo("sub2_refund_affiliate_warning").
+		SetPaymentType(payment.TypeStripe).
+		SetPaymentTradeNo("pi_refund_affiliate_warning").
+		SetOrderType(payment.OrderTypeBalance).
+		SetStatus(OrderStatusRefunding).
+		SetExpiresAt(time.Now().Add(time.Hour)).
+		SetPaidAt(time.Now()).
+		SetClientIP("127.0.0.1").
+		SetSrcHost("api.example.com").
+		Save(ctx)
+	require.NoError(t, err)
+
+	repo := &paymentFulfillmentAffiliateRepoStub{
+		restoreDiscountErr: errors.New("restore ledger unavailable"),
+		reverseRebateErr:   errors.New("reverse ledger unavailable"),
+	}
+	svc := &PaymentService{
+		entClient:        client,
+		affiliateService: &AffiliateService{repo: repo},
+	}
+	result, err := svc.markRefundOk(ctx, &RefundPlan{
+		OrderID:           order.ID,
+		Order:             order,
+		RefundAmount:      100,
+		TotalRefundAmount: 100,
+		GatewayAmount:     90,
+		Reason:            "full refund",
+	})
+	require.NoError(t, err)
+	require.True(t, result.Success)
+	require.Contains(t, result.Warning, "affiliate discount restoration")
+	require.Contains(t, result.Warning, "affiliate rebate reversal")
+
+	reloaded, err := client.PaymentOrder.Get(ctx, order.ID)
+	require.NoError(t, err)
+	require.Equal(t, OrderStatusRefunded, reloaded.Status)
+	failedAudits, err := client.PaymentAuditLog.Query().
+		Where(
+			paymentauditlog.OrderIDEQ(strconv.FormatInt(order.ID, 10)),
+			paymentauditlog.ActionIn("AFFILIATE_DISCOUNT_REFUND_FAILED", "AFFILIATE_REBATE_REVERSAL_FAILED"),
+		).
+		Count(ctx)
+	require.NoError(t, err)
+	require.Equal(t, 2, failedAudits)
+}
+
 func TestQueryAndFinalizeRefundFinalizesProviderStatuses(t *testing.T) {
 	for _, tc := range []struct {
 		name       string
@@ -415,6 +649,108 @@ func TestQueryAndFinalizeRefundUnsupportedProviderReturnsClearError(t *testing.T
 	require.Nil(t, result)
 	require.Error(t, err)
 	require.Equal(t, "REFUND_QUERY_UNSUPPORTED", infraerrors.Reason(err))
+}
+
+func TestQueryAndFinalizeRefundUsesGatewayAmountForBalancePackage(t *testing.T) {
+	ctx := context.Background()
+	client := newPaymentConfigServiceTestClient(t)
+	order := createPendingRefundOrderForTest(t, ctx, client, "query-finalize-balance-package")
+
+	order, err := client.PaymentOrder.UpdateOneID(order.ID).
+		SetAmount(45).
+		SetOriginalAmount(20).
+		SetPayAmount(20).
+		SetRefundAmount(22.5).
+		Save(ctx)
+	require.NoError(t, err)
+
+	providerDouble := &refundQueryProviderTestDouble{
+		refundResponse: &payment.RefundResponse{RefundID: "rf_points", Status: payment.ProviderStatusSuccess},
+	}
+	svc := &PaymentService{
+		entClient:    client,
+		loadBalancer: &captureLoadBalancer{},
+		userRepo: &mockUserRepo{deductBalanceFn: func(context.Context, int64, float64) error {
+			return nil
+		}},
+	}
+	restore := replacePaymentProviderFactoryForTest(t, providerDouble)
+	defer restore()
+
+	result, err := svc.QueryAndFinalizeRefund(ctx, order.ID)
+	require.NoError(t, err)
+	require.True(t, result.Success)
+	require.Equal(t, "10.00", providerDouble.queryRequest.Amount)
+
+	reloaded, err := client.PaymentOrder.Get(ctx, order.ID)
+	require.NoError(t, err)
+	require.Equal(t, OrderStatusPartiallyRefunded, reloaded.Status)
+}
+
+func TestPendingSecondPartialRefundQueriesAndDeductsCurrentIncrement(t *testing.T) {
+	ctx := context.Background()
+	client := newPaymentConfigServiceTestClient(t)
+	order := createPendingRefundOrderForTest(t, ctx, client, "query-second-partial")
+	_, err := client.PaymentAuditLog.Delete().
+		Where(paymentauditlog.OrderIDEQ(strconv.FormatInt(order.ID, 10))).
+		Exec(ctx)
+	require.NoError(t, err)
+	order, err = client.PaymentOrder.UpdateOneID(order.ID).
+		SetStatus(OrderStatusRefunding).
+		SetAmount(45).
+		SetOriginalAmount(20).
+		SetPayAmount(20).
+		SetRefundAmount(22.5).
+		Save(ctx)
+	require.NoError(t, err)
+
+	var rolledBack float64
+	var deducted float64
+	userRepo := &mockUserRepo{
+		updateBalanceFn: func(_ context.Context, _ int64, amount float64) error {
+			rolledBack += amount
+			return nil
+		},
+		deductBalanceFn: func(_ context.Context, _ int64, amount float64) error {
+			deducted += amount
+			return nil
+		},
+	}
+	svc := &PaymentService{entClient: client, userRepo: userRepo, loadBalancer: &captureLoadBalancer{}}
+	plan := &RefundPlan{
+		OrderID:              order.ID,
+		Order:                order,
+		RefundAmount:         22.5,
+		PreviousRefundAmount: 22.5,
+		TotalRefundAmount:    45,
+		GatewayAmount:        10,
+		OriginalStatus:       OrderStatusPartiallyRefunded,
+		Reason:               "refund remaining half",
+		DeductBalance:        true,
+		DeductionType:        payment.DeductionTypeBalance,
+		BalanceToDeduct:      22.5,
+	}
+
+	pendingResult, err := svc.finishRefund(ctx, plan, &payment.RefundResponse{RefundID: "rf_second_partial", Status: payment.ProviderStatusPending})
+	require.NoError(t, err)
+	require.False(t, pendingResult.Success)
+	require.Equal(t, 22.5, rolledBack)
+
+	providerDouble := &refundQueryProviderTestDouble{
+		refundResponse: &payment.RefundResponse{RefundID: "rf_second_partial", Status: payment.ProviderStatusSuccess},
+	}
+	restore := replacePaymentProviderFactoryForTest(t, providerDouble)
+	defer restore()
+
+	result, err := svc.QueryAndFinalizeRefund(ctx, order.ID)
+	require.NoError(t, err)
+	require.True(t, result.Success)
+	require.Equal(t, "10.00", providerDouble.queryRequest.Amount)
+	require.Equal(t, 22.5, deducted)
+	reloaded, err := client.PaymentOrder.Get(ctx, order.ID)
+	require.NoError(t, err)
+	require.Equal(t, OrderStatusRefunded, reloaded.Status)
+	require.Equal(t, 45.0, reloaded.RefundAmount)
 }
 
 func createPendingRefundOrderForTest(t *testing.T, ctx context.Context, client *dbent.Client, suffix string) *dbent.PaymentOrder {
@@ -504,8 +840,10 @@ func (refundProviderTestDouble) Refund(context.Context, payment.RefundRequest) (
 type refundQueryProviderTestDouble struct {
 	refundProviderTestDouble
 	refundResponse *payment.RefundResponse
+	queryRequest   payment.RefundQueryRequest
 }
 
-func (p *refundQueryProviderTestDouble) QueryRefund(context.Context, payment.RefundQueryRequest) (*payment.RefundResponse, error) {
+func (p *refundQueryProviderTestDouble) QueryRefund(_ context.Context, req payment.RefundQueryRequest) (*payment.RefundResponse, error) {
+	p.queryRequest = req
 	return p.refundResponse, nil
 }

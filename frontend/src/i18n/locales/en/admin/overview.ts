@@ -373,7 +373,7 @@ export default {
     affiliates: {
       invitesDescription: 'View site-wide inviter and invitee relationships',
       rebatesDescription: 'View recharge orders that generated affiliate rebates',
-      transfersDescription: 'View affiliate quota transfers into account balance',
+      transfersDescription: 'View affiliate wallet discounts and administrator withdrawals',
       errors: {
         loadFailed: 'Failed to load affiliate records'
       },
@@ -393,14 +393,21 @@ export default {
         rebateAmount: 'Rebate Amount',
         paymentType: 'Payment Method',
         orderStatus: 'Order Status',
-        transferAmount: 'Transfer Amount',
-        balanceAfter: 'Balance After',
-        availableQuotaAfter: 'Available After',
-        frozenQuotaAfter: 'Frozen After',
-        historyQuotaAfter: 'Historical Rebate After',
+        allActions: 'All Actions',
+        action: 'Action',
+        actionDiscount: 'Order Discount',
+        actionWithdraw: 'Administrator Withdrawal',
+        walletAmount: 'Amount Changed',
+        sourceOrder: 'Related Order',
+        availableQuotaAfter: 'Available Rebate After',
+        frozenQuotaAfter: 'Frozen Rebate After',
+        historyQuotaAfter: 'Total Rebate After',
+        operator: 'Administrator',
+        externalRef: 'External Reference',
+        remark: 'Remark',
         invitedAt: 'Invited At',
         rebatedAt: 'Rebated At',
-        transferredAt: 'Transferred At'
+        transferredAt: 'Action Time'
       },
       overview: {
         title: 'Affiliate User Overview',
@@ -408,8 +415,22 @@ export default {
         rebateRate: 'Rebate Rate',
         invitedCount: 'Invited Users',
         rebatedInviteeCount: 'Rebated Invitees',
-        availableQuota: 'Available Quota',
-        historyQuota: 'Historical Rebate'
+        availableQuota: 'Available Rebate Balance',
+        historyQuota: 'Total Rebate'
+      },
+      withdraw: {
+        openButton: 'Create Withdrawal',
+        title: 'Affiliate Wallet Withdrawal',
+        amount: 'Withdrawal Amount',
+        all: 'Withdraw All',
+        externalRef: 'Payment Reference',
+        externalRefPlaceholder: 'Enter an offline payment reference (optional)',
+        remark: 'Withdrawal Remark',
+        remarkPlaceholder: 'Enter payment method, recipient account, or review notes (optional)',
+        afterQuota: 'Available rebate after withdrawal: ¥{amount}',
+        confirm: 'Confirm Withdrawal',
+        invalidAmount: 'The withdrawal must be greater than 0 and no more than the available rebate balance',
+        success: 'Affiliate withdrawal record created'
       }
     },
 
