@@ -61,6 +61,15 @@
             <strong>{{ selectedOriginalAmountText }}</strong>
           </div>
 
+          <div v-if="selectedRenewalDiscount > 0" class="checkout-summary-row renewal-benefit-row">
+            <span>{{ copy.renewalDiscount }}</span>
+            <strong>-{{ formatCnyPrice(selectedRenewalDiscount) }}</strong>
+          </div>
+          <div v-if="selectedProduct.renewalRolloverAmount" class="checkout-summary-row renewal-benefit-row">
+            <span>{{ copy.renewalRollover }}</span>
+            <strong>+{{ formatCreditAmount(selectedProduct.renewalRolloverAmount) }}</strong>
+          </div>
+
           <div v-if="affiliateDiscountVisible" class="affiliate-discount-panel">
             <label class="affiliate-discount-toggle">
               <input
@@ -280,6 +289,8 @@ type CashierProduct = {
   highlight?: boolean
   metrics: TextPair[]
   amount: number
+  originalAmount?: number
+  renewalRolloverAmount?: number
   arrivalText: string
   planId?: number
   disabled?: boolean
@@ -365,7 +376,12 @@ const affiliateDiscountSelectable = computed(() => {
 
 const selectedOriginalAmountText = computed(() => {
   if (!selectedProduct.value) return formatCnyPrice(0)
-  return formatCnyPrice(paymentBaseAmountForProduct(selectedProduct.value))
+  return formatCnyPrice(paymentOriginalAmountForProduct(selectedProduct.value))
+})
+
+const selectedRenewalDiscount = computed(() => {
+  if (!selectedProduct.value) return 0
+  return roundPaymentAmount(Math.max(0, paymentOriginalAmountForProduct(selectedProduct.value) - paymentBaseAmountForProduct(selectedProduct.value)))
 })
 
 const selectedDiscountedBaseAmount = computed(() => {
@@ -572,8 +588,12 @@ function buildServiceProducts(): CashierProduct[] {
     .map((card): CashierProduct | null => {
       const plan = planById.get(card.subscription_plan_id)
       if (!plan) return null
-      const amount = Number(plan.price || card.price || 0)
-      const originalAmount = Number(card.original_price || plan.original_price || 0)
+      const listAmount = Number(plan.price || card.price || 0)
+      const renewal = plan.renewal_offer
+      const amount = renewal?.eligible ? Number(renewal.discounted_amount || listAmount) : listAmount
+      const originalAmount = renewal?.eligible
+        ? listAmount
+        : Number(card.original_price || plan.original_price || 0)
       const paymentAmount = subscriptionPaymentBaseAmount(amount)
       const originalPaymentAmount = originalAmount > amount
         ? subscriptionPaymentBaseAmount(originalAmount)
@@ -586,11 +606,15 @@ function buildServiceProducts(): CashierProduct[] {
         priceText: formatCnyPrice(paymentAmount),
         originalPriceText: originalPaymentAmount > paymentAmount ? formatCnyPrice(originalPaymentAmount) : '',
         period: pickHomePricingText(card.period) || formatPlanPeriod(plan),
-        badge: pickHomePricingOptionalText(card.badge),
+        badge: renewal?.eligible ? copy.value.renewalBadge : pickHomePricingOptionalText(card.badge),
         highlight: card.highlight,
         metrics: normalizeMetrics(card.metrics, buildPlanMetrics(plan)),
         amount,
-        arrivalText: buildPlanArrivalText(plan),
+        originalAmount: renewal?.eligible ? listAmount : undefined,
+        renewalRolloverAmount: renewal?.eligible ? Number(renewal.rollover_amount || 0) : 0,
+        arrivalText: renewal?.eligible && Number(renewal.rollover_amount || 0) > 0
+          ? `${buildPlanArrivalText(plan)} · +${formatCreditAmount(Number(renewal.rollover_amount))}`
+          : buildPlanArrivalText(plan),
         planId: plan.id,
         disabled: amount <= 0,
       }
@@ -686,6 +710,13 @@ function subscriptionPaymentBaseAmount(amount: number, currency = selectedPaymen
 function paymentBaseAmountForProduct(product: CashierProduct) {
   if (product.kind === 'subscription') return subscriptionPaymentBaseAmount(product.amount)
   return roundPaymentAmount(product.amount)
+}
+
+function paymentOriginalAmountForProduct(product: CashierProduct) {
+  if (product.kind === 'subscription' && product.originalAmount && product.originalAmount > product.amount) {
+    return subscriptionPaymentBaseAmount(product.originalAmount)
+  }
+  return paymentBaseAmountForProduct(product)
 }
 
 function estimateAffiliateDiscount(amount: number) {
@@ -1119,6 +1150,9 @@ const zhCopy = {
   confirmEyebrow: '确认支付',
   productAmount: '商品金额',
   orderAmount: '订单金额',
+  renewalDiscount: '续订优惠',
+  renewalRollover: '未用额度结转至余额',
+  renewalBadge: '续订专享',
   payAmount: '实付金额',
   arrival: '到账内容',
   fee: '手续费',
@@ -1168,6 +1202,9 @@ const enCopy = {
   confirmEyebrow: 'Confirm Payment',
   productAmount: 'Item Amount',
   orderAmount: 'Order Amount',
+  renewalDiscount: 'Renewal discount',
+  renewalRollover: 'Unused credit carried to balance',
+  renewalBadge: 'Renewal offer',
   payAmount: 'Amount Due',
   arrival: 'Credit Received',
   fee: 'Fee',

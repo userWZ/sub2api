@@ -33,6 +33,14 @@ type PaymentOrder struct {
 	OriginalAmount float64 `json:"original_amount,omitempty"`
 	// AffiliateDiscount holds the value of the "affiliate_discount" field.
 	AffiliateDiscount float64 `json:"affiliate_discount,omitempty"`
+	// RenewalDiscount holds the value of the "renewal_discount" field.
+	RenewalDiscount float64 `json:"renewal_discount,omitempty"`
+	// RenewalRolloverAmount holds the value of the "renewal_rollover_amount" field.
+	RenewalRolloverAmount float64 `json:"renewal_rollover_amount,omitempty"`
+	// RenewalSourceSubscriptionID holds the value of the "renewal_source_subscription_id" field.
+	RenewalSourceSubscriptionID *int64 `json:"renewal_source_subscription_id,omitempty"`
+	// RenewalSourceExpiresAt holds the value of the "renewal_source_expires_at" field.
+	RenewalSourceExpiresAt *time.Time `json:"renewal_source_expires_at,omitempty"`
 	// PayAmount holds the value of the "pay_amount" field.
 	PayAmount float64 `json:"pay_amount,omitempty"`
 	// FeeRate holds the value of the "fee_rate" field.
@@ -136,13 +144,13 @@ func (*PaymentOrder) scanValues(columns []string) ([]any, error) {
 			values[i] = new([]byte)
 		case paymentorder.FieldForceRefund:
 			values[i] = new(sql.NullBool)
-		case paymentorder.FieldAmount, paymentorder.FieldOriginalAmount, paymentorder.FieldAffiliateDiscount, paymentorder.FieldPayAmount, paymentorder.FieldFeeRate, paymentorder.FieldRefundAmount:
+		case paymentorder.FieldAmount, paymentorder.FieldOriginalAmount, paymentorder.FieldAffiliateDiscount, paymentorder.FieldRenewalDiscount, paymentorder.FieldRenewalRolloverAmount, paymentorder.FieldPayAmount, paymentorder.FieldFeeRate, paymentorder.FieldRefundAmount:
 			values[i] = new(sql.NullFloat64)
-		case paymentorder.FieldID, paymentorder.FieldUserID, paymentorder.FieldPlanID, paymentorder.FieldSubscriptionGroupID, paymentorder.FieldSubscriptionDays:
+		case paymentorder.FieldID, paymentorder.FieldUserID, paymentorder.FieldRenewalSourceSubscriptionID, paymentorder.FieldPlanID, paymentorder.FieldSubscriptionGroupID, paymentorder.FieldSubscriptionDays:
 			values[i] = new(sql.NullInt64)
 		case paymentorder.FieldUserEmail, paymentorder.FieldUserName, paymentorder.FieldUserNotes, paymentorder.FieldRechargeCode, paymentorder.FieldOutTradeNo, paymentorder.FieldPaymentType, paymentorder.FieldPaymentTradeNo, paymentorder.FieldPayURL, paymentorder.FieldQrCode, paymentorder.FieldQrCodeImg, paymentorder.FieldOrderType, paymentorder.FieldProviderInstanceID, paymentorder.FieldProviderKey, paymentorder.FieldStatus, paymentorder.FieldRefundReason, paymentorder.FieldRefundRequestReason, paymentorder.FieldRefundRequestedBy, paymentorder.FieldFailedReason, paymentorder.FieldClientIP, paymentorder.FieldSrcHost, paymentorder.FieldSrcURL:
 			values[i] = new(sql.NullString)
-		case paymentorder.FieldRefundAt, paymentorder.FieldRefundRequestedAt, paymentorder.FieldExpiresAt, paymentorder.FieldPaidAt, paymentorder.FieldCompletedAt, paymentorder.FieldFailedAt, paymentorder.FieldCreatedAt, paymentorder.FieldUpdatedAt:
+		case paymentorder.FieldRenewalSourceExpiresAt, paymentorder.FieldRefundAt, paymentorder.FieldRefundRequestedAt, paymentorder.FieldExpiresAt, paymentorder.FieldPaidAt, paymentorder.FieldCompletedAt, paymentorder.FieldFailedAt, paymentorder.FieldCreatedAt, paymentorder.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -207,6 +215,32 @@ func (_m *PaymentOrder) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field affiliate_discount", values[i])
 			} else if value.Valid {
 				_m.AffiliateDiscount = value.Float64
+			}
+		case paymentorder.FieldRenewalDiscount:
+			if value, ok := values[i].(*sql.NullFloat64); !ok {
+				return fmt.Errorf("unexpected type %T for field renewal_discount", values[i])
+			} else if value.Valid {
+				_m.RenewalDiscount = value.Float64
+			}
+		case paymentorder.FieldRenewalRolloverAmount:
+			if value, ok := values[i].(*sql.NullFloat64); !ok {
+				return fmt.Errorf("unexpected type %T for field renewal_rollover_amount", values[i])
+			} else if value.Valid {
+				_m.RenewalRolloverAmount = value.Float64
+			}
+		case paymentorder.FieldRenewalSourceSubscriptionID:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field renewal_source_subscription_id", values[i])
+			} else if value.Valid {
+				_m.RenewalSourceSubscriptionID = new(int64)
+				*_m.RenewalSourceSubscriptionID = value.Int64
+			}
+		case paymentorder.FieldRenewalSourceExpiresAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field renewal_source_expires_at", values[i])
+			} else if value.Valid {
+				_m.RenewalSourceExpiresAt = new(time.Time)
+				*_m.RenewalSourceExpiresAt = value.Time
 			}
 		case paymentorder.FieldPayAmount:
 			if value, ok := values[i].(*sql.NullFloat64); !ok {
@@ -495,6 +529,22 @@ func (_m *PaymentOrder) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("affiliate_discount=")
 	builder.WriteString(fmt.Sprintf("%v", _m.AffiliateDiscount))
+	builder.WriteString(", ")
+	builder.WriteString("renewal_discount=")
+	builder.WriteString(fmt.Sprintf("%v", _m.RenewalDiscount))
+	builder.WriteString(", ")
+	builder.WriteString("renewal_rollover_amount=")
+	builder.WriteString(fmt.Sprintf("%v", _m.RenewalRolloverAmount))
+	builder.WriteString(", ")
+	if v := _m.RenewalSourceSubscriptionID; v != nil {
+		builder.WriteString("renewal_source_subscription_id=")
+		builder.WriteString(fmt.Sprintf("%v", *v))
+	}
+	builder.WriteString(", ")
+	if v := _m.RenewalSourceExpiresAt; v != nil {
+		builder.WriteString("renewal_source_expires_at=")
+		builder.WriteString(v.Format(time.ANSIC))
+	}
 	builder.WriteString(", ")
 	builder.WriteString("pay_amount=")
 	builder.WriteString(fmt.Sprintf("%v", _m.PayAmount))

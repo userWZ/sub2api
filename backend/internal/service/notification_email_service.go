@@ -24,6 +24,8 @@ const (
 	NotificationEmailEventAuthPasswordReset           = "auth.password_reset"
 	NotificationEmailEventNotificationEmailVerifyCode = "notification_email.verify_code"
 	NotificationEmailEventSubscriptionPurchaseSuccess = "subscription.purchase_success"
+	NotificationEmailEventSubscriptionRenewalSuccess  = "subscription.renewal_success"
+	NotificationEmailEventSubscriptionRenewalOffer    = "subscription.renewal_offer"
 	NotificationEmailEventSubscriptionExpiryReminder  = "subscription.expiry_reminder"
 	NotificationEmailEventBalanceLow                  = "balance.low"
 	NotificationEmailEventBalanceRechargeSuccess      = "balance.recharge_success"
@@ -888,6 +890,12 @@ func notificationEmailSampleVariables(locale string) map[string]string {
 			"report_start_time":   "2026-05-19 12:00",
 			"report_end_time":     "2026-05-20 12:00",
 			"report_html":         "<h2>日报</h2><p>请求量：1024</p>",
+			"renewal_discount":    "10.00",
+			"rollover_amount":     "12.00",
+			"window_days":         "14",
+			"discount_percent":    "10",
+			"rollover_percent":    "20",
+			"renew_url":           "https://example.com/payment?tab=subscription",
 		}
 	}
 	return map[string]string{
@@ -934,6 +942,12 @@ func notificationEmailSampleVariables(locale string) map[string]string {
 		"report_start_time":   "2026-05-19 12:00",
 		"report_end_time":     "2026-05-20 12:00",
 		"report_html":         "<h2>Daily summary</h2><p>Requests: 1024</p>",
+		"renewal_discount":    "10.00",
+		"rollover_amount":     "12.00",
+		"window_days":         "14",
+		"discount_percent":    "10",
+		"rollover_percent":    "20",
+		"renew_url":           "https://example.com/payment?tab=subscription",
 	}
 }
 
@@ -942,6 +956,8 @@ var notificationEmailEventOrder = []string{
 	NotificationEmailEventAuthPasswordReset,
 	NotificationEmailEventNotificationEmailVerifyCode,
 	NotificationEmailEventSubscriptionPurchaseSuccess,
+	NotificationEmailEventSubscriptionRenewalSuccess,
+	NotificationEmailEventSubscriptionRenewalOffer,
 	NotificationEmailEventSubscriptionExpiryReminder,
 	NotificationEmailEventBalanceLow,
 	NotificationEmailEventBalanceRechargeSuccess,
@@ -985,6 +1001,22 @@ var notificationEmailEventDefinitions = map[string]NotificationEmailEventInfo{
 		Category:     "subscription",
 		Optional:     false,
 		Placeholders: append(append([]string{}, notificationEmailCommonPlaceholders...), "subscription_group", "subscription_days", "expiry_time", "order_id"),
+	},
+	NotificationEmailEventSubscriptionRenewalSuccess: {
+		Event:        NotificationEmailEventSubscriptionRenewalSuccess,
+		Label:        "Subscription renewal success",
+		Description:  "Sent after an eligible subscription renewal is fulfilled.",
+		Category:     "subscription",
+		Optional:     false,
+		Placeholders: append(append([]string{}, notificationEmailCommonPlaceholders...), "subscription_group", "subscription_days", "expiry_time", "order_id", "renewal_discount", "rollover_amount"),
+	},
+	NotificationEmailEventSubscriptionRenewalOffer: {
+		Event:        NotificationEmailEventSubscriptionRenewalOffer,
+		Label:        "Subscription renewal offer",
+		Description:  "Optional reminder sent when a subscription enters the configured renewal window.",
+		Category:     "subscription",
+		Optional:     true,
+		Placeholders: append(append([]string{}, notificationEmailCommonPlaceholders...), "subscription_group", "expiry_time", "window_days", "discount_percent", "rollover_percent", "renew_url", "unsubscribe_url"),
 	},
 	NotificationEmailEventSubscriptionExpiryReminder: {
 		Event:        NotificationEmailEventSubscriptionExpiryReminder,
@@ -1146,6 +1178,48 @@ var notificationEmailOfficialTemplates = map[string]map[string]notificationEmail
 <p>您的 <strong>{{subscription_group}}</strong> 订阅已成功开通，有效期 <strong>{{subscription_days}}</strong> 天。</p>
 <p>到期时间：<strong>{{expiry_time}}</strong></p>
 <p>订单号：{{order_id}}</p>`),
+		},
+	},
+	NotificationEmailEventSubscriptionRenewalSuccess: {
+		notificationEmailDefaultLocale: {
+			Subject: "[{{site_name}}] Subscription renewal successful",
+			HTML: notificationEmailCard("#16a34a", "Subscription renewed", `
+<p>Hello {{recipient_name}},</p>
+<p>Your <strong>{{subscription_group}}</strong> subscription has been renewed for <strong>{{subscription_days}}</strong> days.</p>
+<p>Renewal discount: <strong>{{renewal_discount}}</strong></p>
+<p>Unused monthly credit carried to your balance: <strong>${{rollover_amount}}</strong></p>
+<p>New expiry time: <strong>{{expiry_time}}</strong></p>
+<p>Order ID: {{order_id}}</p>`),
+		},
+		notificationEmailLocaleChinese: {
+			Subject: "[{{site_name}}] 订阅续订成功",
+			HTML: notificationEmailCard("#16a34a", "订阅已续订", `
+<p>{{recipient_name}}，您好：</p>
+<p>您的 <strong>{{subscription_group}}</strong> 订阅已成功续订 <strong>{{subscription_days}}</strong> 天。</p>
+<p>本次续订优惠：<strong>{{renewal_discount}}</strong></p>
+<p>上月未用额度结转至余额：<strong>${{rollover_amount}}</strong></p>
+<p>新的到期时间：<strong>{{expiry_time}}</strong></p>
+<p>订单号：{{order_id}}</p>`),
+		},
+	},
+	NotificationEmailEventSubscriptionRenewalOffer: {
+		notificationEmailDefaultLocale: {
+			Subject: "[{{site_name}}] Your subscription renewal offer is available",
+			HTML: notificationEmailCard("#7c3aed", "Renew and keep more value", `
+<p>Hello {{recipient_name}},</p>
+<p>Your <strong>{{subscription_group}}</strong> subscription expires at <strong>{{expiry_time}}</strong>.</p>
+<p>Renew within <strong>{{window_days}} days before or after expiry</strong> to receive <strong>{{discount_percent}}% off</strong> and carry <strong>{{rollover_percent}}%</strong> of unused monthly credit into your balance.</p>
+<p><a class="button" href="{{renew_url}}">Renew subscription</a></p>
+<p class="muted"><a href="{{unsubscribe_url}}">Unsubscribe from optional subscription reminders</a></p>`),
+		},
+		notificationEmailLocaleChinese: {
+			Subject: "[{{site_name}}] 您的订阅续订权益已生效",
+			HTML: notificationEmailCard("#7c3aed", "续订更划算", `
+<p>{{recipient_name}}，您好：</p>
+<p>您的 <strong>{{subscription_group}}</strong> 订阅将于 <strong>{{expiry_time}}</strong> 到期。</p>
+<p>在到期前后 <strong>{{window_days}} 天</strong>内续订，可享 <strong>{{discount_percent}}% 续订优惠</strong>，并将上月未用月额度的 <strong>{{rollover_percent}}%</strong> 结转至余额。</p>
+<p><a class="button" href="{{renew_url}}">立即续订</a></p>
+<p class="muted"><a href="{{unsubscribe_url}}">退订此类订阅提醒</a></p>`),
 		},
 	},
 	NotificationEmailEventSubscriptionExpiryReminder: {

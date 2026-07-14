@@ -54,9 +54,17 @@ func (s *PaymentService) CreateOrder(ctx context.Context, req CreateOrderRequest
 	}
 	orderAmount := req.Amount
 	limitAmount := req.Amount
+	originalOrderAmount := req.Amount
+	renewalQuote := renewalOfferQuote{}
 	if plan != nil {
 		orderAmount = plan.Price
 		limitAmount = plan.Price
+		originalOrderAmount = plan.Price
+		renewalQuote = s.quoteRenewalOffer(ctx, req.UserID, plan.GroupID, cfg, time.Now())
+		if renewalQuote.Eligible {
+			orderAmount = renewalDiscountedAmount(plan.Price, renewalQuote.DiscountPercent)
+			limitAmount = orderAmount
+		}
 	} else if req.OrderType == payment.OrderTypeBalance {
 		creditedAmount, err := s.resolveBalanceOrderPackageAmount(ctx, req.Amount, cfg)
 		if err != nil {
@@ -72,6 +80,7 @@ func (s *PaymentService) CreateOrder(ctx context.Context, req CreateOrderRequest
 			return nil, err
 		}
 	}
+	gatewayOriginalAmount := originalOrderAmount
 	gatewayBaseAmount := limitAmount
 	discountQuote, err := s.quoteAffiliateDiscount(ctx, req, gatewayBaseAmount)
 	if err != nil {
@@ -94,6 +103,7 @@ func (s *PaymentService) CreateOrder(ctx context.Context, req CreateOrderRequest
 		selectedCurrency = paymentProviderConfigCurrency(sel.ProviderKey, sel.Config)
 	}
 	if selectedCurrency != methodCurrency {
+		gatewayOriginalAmount = originalOrderAmount
 		gatewayBaseAmount = limitAmount
 		discountQuote, err = s.quoteAffiliateDiscount(ctx, req, gatewayBaseAmount)
 		if err != nil {
@@ -113,9 +123,12 @@ func (s *PaymentService) CreateOrder(ctx context.Context, req CreateOrderRequest
 		return nil, err
 	}
 	if oauthResp != nil {
+		oauthResp.OriginalAmount = gatewayOriginalAmount
+		oauthResp.RenewalDiscount = math.Max(gatewayOriginalAmount-gatewayBaseAmount, 0)
+		oauthResp.RenewalRollover = renewalQuote.RolloverAmount
 		return oauthResp, nil
 	}
-	order, err := s.createOrderInTx(ctx, req, user, plan, cfg, orderAmount, gatewayBaseAmount, discountQuote.DiscountAmount, feeRate, payAmount, sel)
+	order, err := s.createOrderInTx(ctx, req, user, plan, cfg, orderAmount, gatewayOriginalAmount, gatewayBaseAmount, discountQuote.DiscountAmount, renewalQuote, feeRate, payAmount, sel)
 	if err != nil {
 		return nil, err
 	}
@@ -188,7 +201,7 @@ func (s *PaymentService) resolveBalanceOrderPackageAmount(ctx context.Context, a
 	return 0, infraerrors.BadRequest("BALANCE_PACKAGE_NOT_AVAILABLE", "balance recharge amount must match an enabled credit package")
 }
 
-func (s *PaymentService) createOrderInTx(ctx context.Context, req CreateOrderRequest, user *User, plan *dbent.SubscriptionPlan, cfg *PaymentConfig, orderAmount, limitAmount, affiliateDiscount, feeRate, payAmount float64, sel *payment.InstanceSelection) (*dbent.PaymentOrder, error) {
+func (s *PaymentService) createOrderInTx(ctx context.Context, req CreateOrderRequest, user *User, plan *dbent.SubscriptionPlan, cfg *PaymentConfig, orderAmount, originalAmount, limitAmount, affiliateDiscount float64, renewalQuote renewalOfferQuote, feeRate, payAmount float64, sel *payment.InstanceSelection) (*dbent.PaymentOrder, error) {
 	tx, err := s.entClient.Tx(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("begin transaction: %w", err)
@@ -222,8 +235,12 @@ func (s *PaymentService) createOrderInTx(ctx context.Context, req CreateOrderReq
 		SetUserName(user.Username).
 		SetNillableUserNotes(psNilIfEmpty(user.Notes)).
 		SetAmount(orderAmount).
-		SetOriginalAmount(limitAmount).
+		SetOriginalAmount(originalAmount).
 		SetAffiliateDiscount(affiliateDiscount).
+		SetRenewalDiscount(math.Max(originalAmount-limitAmount, 0)).
+		SetRenewalRolloverAmount(renewalQuote.RolloverAmount).
+		SetNillableRenewalSourceSubscriptionID(renewalQuote.SourceSubscriptionID).
+		SetNillableRenewalSourceExpiresAt(renewalQuote.SourceExpiresAt).
 		SetPayAmount(payAmount).
 		SetFeeRate(feeRate).
 		SetRechargeCode("").
@@ -522,6 +539,8 @@ func (s *PaymentService) invokeProvider(ctx context.Context, order *dbent.Paymen
 		"creditedAmount":    order.Amount,
 		"originalAmount":    paymentOrderOriginalAmount(order),
 		"affiliateDiscount": order.AffiliateDiscount,
+		"renewalDiscount":   order.RenewalDiscount,
+		"renewalRollover":   order.RenewalRolloverAmount,
 		"payAmount":         order.PayAmount,
 		"paymentType":       req.PaymentType,
 		"orderType":         req.OrderType,
@@ -757,6 +776,8 @@ func buildCreateOrderResponse(order *dbent.PaymentOrder, req CreateOrderRequest,
 		Amount:            order.Amount,
 		OriginalAmount:    paymentOrderOriginalAmount(order),
 		AffiliateDiscount: order.AffiliateDiscount,
+		RenewalDiscount:   order.RenewalDiscount,
+		RenewalRollover:   order.RenewalRolloverAmount,
 		PayAmount:         payAmount,
 		FeeRate:           order.FeeRate,
 		Status:            OrderStatusPending,

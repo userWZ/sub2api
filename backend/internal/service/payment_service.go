@@ -93,6 +93,8 @@ type CreateOrderResponse struct {
 	Amount            float64                         `json:"amount"`
 	OriginalAmount    float64                         `json:"original_amount"`
 	AffiliateDiscount float64                         `json:"affiliate_discount"`
+	RenewalDiscount   float64                         `json:"renewal_discount"`
+	RenewalRollover   float64                         `json:"renewal_rollover_amount"`
 	PayAmount         float64                         `json:"pay_amount"`
 	FeeRate           float64                         `json:"fee_rate"`
 	Status            string                          `json:"status"`

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -129,6 +130,7 @@ func (s *SubscriptionExpiryService) sendExpiryReminders(ctx context.Context) {
 		return
 	}
 	defer release()
+	renewalOffer := s.loadRenewalEmailOffer(ctx)
 	for page := 1; ; page++ {
 		subs, pag, err := s.userSubRepo.List(ctx, pagination.PaginationParams{Page: page, PageSize: 200}, nil, nil, SubscriptionStatusActive, "", "expires_at", "asc")
 		if err != nil {
@@ -137,10 +139,71 @@ func (s *SubscriptionExpiryService) sendExpiryReminders(ctx context.Context) {
 		}
 		for i := range subs {
 			s.sendExpiryReminderIfDue(ctx, &subs[i])
+			s.sendRenewalOfferIfDue(ctx, &subs[i], renewalOffer)
 		}
 		if pag == nil || page >= pag.Pages || len(subs) == 0 {
 			return
 		}
+	}
+}
+
+type renewalEmailOffer struct {
+	Enabled         bool
+	WindowDays      int
+	DiscountPercent float64
+	RolloverPercent float64
+}
+
+func (s *SubscriptionExpiryService) loadRenewalEmailOffer(ctx context.Context) renewalEmailOffer {
+	offer := renewalEmailOffer{WindowDays: 14, DiscountPercent: 10, RolloverPercent: 20}
+	if s == nil || s.settingRepo == nil {
+		return offer
+	}
+	values, err := s.settingRepo.GetMultiple(ctx, []string{
+		SettingRenewalOfferEnabled, SettingRenewalEmailEnabled, SettingRenewalWindowDays,
+		SettingRenewalDiscountPercent, SettingRenewalRolloverPercent,
+	})
+	if err != nil {
+		return offer
+	}
+	offer.Enabled = values[SettingRenewalOfferEnabled] == "true" && values[SettingRenewalEmailEnabled] != "false"
+	offer.WindowDays = pcParseInt(values[SettingRenewalWindowDays], 14)
+	offer.DiscountPercent = pcParseFloat(values[SettingRenewalDiscountPercent], 10)
+	offer.RolloverPercent = pcParseFloat(values[SettingRenewalRolloverPercent], 20)
+	return offer
+}
+
+func (s *SubscriptionExpiryService) sendRenewalOfferIfDue(ctx context.Context, sub *UserSubscription, offer renewalEmailOffer) {
+	daysRemaining := 0
+	if sub != nil {
+		daysRemaining = sub.DaysRemaining()
+	}
+	if !offer.Enabled || sub == nil || sub.User == nil || sub.Group == nil || sub.User.Email == "" || (daysRemaining != offer.WindowDays && daysRemaining != offer.WindowDays-1) {
+		return
+	}
+	baseURL := strings.TrimRight(s.notificationEmailService.baseURL(ctx), "/")
+	renewURL := baseURL + "/payment?tab=subscription"
+	if baseURL == "" {
+		renewURL = "/payment?tab=subscription"
+	}
+	if err := s.notificationEmailService.Send(ctx, NotificationEmailSendInput{
+		Event:          NotificationEmailEventSubscriptionRenewalOffer,
+		RecipientEmail: sub.User.Email,
+		RecipientName:  firstNonEmpty(sub.User.Username, sub.User.Email),
+		UserID:         sub.UserID,
+		SourceType:     "user_subscription",
+		SourceID:       strconv.FormatInt(sub.ID, 10),
+		ReminderKey:    fmt.Sprintf("window-%dd", offer.WindowDays),
+		Variables: map[string]string{
+			"subscription_group": sub.Group.Name,
+			"expiry_time":        sub.ExpiresAt.Format("2006-01-02 15:04"),
+			"window_days":        strconv.Itoa(offer.WindowDays),
+			"discount_percent":   strconv.FormatFloat(offer.DiscountPercent, 'f', -1, 64),
+			"rollover_percent":   strconv.FormatFloat(offer.RolloverPercent, 'f', -1, 64),
+			"renew_url":          renewURL,
+		},
+	}); err != nil {
+		log.Printf("[SubscriptionExpiry] Send renewal offer failed: subscription=%d user=%d err=%v", sub.ID, sub.UserID, err)
 	}
 }
 

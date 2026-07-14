@@ -27528,64 +27528,71 @@ func (m *PaymentAuditLogMutation) ResetEdge(name string) error {
 // PaymentOrderMutation represents an operation that mutates the PaymentOrder nodes in the graph.
 type PaymentOrderMutation struct {
 	config
-	op                       Op
-	typ                      string
-	id                       *int64
-	user_email               *string
-	user_name                *string
-	user_notes               *string
-	amount                   *float64
-	addamount                *float64
-	original_amount          *float64
-	addoriginal_amount       *float64
-	affiliate_discount       *float64
-	addaffiliate_discount    *float64
-	pay_amount               *float64
-	addpay_amount            *float64
-	fee_rate                 *float64
-	addfee_rate              *float64
-	recharge_code            *string
-	out_trade_no             *string
-	payment_type             *string
-	payment_trade_no         *string
-	pay_url                  *string
-	qr_code                  *string
-	qr_code_img              *string
-	order_type               *string
-	plan_id                  *int64
-	addplan_id               *int64
-	subscription_group_id    *int64
-	addsubscription_group_id *int64
-	subscription_days        *int
-	addsubscription_days     *int
-	provider_instance_id     *string
-	provider_key             *string
-	provider_snapshot        *map[string]interface{}
-	status                   *string
-	refund_amount            *float64
-	addrefund_amount         *float64
-	refund_reason            *string
-	refund_at                *time.Time
-	force_refund             *bool
-	refund_requested_at      *time.Time
-	refund_request_reason    *string
-	refund_requested_by      *string
-	expires_at               *time.Time
-	paid_at                  *time.Time
-	completed_at             *time.Time
-	failed_at                *time.Time
-	failed_reason            *string
-	client_ip                *string
-	src_host                 *string
-	src_url                  *string
-	created_at               *time.Time
-	updated_at               *time.Time
-	clearedFields            map[string]struct{}
-	user                     *int64
-	cleareduser              bool
-	done                     bool
-	oldValue                 func(context.Context) (*PaymentOrder, error)
-	predicates               []predicate.PaymentOrder
+	op                                Op
+	typ                               string
+	id                                *int64
+	user_email                        *string
+	user_name                         *string
+	user_notes                        *string
+	amount                            *float64
+	addamount                         *float64
+	original_amount                   *float64
+	addoriginal_amount                *float64
+	affiliate_discount                *float64
+	addaffiliate_discount             *float64
+	renewal_discount                  *float64
+	addrenewal_discount               *float64
+	renewal_rollover_amount           *float64
+	addrenewal_rollover_amount        *float64
+	renewal_source_subscription_id    *int64
+	addrenewal_source_subscription_id *int64
+	renewal_source_expires_at         *time.Time
+	pay_amount                        *float64
+	addpay_amount                     *float64
+	fee_rate                          *float64
+	addfee_rate                       *float64
+	recharge_code                     *string
+	out_trade_no                      *string
+	payment_type                      *string
+	payment_trade_no                  *string
+	pay_url                           *string
+	qr_code                           *string
+	qr_code_img                       *string
+	order_type                        *string
+	plan_id                           *int64
+	addplan_id                        *int64
+	subscription_group_id             *int64
+	addsubscription_group_id          *int64
+	subscription_days                 *int
+	addsubscription_days              *int
+	provider_instance_id              *string
+	provider_key                      *string
+	provider_snapshot                 *map[string]interface{}
+	status                            *string
+	refund_amount                     *float64
+	addrefund_amount                  *float64
+	refund_reason                     *string
+	refund_at                         *time.Time
+	force_refund                      *bool
+	refund_requested_at               *time.Time
+	refund_request_reason             *string
+	refund_requested_by               *string
+	expires_at                        *time.Time
+	paid_at                           *time.Time
+	completed_at                      *time.Time
+	failed_at                         *time.Time
+	failed_reason                     *string
+	client_ip                         *string
+	src_host                          *string
+	src_url                           *string
+	created_at                        *time.Time
+	updated_at                        *time.Time
+	clearedFields                     map[string]struct{}
+	user                              *int64
+	cleareduser                       bool
+	done                              bool
+	oldValue                          func(context.Context) (*PaymentOrder, error)
+	predicates                        []predicate.PaymentOrder
 }
 
 var _ ent.Mutation = (*PaymentOrderMutation)(nil)
@@ -28009,6 +28016,237 @@ func (m *PaymentOrderMutation) AddedAffiliateDiscount() (r float64, exists bool)
 func (m *PaymentOrderMutation) ResetAffiliateDiscount() {
 	m.affiliate_discount = nil
 	m.addaffiliate_discount = nil
+}
+
+// SetRenewalDiscount sets the "renewal_discount" field.
+func (m *PaymentOrderMutation) SetRenewalDiscount(f float64) {
+	m.renewal_discount = &f
+	m.addrenewal_discount = nil
+}
+
+// RenewalDiscount returns the value of the "renewal_discount" field in the mutation.
+func (m *PaymentOrderMutation) RenewalDiscount() (r float64, exists bool) {
+	v := m.renewal_discount
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRenewalDiscount returns the old "renewal_discount" field's value of the PaymentOrder entity.
+// If the PaymentOrder object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PaymentOrderMutation) OldRenewalDiscount(ctx context.Context) (v float64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRenewalDiscount is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRenewalDiscount requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRenewalDiscount: %w", err)
+	}
+	return oldValue.RenewalDiscount, nil
+}
+
+// AddRenewalDiscount adds f to the "renewal_discount" field.
+func (m *PaymentOrderMutation) AddRenewalDiscount(f float64) {
+	if m.addrenewal_discount != nil {
+		*m.addrenewal_discount += f
+	} else {
+		m.addrenewal_discount = &f
+	}
+}
+
+// AddedRenewalDiscount returns the value that was added to the "renewal_discount" field in this mutation.
+func (m *PaymentOrderMutation) AddedRenewalDiscount() (r float64, exists bool) {
+	v := m.addrenewal_discount
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetRenewalDiscount resets all changes to the "renewal_discount" field.
+func (m *PaymentOrderMutation) ResetRenewalDiscount() {
+	m.renewal_discount = nil
+	m.addrenewal_discount = nil
+}
+
+// SetRenewalRolloverAmount sets the "renewal_rollover_amount" field.
+func (m *PaymentOrderMutation) SetRenewalRolloverAmount(f float64) {
+	m.renewal_rollover_amount = &f
+	m.addrenewal_rollover_amount = nil
+}
+
+// RenewalRolloverAmount returns the value of the "renewal_rollover_amount" field in the mutation.
+func (m *PaymentOrderMutation) RenewalRolloverAmount() (r float64, exists bool) {
+	v := m.renewal_rollover_amount
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRenewalRolloverAmount returns the old "renewal_rollover_amount" field's value of the PaymentOrder entity.
+// If the PaymentOrder object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PaymentOrderMutation) OldRenewalRolloverAmount(ctx context.Context) (v float64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRenewalRolloverAmount is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRenewalRolloverAmount requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRenewalRolloverAmount: %w", err)
+	}
+	return oldValue.RenewalRolloverAmount, nil
+}
+
+// AddRenewalRolloverAmount adds f to the "renewal_rollover_amount" field.
+func (m *PaymentOrderMutation) AddRenewalRolloverAmount(f float64) {
+	if m.addrenewal_rollover_amount != nil {
+		*m.addrenewal_rollover_amount += f
+	} else {
+		m.addrenewal_rollover_amount = &f
+	}
+}
+
+// AddedRenewalRolloverAmount returns the value that was added to the "renewal_rollover_amount" field in this mutation.
+func (m *PaymentOrderMutation) AddedRenewalRolloverAmount() (r float64, exists bool) {
+	v := m.addrenewal_rollover_amount
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetRenewalRolloverAmount resets all changes to the "renewal_rollover_amount" field.
+func (m *PaymentOrderMutation) ResetRenewalRolloverAmount() {
+	m.renewal_rollover_amount = nil
+	m.addrenewal_rollover_amount = nil
+}
+
+// SetRenewalSourceSubscriptionID sets the "renewal_source_subscription_id" field.
+func (m *PaymentOrderMutation) SetRenewalSourceSubscriptionID(i int64) {
+	m.renewal_source_subscription_id = &i
+	m.addrenewal_source_subscription_id = nil
+}
+
+// RenewalSourceSubscriptionID returns the value of the "renewal_source_subscription_id" field in the mutation.
+func (m *PaymentOrderMutation) RenewalSourceSubscriptionID() (r int64, exists bool) {
+	v := m.renewal_source_subscription_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRenewalSourceSubscriptionID returns the old "renewal_source_subscription_id" field's value of the PaymentOrder entity.
+// If the PaymentOrder object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PaymentOrderMutation) OldRenewalSourceSubscriptionID(ctx context.Context) (v *int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRenewalSourceSubscriptionID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRenewalSourceSubscriptionID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRenewalSourceSubscriptionID: %w", err)
+	}
+	return oldValue.RenewalSourceSubscriptionID, nil
+}
+
+// AddRenewalSourceSubscriptionID adds i to the "renewal_source_subscription_id" field.
+func (m *PaymentOrderMutation) AddRenewalSourceSubscriptionID(i int64) {
+	if m.addrenewal_source_subscription_id != nil {
+		*m.addrenewal_source_subscription_id += i
+	} else {
+		m.addrenewal_source_subscription_id = &i
+	}
+}
+
+// AddedRenewalSourceSubscriptionID returns the value that was added to the "renewal_source_subscription_id" field in this mutation.
+func (m *PaymentOrderMutation) AddedRenewalSourceSubscriptionID() (r int64, exists bool) {
+	v := m.addrenewal_source_subscription_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearRenewalSourceSubscriptionID clears the value of the "renewal_source_subscription_id" field.
+func (m *PaymentOrderMutation) ClearRenewalSourceSubscriptionID() {
+	m.renewal_source_subscription_id = nil
+	m.addrenewal_source_subscription_id = nil
+	m.clearedFields[paymentorder.FieldRenewalSourceSubscriptionID] = struct{}{}
+}
+
+// RenewalSourceSubscriptionIDCleared returns if the "renewal_source_subscription_id" field was cleared in this mutation.
+func (m *PaymentOrderMutation) RenewalSourceSubscriptionIDCleared() bool {
+	_, ok := m.clearedFields[paymentorder.FieldRenewalSourceSubscriptionID]
+	return ok
+}
+
+// ResetRenewalSourceSubscriptionID resets all changes to the "renewal_source_subscription_id" field.
+func (m *PaymentOrderMutation) ResetRenewalSourceSubscriptionID() {
+	m.renewal_source_subscription_id = nil
+	m.addrenewal_source_subscription_id = nil
+	delete(m.clearedFields, paymentorder.FieldRenewalSourceSubscriptionID)
+}
+
+// SetRenewalSourceExpiresAt sets the "renewal_source_expires_at" field.
+func (m *PaymentOrderMutation) SetRenewalSourceExpiresAt(t time.Time) {
+	m.renewal_source_expires_at = &t
+}
+
+// RenewalSourceExpiresAt returns the value of the "renewal_source_expires_at" field in the mutation.
+func (m *PaymentOrderMutation) RenewalSourceExpiresAt() (r time.Time, exists bool) {
+	v := m.renewal_source_expires_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRenewalSourceExpiresAt returns the old "renewal_source_expires_at" field's value of the PaymentOrder entity.
+// If the PaymentOrder object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PaymentOrderMutation) OldRenewalSourceExpiresAt(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRenewalSourceExpiresAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRenewalSourceExpiresAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRenewalSourceExpiresAt: %w", err)
+	}
+	return oldValue.RenewalSourceExpiresAt, nil
+}
+
+// ClearRenewalSourceExpiresAt clears the value of the "renewal_source_expires_at" field.
+func (m *PaymentOrderMutation) ClearRenewalSourceExpiresAt() {
+	m.renewal_source_expires_at = nil
+	m.clearedFields[paymentorder.FieldRenewalSourceExpiresAt] = struct{}{}
+}
+
+// RenewalSourceExpiresAtCleared returns if the "renewal_source_expires_at" field was cleared in this mutation.
+func (m *PaymentOrderMutation) RenewalSourceExpiresAtCleared() bool {
+	_, ok := m.clearedFields[paymentorder.FieldRenewalSourceExpiresAt]
+	return ok
+}
+
+// ResetRenewalSourceExpiresAt resets all changes to the "renewal_source_expires_at" field.
+func (m *PaymentOrderMutation) ResetRenewalSourceExpiresAt() {
+	m.renewal_source_expires_at = nil
+	delete(m.clearedFields, paymentorder.FieldRenewalSourceExpiresAt)
 }
 
 // SetPayAmount sets the "pay_amount" field.
@@ -29666,7 +29904,7 @@ func (m *PaymentOrderMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *PaymentOrderMutation) Fields() []string {
-	fields := make([]string, 0, 41)
+	fields := make([]string, 0, 45)
 	if m.user != nil {
 		fields = append(fields, paymentorder.FieldUserID)
 	}
@@ -29687,6 +29925,18 @@ func (m *PaymentOrderMutation) Fields() []string {
 	}
 	if m.affiliate_discount != nil {
 		fields = append(fields, paymentorder.FieldAffiliateDiscount)
+	}
+	if m.renewal_discount != nil {
+		fields = append(fields, paymentorder.FieldRenewalDiscount)
+	}
+	if m.renewal_rollover_amount != nil {
+		fields = append(fields, paymentorder.FieldRenewalRolloverAmount)
+	}
+	if m.renewal_source_subscription_id != nil {
+		fields = append(fields, paymentorder.FieldRenewalSourceSubscriptionID)
+	}
+	if m.renewal_source_expires_at != nil {
+		fields = append(fields, paymentorder.FieldRenewalSourceExpiresAt)
 	}
 	if m.pay_amount != nil {
 		fields = append(fields, paymentorder.FieldPayAmount)
@@ -29812,6 +30062,14 @@ func (m *PaymentOrderMutation) Field(name string) (ent.Value, bool) {
 		return m.OriginalAmount()
 	case paymentorder.FieldAffiliateDiscount:
 		return m.AffiliateDiscount()
+	case paymentorder.FieldRenewalDiscount:
+		return m.RenewalDiscount()
+	case paymentorder.FieldRenewalRolloverAmount:
+		return m.RenewalRolloverAmount()
+	case paymentorder.FieldRenewalSourceSubscriptionID:
+		return m.RenewalSourceSubscriptionID()
+	case paymentorder.FieldRenewalSourceExpiresAt:
+		return m.RenewalSourceExpiresAt()
 	case paymentorder.FieldPayAmount:
 		return m.PayAmount()
 	case paymentorder.FieldFeeRate:
@@ -29903,6 +30161,14 @@ func (m *PaymentOrderMutation) OldField(ctx context.Context, name string) (ent.V
 		return m.OldOriginalAmount(ctx)
 	case paymentorder.FieldAffiliateDiscount:
 		return m.OldAffiliateDiscount(ctx)
+	case paymentorder.FieldRenewalDiscount:
+		return m.OldRenewalDiscount(ctx)
+	case paymentorder.FieldRenewalRolloverAmount:
+		return m.OldRenewalRolloverAmount(ctx)
+	case paymentorder.FieldRenewalSourceSubscriptionID:
+		return m.OldRenewalSourceSubscriptionID(ctx)
+	case paymentorder.FieldRenewalSourceExpiresAt:
+		return m.OldRenewalSourceExpiresAt(ctx)
 	case paymentorder.FieldPayAmount:
 		return m.OldPayAmount(ctx)
 	case paymentorder.FieldFeeRate:
@@ -30028,6 +30294,34 @@ func (m *PaymentOrderMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetAffiliateDiscount(v)
+		return nil
+	case paymentorder.FieldRenewalDiscount:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRenewalDiscount(v)
+		return nil
+	case paymentorder.FieldRenewalRolloverAmount:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRenewalRolloverAmount(v)
+		return nil
+	case paymentorder.FieldRenewalSourceSubscriptionID:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRenewalSourceSubscriptionID(v)
+		return nil
+	case paymentorder.FieldRenewalSourceExpiresAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRenewalSourceExpiresAt(v)
 		return nil
 	case paymentorder.FieldPayAmount:
 		v, ok := value.(float64)
@@ -30284,6 +30578,15 @@ func (m *PaymentOrderMutation) AddedFields() []string {
 	if m.addaffiliate_discount != nil {
 		fields = append(fields, paymentorder.FieldAffiliateDiscount)
 	}
+	if m.addrenewal_discount != nil {
+		fields = append(fields, paymentorder.FieldRenewalDiscount)
+	}
+	if m.addrenewal_rollover_amount != nil {
+		fields = append(fields, paymentorder.FieldRenewalRolloverAmount)
+	}
+	if m.addrenewal_source_subscription_id != nil {
+		fields = append(fields, paymentorder.FieldRenewalSourceSubscriptionID)
+	}
 	if m.addpay_amount != nil {
 		fields = append(fields, paymentorder.FieldPayAmount)
 	}
@@ -30316,6 +30619,12 @@ func (m *PaymentOrderMutation) AddedField(name string) (ent.Value, bool) {
 		return m.AddedOriginalAmount()
 	case paymentorder.FieldAffiliateDiscount:
 		return m.AddedAffiliateDiscount()
+	case paymentorder.FieldRenewalDiscount:
+		return m.AddedRenewalDiscount()
+	case paymentorder.FieldRenewalRolloverAmount:
+		return m.AddedRenewalRolloverAmount()
+	case paymentorder.FieldRenewalSourceSubscriptionID:
+		return m.AddedRenewalSourceSubscriptionID()
 	case paymentorder.FieldPayAmount:
 		return m.AddedPayAmount()
 	case paymentorder.FieldFeeRate:
@@ -30357,6 +30666,27 @@ func (m *PaymentOrderMutation) AddField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.AddAffiliateDiscount(v)
+		return nil
+	case paymentorder.FieldRenewalDiscount:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddRenewalDiscount(v)
+		return nil
+	case paymentorder.FieldRenewalRolloverAmount:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddRenewalRolloverAmount(v)
+		return nil
+	case paymentorder.FieldRenewalSourceSubscriptionID:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddRenewalSourceSubscriptionID(v)
 		return nil
 	case paymentorder.FieldPayAmount:
 		v, ok := value.(float64)
@@ -30410,6 +30740,12 @@ func (m *PaymentOrderMutation) ClearedFields() []string {
 	var fields []string
 	if m.FieldCleared(paymentorder.FieldUserNotes) {
 		fields = append(fields, paymentorder.FieldUserNotes)
+	}
+	if m.FieldCleared(paymentorder.FieldRenewalSourceSubscriptionID) {
+		fields = append(fields, paymentorder.FieldRenewalSourceSubscriptionID)
+	}
+	if m.FieldCleared(paymentorder.FieldRenewalSourceExpiresAt) {
+		fields = append(fields, paymentorder.FieldRenewalSourceExpiresAt)
 	}
 	if m.FieldCleared(paymentorder.FieldPayURL) {
 		fields = append(fields, paymentorder.FieldPayURL)
@@ -30484,6 +30820,12 @@ func (m *PaymentOrderMutation) ClearField(name string) error {
 	switch name {
 	case paymentorder.FieldUserNotes:
 		m.ClearUserNotes()
+		return nil
+	case paymentorder.FieldRenewalSourceSubscriptionID:
+		m.ClearRenewalSourceSubscriptionID()
+		return nil
+	case paymentorder.FieldRenewalSourceExpiresAt:
+		m.ClearRenewalSourceExpiresAt()
 		return nil
 	case paymentorder.FieldPayURL:
 		m.ClearPayURL()
@@ -30570,6 +30912,18 @@ func (m *PaymentOrderMutation) ResetField(name string) error {
 		return nil
 	case paymentorder.FieldAffiliateDiscount:
 		m.ResetAffiliateDiscount()
+		return nil
+	case paymentorder.FieldRenewalDiscount:
+		m.ResetRenewalDiscount()
+		return nil
+	case paymentorder.FieldRenewalRolloverAmount:
+		m.ResetRenewalRolloverAmount()
+		return nil
+	case paymentorder.FieldRenewalSourceSubscriptionID:
+		m.ResetRenewalSourceSubscriptionID()
+		return nil
+	case paymentorder.FieldRenewalSourceExpiresAt:
+		m.ResetRenewalSourceExpiresAt()
 		return nil
 	case paymentorder.FieldPayAmount:
 		m.ResetPayAmount()

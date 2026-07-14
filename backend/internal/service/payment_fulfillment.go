@@ -434,11 +434,17 @@ func (s *PaymentService) sendBalanceRechargeSuccessNotification(ctx context.Cont
 }
 
 func (s *PaymentService) sendSubscriptionPurchaseSuccessNotification(ctx context.Context, o *dbent.PaymentOrder) error {
+	event := NotificationEmailEventSubscriptionPurchaseSuccess
+	if o.RenewalSourceSubscriptionID != nil {
+		event = NotificationEmailEventSubscriptionRenewalSuccess
+	}
 	variables := map[string]string{
 		"subscription_group": "Subscription",
 		"subscription_days":  "",
 		"expiry_time":        "",
 		"order_id":           strconv.FormatInt(o.ID, 10),
+		"renewal_discount":   fmt.Sprintf("%.2f", o.RenewalDiscount),
+		"rollover_amount":    fmt.Sprintf("%.2f", o.RenewalRolloverAmount),
 	}
 	if o.SubscriptionDays != nil {
 		variables["subscription_days"] = strconv.Itoa(*o.SubscriptionDays)
@@ -456,7 +462,7 @@ func (s *PaymentService) sendSubscriptionPurchaseSuccessNotification(ctx context
 		}
 	}
 	return s.notificationEmailService.Send(ctx, NotificationEmailSendInput{
-		Event:          NotificationEmailEventSubscriptionPurchaseSuccess,
+		Event:          event,
 		RecipientEmail: o.UserEmail,
 		RecipientName:  firstNonEmpty(o.UserName, o.UserEmail),
 		UserID:         o.UserID,
@@ -507,10 +513,50 @@ func (s *PaymentService) doSub(ctx context.Context, o *dbent.PaymentOrder, lease
 	if err := s.ensurePaymentSubscriptionAssigned(ctx, o, gid, days); err != nil {
 		return err
 	}
+	if err := s.applyRenewalRollover(ctx, o); err != nil {
+		return err
+	}
 	if err := s.applyAffiliateRebateForOrder(ctx, o); err != nil {
 		return err
 	}
 	return s.markCompleted(ctx, o, lease, "SUBSCRIPTION_SUCCESS")
+}
+
+func (s *PaymentService) applyRenewalRollover(ctx context.Context, o *dbent.PaymentOrder) error {
+	if o == nil || o.RenewalRolloverAmount <= 0 {
+		return nil
+	}
+	if s.redeemService == nil {
+		return errors.New("redeem service is unavailable for renewal rollover")
+	}
+	code := fmt.Sprintf("RENEWAL-%d", o.ID)
+	if o.RenewalSourceSubscriptionID != nil && o.RenewalSourceExpiresAt != nil {
+		code = fmt.Sprintf("RENEWAL-%d-%d", *o.RenewalSourceSubscriptionID, o.RenewalSourceExpiresAt.Unix())
+	}
+	existing, lookupErr := s.redeemService.GetByCode(ctx, code)
+	switch resolveRedeemAction(existing, lookupErr) {
+	case redeemActionSkipCompleted:
+		return nil
+	case redeemActionCreate:
+		rc := &RedeemCode{
+			Code:   code,
+			Type:   RedeemTypeBalance,
+			Value:  o.RenewalRolloverAmount,
+			Status: StatusUnused,
+			Notes:  fmt.Sprintf("subscription renewal rollover for payment order %d", o.ID),
+		}
+		if err := s.redeemService.CreateCode(ctx, rc); err != nil {
+			return fmt.Errorf("create renewal rollover credit: %w", err)
+		}
+	}
+	if _, err := s.redeemService.Redeem(ContextSkipRedeemAffiliate(ctx), o.UserID, code); err != nil {
+		return fmt.Errorf("redeem renewal rollover credit: %w", err)
+	}
+	s.writeAuditLog(ctx, o.ID, "RENEWAL_ROLLOVER_APPLIED", "system", map[string]any{
+		"sourceSubscriptionID": o.RenewalSourceSubscriptionID,
+		"rolloverAmount":       o.RenewalRolloverAmount,
+	})
+	return nil
 }
 
 func (s *PaymentService) ensurePaymentSubscriptionAssigned(ctx context.Context, o *dbent.PaymentOrder, groupID int64, days int) error {

@@ -51,6 +51,19 @@ func (PaymentOrder) Fields() []ent.Field {
 		field.Float("affiliate_discount").
 			SchemaType(map[string]string{dialect.Postgres: "decimal(20,2)"}).
 			Default(0),
+		field.Float("renewal_discount").
+			SchemaType(map[string]string{dialect.Postgres: "decimal(20,2)"}).
+			Default(0),
+		field.Float("renewal_rollover_amount").
+			SchemaType(map[string]string{dialect.Postgres: "decimal(20,10)"}).
+			Default(0),
+		field.Int64("renewal_source_subscription_id").
+			Optional().
+			Nillable(),
+		field.Time("renewal_source_expires_at").
+			Optional().
+			Nillable().
+			SchemaType(map[string]string{dialect.Postgres: "timestamptz"}),
 		field.Float("pay_amount").
 			SchemaType(map[string]string{dialect.Postgres: "decimal(20,2)"}),
 		field.Float("fee_rate").

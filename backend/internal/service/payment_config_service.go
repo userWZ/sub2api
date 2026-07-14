@@ -14,27 +14,32 @@ import (
 )
 
 const (
-	SettingPaymentEnabled      = "payment_enabled"
-	SettingMinRechargeAmount   = "MIN_RECHARGE_AMOUNT"
-	SettingMaxRechargeAmount   = "MAX_RECHARGE_AMOUNT"
-	SettingDailyRechargeLimit  = "DAILY_RECHARGE_LIMIT"
-	SettingOrderTimeoutMinutes = "ORDER_TIMEOUT_MINUTES"
-	SettingMaxPendingOrders    = "MAX_PENDING_ORDERS"
-	SettingEnabledPaymentTypes = "ENABLED_PAYMENT_TYPES"
-	SettingLoadBalanceStrategy = "LOAD_BALANCE_STRATEGY"
-	SettingBalancePayDisabled  = "BALANCE_PAYMENT_DISABLED"
-	SettingBalanceRechargeMult = "BALANCE_RECHARGE_MULTIPLIER"
-	SettingRechargeFeeRate     = "RECHARGE_FEE_RATE"
-	SettingProductNamePrefix   = "PRODUCT_NAME_PREFIX"
-	SettingProductNameSuffix   = "PRODUCT_NAME_SUFFIX"
-	SettingHelpImageURL        = "PAYMENT_HELP_IMAGE_URL"
-	SettingHelpText            = "PAYMENT_HELP_TEXT"
-	SettingCancelRateLimitOn   = "CANCEL_RATE_LIMIT_ENABLED"
-	SettingCancelRateLimitMax  = "CANCEL_RATE_LIMIT_MAX"
-	SettingCancelWindowSize    = "CANCEL_RATE_LIMIT_WINDOW"
-	SettingCancelWindowUnit    = "CANCEL_RATE_LIMIT_UNIT"
-	SettingCancelWindowMode    = "CANCEL_RATE_LIMIT_WINDOW_MODE"
-	SettingAlipayForceQRCode   = "ALIPAY_FORCE_QRCODE"
+	SettingPaymentEnabled         = "payment_enabled"
+	SettingMinRechargeAmount      = "MIN_RECHARGE_AMOUNT"
+	SettingMaxRechargeAmount      = "MAX_RECHARGE_AMOUNT"
+	SettingDailyRechargeLimit     = "DAILY_RECHARGE_LIMIT"
+	SettingOrderTimeoutMinutes    = "ORDER_TIMEOUT_MINUTES"
+	SettingMaxPendingOrders       = "MAX_PENDING_ORDERS"
+	SettingEnabledPaymentTypes    = "ENABLED_PAYMENT_TYPES"
+	SettingLoadBalanceStrategy    = "LOAD_BALANCE_STRATEGY"
+	SettingBalancePayDisabled     = "BALANCE_PAYMENT_DISABLED"
+	SettingBalanceRechargeMult    = "BALANCE_RECHARGE_MULTIPLIER"
+	SettingRechargeFeeRate        = "RECHARGE_FEE_RATE"
+	SettingProductNamePrefix      = "PRODUCT_NAME_PREFIX"
+	SettingProductNameSuffix      = "PRODUCT_NAME_SUFFIX"
+	SettingHelpImageURL           = "PAYMENT_HELP_IMAGE_URL"
+	SettingHelpText               = "PAYMENT_HELP_TEXT"
+	SettingCancelRateLimitOn      = "CANCEL_RATE_LIMIT_ENABLED"
+	SettingCancelRateLimitMax     = "CANCEL_RATE_LIMIT_MAX"
+	SettingCancelWindowSize       = "CANCEL_RATE_LIMIT_WINDOW"
+	SettingCancelWindowUnit       = "CANCEL_RATE_LIMIT_UNIT"
+	SettingCancelWindowMode       = "CANCEL_RATE_LIMIT_WINDOW_MODE"
+	SettingAlipayForceQRCode      = "ALIPAY_FORCE_QRCODE"
+	SettingRenewalOfferEnabled    = "SUBSCRIPTION_RENEWAL_OFFER_ENABLED"
+	SettingRenewalWindowDays      = "SUBSCRIPTION_RENEWAL_WINDOW_DAYS"
+	SettingRenewalRolloverPercent = "SUBSCRIPTION_RENEWAL_ROLLOVER_PERCENT"
+	SettingRenewalDiscountPercent = "SUBSCRIPTION_RENEWAL_DISCOUNT_PERCENT"
+	SettingRenewalEmailEnabled    = "SUBSCRIPTION_RENEWAL_EMAIL_ENABLED"
 )
 
 // Default values for payment configuration settings.
@@ -71,6 +76,12 @@ type PaymentConfig struct {
 
 	// Force Alipay mobile users to use QR code instead of mobile redirect
 	AlipayForceQRCode bool `json:"alipay_force_qrcode"`
+
+	RenewalOfferEnabled    bool    `json:"renewal_offer_enabled"`
+	RenewalWindowDays      int     `json:"renewal_window_days"`
+	RenewalRolloverPercent float64 `json:"renewal_rollover_percent"`
+	RenewalDiscountPercent float64 `json:"renewal_discount_percent"`
+	RenewalEmailEnabled    bool    `json:"renewal_email_enabled"`
 }
 
 // UpdatePaymentConfigRequest contains fields to update payment configuration.
@@ -100,6 +111,12 @@ type UpdatePaymentConfigRequest struct {
 
 	// Force Alipay mobile users to use QR code instead of mobile redirect
 	AlipayForceQRCode *bool `json:"alipay_force_qrcode"`
+
+	RenewalOfferEnabled    *bool    `json:"renewal_offer_enabled"`
+	RenewalWindowDays      *int     `json:"renewal_window_days"`
+	RenewalRolloverPercent *float64 `json:"renewal_rollover_percent"`
+	RenewalDiscountPercent *float64 `json:"renewal_discount_percent"`
+	RenewalEmailEnabled    *bool    `json:"renewal_email_enabled"`
 
 	VisibleMethodAlipaySource  *string `json:"payment_visible_method_alipay_source"`
 	VisibleMethodWxpaySource   *string `json:"payment_visible_method_wxpay_source"`
@@ -214,6 +231,8 @@ func (s *PaymentConfigService) GetPaymentConfig(ctx context.Context) (*PaymentCo
 		SettingCancelRateLimitOn, SettingCancelRateLimitMax,
 		SettingCancelWindowSize, SettingCancelWindowUnit, SettingCancelWindowMode,
 		SettingAlipayForceQRCode,
+		SettingRenewalOfferEnabled, SettingRenewalWindowDays,
+		SettingRenewalRolloverPercent, SettingRenewalDiscountPercent, SettingRenewalEmailEnabled,
 		SettingPaymentVisibleMethodAlipayEnabled, SettingPaymentVisibleMethodAlipaySource,
 		SettingPaymentVisibleMethodWxpayEnabled, SettingPaymentVisibleMethodWxpaySource,
 	}
@@ -251,6 +270,12 @@ func (s *PaymentConfigService) parsePaymentConfig(vals map[string]string) *Payme
 		CancelRateLimitMode:    vals[SettingCancelWindowMode],
 
 		AlipayForceQRCode: vals[SettingAlipayForceQRCode] == "true",
+
+		RenewalOfferEnabled:    vals[SettingRenewalOfferEnabled] == "true",
+		RenewalWindowDays:      pcParseInt(vals[SettingRenewalWindowDays], 14),
+		RenewalRolloverPercent: pcParseFloat(vals[SettingRenewalRolloverPercent], 20),
+		RenewalDiscountPercent: pcParseFloat(vals[SettingRenewalDiscountPercent], 10),
+		RenewalEmailEnabled:    vals[SettingRenewalEmailEnabled] != "false",
 	}
 	if cfg.LoadBalanceStrategy == "" {
 		cfg.LoadBalanceStrategy = payment.DefaultLoadBalanceStrategy
@@ -308,6 +333,15 @@ func (s *PaymentConfigService) UpdatePaymentConfig(ctx context.Context, req Upda
 			return infraerrors.BadRequest("INVALID_RECHARGE_FEE_RATE", "recharge fee rate allows at most 2 decimal places")
 		}
 	}
+	if req.RenewalWindowDays != nil && (*req.RenewalWindowDays < 1 || *req.RenewalWindowDays > 365) {
+		return infraerrors.BadRequest("INVALID_RENEWAL_WINDOW_DAYS", "renewal window days must be between 1 and 365")
+	}
+	if value := req.RenewalRolloverPercent; value != nil && (math.IsNaN(*value) || math.IsInf(*value, 0) || *value < 0 || *value > 100) {
+		return infraerrors.BadRequest("INVALID_RENEWAL_ROLLOVER_PERCENT", "renewal rollover percent must be between 0 and 100")
+	}
+	if value := req.RenewalDiscountPercent; value != nil && (math.IsNaN(*value) || math.IsInf(*value, 0) || *value < 0 || *value >= 100) {
+		return infraerrors.BadRequest("INVALID_RENEWAL_DISCOUNT_PERCENT", "renewal discount percent must be at least 0 and less than 100")
+	}
 	m := map[string]string{
 		SettingPaymentEnabled:                    formatBoolOrEmpty(req.Enabled),
 		SettingMinRechargeAmount:                 formatPositiveFloat(req.MinAmount),
@@ -329,6 +363,11 @@ func (s *PaymentConfigService) UpdatePaymentConfig(ctx context.Context, req Upda
 		SettingCancelWindowUnit:                  derefStr(req.CancelRateLimitUnit),
 		SettingCancelWindowMode:                  derefStr(req.CancelRateLimitMode),
 		SettingAlipayForceQRCode:                 formatBoolOrEmpty(req.AlipayForceQRCode),
+		SettingRenewalOfferEnabled:               formatBoolOrEmpty(req.RenewalOfferEnabled),
+		SettingRenewalWindowDays:                 formatPositiveInt(req.RenewalWindowDays),
+		SettingRenewalRolloverPercent:            formatNonNegativeFloat(req.RenewalRolloverPercent),
+		SettingRenewalDiscountPercent:            formatNonNegativeFloat(req.RenewalDiscountPercent),
+		SettingRenewalEmailEnabled:               formatBoolOrEmpty(req.RenewalEmailEnabled),
 		SettingPaymentVisibleMethodAlipaySource:  derefStr(req.VisibleMethodAlipaySource),
 		SettingPaymentVisibleMethodWxpaySource:   derefStr(req.VisibleMethodWxpaySource),
 		SettingPaymentVisibleMethodAlipayEnabled: formatBoolOrEmpty(req.VisibleMethodAlipayEnabled),

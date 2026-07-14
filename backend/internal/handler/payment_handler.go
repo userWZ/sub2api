@@ -93,6 +93,10 @@ func (h *PaymentHandler) GetPlans(c *gin.Context) {
 // GET /api/v1/payment/checkout-info
 func (h *PaymentHandler) GetCheckoutInfo(c *gin.Context) {
 	ctx := c.Request.Context()
+	subject, ok := requireAuth(c)
+	if !ok {
+		return
+	}
 
 	// Fetch limits (methods + global range)
 	limitsResp, err := h.configService.GetAvailableMethodLimits(ctx)
@@ -125,7 +129,8 @@ func (h *PaymentHandler) GetCheckoutInfo(c *gin.Context) {
 			ModelScopes: gi.ModelScopes,
 			Name:        p.Name, Description: p.Description, Price: p.Price, OriginalPrice: p.OriginalPrice,
 			ValidityDays: p.ValidityDays, ValidityUnit: p.ValidityUnit, Features: parseFeatures(p.Features),
-			ProductName: p.ProductName,
+			ProductName:  p.ProductName,
+			RenewalOffer: h.paymentService.QuoteRenewalOffer(ctx, subject.UserID, p.GroupID, p.Price, cfg),
 		})
 	}
 
@@ -142,6 +147,7 @@ func (h *PaymentHandler) GetCheckoutInfo(c *gin.Context) {
 		StripePublishableKey:      cfg.StripePublishableKey,
 		AlipayForceQRCode:         cfg.AlipayForceQRCode,
 		AffiliateDiscount:         h.paymentService.AffiliateDiscountCheckoutSettings(ctx),
+		RenewalOffer:              h.paymentService.RenewalOfferCheckoutSettings(ctx),
 	})
 }
 
@@ -158,30 +164,32 @@ type checkoutInfoResponse struct {
 	StripePublishableKey      string                                    `json:"stripe_publishable_key"`
 	AlipayForceQRCode         bool                                      `json:"alipay_force_qrcode"`
 	AffiliateDiscount         service.AffiliateDiscountCheckoutSettings `json:"affiliate_discount"`
+	RenewalOffer              service.RenewalOfferCheckoutSettings      `json:"renewal_offer"`
 }
 
 type checkoutPlan struct {
-	ID                 int64    `json:"id"`
-	GroupID            int64    `json:"group_id"`
-	GroupPlatform      string   `json:"group_platform"`
-	GroupName          string   `json:"group_name"`
-	RateMultiplier     float64  `json:"rate_multiplier"`
-	PeakRateEnabled    bool     `json:"peak_rate_enabled"`
-	PeakStart          string   `json:"peak_start"`
-	PeakEnd            string   `json:"peak_end"`
-	PeakRateMultiplier float64  `json:"peak_rate_multiplier"`
-	DailyLimitUSD      *float64 `json:"daily_limit_usd"`
-	WeeklyLimitUSD     *float64 `json:"weekly_limit_usd"`
-	MonthlyLimitUSD    *float64 `json:"monthly_limit_usd"`
-	ModelScopes        []string `json:"supported_model_scopes"`
-	Name               string   `json:"name"`
-	Description        string   `json:"description"`
-	Price              float64  `json:"price"`
-	OriginalPrice      *float64 `json:"original_price,omitempty"`
-	ValidityDays       int      `json:"validity_days"`
-	ValidityUnit       string   `json:"validity_unit"`
-	Features           []string `json:"features"`
-	ProductName        string   `json:"product_name"`
+	ID                 int64                     `json:"id"`
+	GroupID            int64                     `json:"group_id"`
+	GroupPlatform      string                    `json:"group_platform"`
+	GroupName          string                    `json:"group_name"`
+	RateMultiplier     float64                   `json:"rate_multiplier"`
+	PeakRateEnabled    bool                      `json:"peak_rate_enabled"`
+	PeakStart          string                    `json:"peak_start"`
+	PeakEnd            string                    `json:"peak_end"`
+	PeakRateMultiplier float64                   `json:"peak_rate_multiplier"`
+	DailyLimitUSD      *float64                  `json:"daily_limit_usd"`
+	WeeklyLimitUSD     *float64                  `json:"weekly_limit_usd"`
+	MonthlyLimitUSD    *float64                  `json:"monthly_limit_usd"`
+	ModelScopes        []string                  `json:"supported_model_scopes"`
+	Name               string                    `json:"name"`
+	Description        string                    `json:"description"`
+	Price              float64                   `json:"price"`
+	OriginalPrice      *float64                  `json:"original_price,omitempty"`
+	ValidityDays       int                       `json:"validity_days"`
+	ValidityUnit       string                    `json:"validity_unit"`
+	Features           []string                  `json:"features"`
+	ProductName        string                    `json:"product_name"`
+	RenewalOffer       service.RenewalOfferQuote `json:"renewal_offer"`
 }
 
 // parseFeatures splits a newline-separated features string into a string slice.

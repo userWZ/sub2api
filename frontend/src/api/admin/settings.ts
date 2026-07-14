@@ -593,6 +593,11 @@ export interface SystemSettings {
   payment_balance_disabled: boolean;
   payment_balance_recharge_multiplier: number;
   payment_recharge_fee_rate: number;
+	 payment_renewal_offer_enabled: boolean;
+	 payment_renewal_window_days: number;
+	 payment_renewal_rollover_percent: number;
+	 payment_renewal_discount_percent: number;
+	 payment_renewal_email_enabled: boolean;
   payment_load_balance_strategy: string;
   payment_product_name_prefix: string;
   payment_product_name_suffix: string;
@@ -867,6 +872,11 @@ export interface UpdateSettingsRequest {
   payment_balance_disabled?: boolean;
   payment_balance_recharge_multiplier?: number;
   payment_recharge_fee_rate?: number;
+	 payment_renewal_offer_enabled?: boolean;
+	 payment_renewal_window_days?: number;
+	 payment_renewal_rollover_percent?: number;
+	 payment_renewal_discount_percent?: number;
+	 payment_renewal_email_enabled?: boolean;
   payment_load_balance_strategy?: string;
   payment_product_name_prefix?: string;
   payment_product_name_suffix?: string;

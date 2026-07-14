@@ -89,6 +89,62 @@ func (_c *PaymentOrderCreate) SetNillableAffiliateDiscount(v *float64) *PaymentO
 	return _c
 }
 
+// SetRenewalDiscount sets the "renewal_discount" field.
+func (_c *PaymentOrderCreate) SetRenewalDiscount(v float64) *PaymentOrderCreate {
+	_c.mutation.SetRenewalDiscount(v)
+	return _c
+}
+
+// SetNillableRenewalDiscount sets the "renewal_discount" field if the given value is not nil.
+func (_c *PaymentOrderCreate) SetNillableRenewalDiscount(v *float64) *PaymentOrderCreate {
+	if v != nil {
+		_c.SetRenewalDiscount(*v)
+	}
+	return _c
+}
+
+// SetRenewalRolloverAmount sets the "renewal_rollover_amount" field.
+func (_c *PaymentOrderCreate) SetRenewalRolloverAmount(v float64) *PaymentOrderCreate {
+	_c.mutation.SetRenewalRolloverAmount(v)
+	return _c
+}
+
+// SetNillableRenewalRolloverAmount sets the "renewal_rollover_amount" field if the given value is not nil.
+func (_c *PaymentOrderCreate) SetNillableRenewalRolloverAmount(v *float64) *PaymentOrderCreate {
+	if v != nil {
+		_c.SetRenewalRolloverAmount(*v)
+	}
+	return _c
+}
+
+// SetRenewalSourceSubscriptionID sets the "renewal_source_subscription_id" field.
+func (_c *PaymentOrderCreate) SetRenewalSourceSubscriptionID(v int64) *PaymentOrderCreate {
+	_c.mutation.SetRenewalSourceSubscriptionID(v)
+	return _c
+}
+
+// SetNillableRenewalSourceSubscriptionID sets the "renewal_source_subscription_id" field if the given value is not nil.
+func (_c *PaymentOrderCreate) SetNillableRenewalSourceSubscriptionID(v *int64) *PaymentOrderCreate {
+	if v != nil {
+		_c.SetRenewalSourceSubscriptionID(*v)
+	}
+	return _c
+}
+
+// SetRenewalSourceExpiresAt sets the "renewal_source_expires_at" field.
+func (_c *PaymentOrderCreate) SetRenewalSourceExpiresAt(v time.Time) *PaymentOrderCreate {
+	_c.mutation.SetRenewalSourceExpiresAt(v)
+	return _c
+}
+
+// SetNillableRenewalSourceExpiresAt sets the "renewal_source_expires_at" field if the given value is not nil.
+func (_c *PaymentOrderCreate) SetNillableRenewalSourceExpiresAt(v *time.Time) *PaymentOrderCreate {
+	if v != nil {
+		_c.SetRenewalSourceExpiresAt(*v)
+	}
+	return _c
+}
+
 // SetPayAmount sets the "pay_amount" field.
 func (_c *PaymentOrderCreate) SetPayAmount(v float64) *PaymentOrderCreate {
 	_c.mutation.SetPayAmount(v)
@@ -549,6 +605,14 @@ func (_c *PaymentOrderCreate) defaults() {
 		v := paymentorder.DefaultAffiliateDiscount
 		_c.mutation.SetAffiliateDiscount(v)
 	}
+	if _, ok := _c.mutation.RenewalDiscount(); !ok {
+		v := paymentorder.DefaultRenewalDiscount
+		_c.mutation.SetRenewalDiscount(v)
+	}
+	if _, ok := _c.mutation.RenewalRolloverAmount(); !ok {
+		v := paymentorder.DefaultRenewalRolloverAmount
+		_c.mutation.SetRenewalRolloverAmount(v)
+	}
 	if _, ok := _c.mutation.FeeRate(); !ok {
 		v := paymentorder.DefaultFeeRate
 		_c.mutation.SetFeeRate(v)
@@ -612,6 +676,12 @@ func (_c *PaymentOrderCreate) check() error {
 	}
 	if _, ok := _c.mutation.AffiliateDiscount(); !ok {
 		return &ValidationError{Name: "affiliate_discount", err: errors.New(`ent: missing required field "PaymentOrder.affiliate_discount"`)}
+	}
+	if _, ok := _c.mutation.RenewalDiscount(); !ok {
+		return &ValidationError{Name: "renewal_discount", err: errors.New(`ent: missing required field "PaymentOrder.renewal_discount"`)}
+	}
+	if _, ok := _c.mutation.RenewalRolloverAmount(); !ok {
+		return &ValidationError{Name: "renewal_rollover_amount", err: errors.New(`ent: missing required field "PaymentOrder.renewal_rollover_amount"`)}
 	}
 	if _, ok := _c.mutation.PayAmount(); !ok {
 		return &ValidationError{Name: "pay_amount", err: errors.New(`ent: missing required field "PaymentOrder.pay_amount"`)}
@@ -766,6 +836,22 @@ func (_c *PaymentOrderCreate) createSpec() (*PaymentOrder, *sqlgraph.CreateSpec)
 	if value, ok := _c.mutation.AffiliateDiscount(); ok {
 		_spec.SetField(paymentorder.FieldAffiliateDiscount, field.TypeFloat64, value)
 		_node.AffiliateDiscount = value
+	}
+	if value, ok := _c.mutation.RenewalDiscount(); ok {
+		_spec.SetField(paymentorder.FieldRenewalDiscount, field.TypeFloat64, value)
+		_node.RenewalDiscount = value
+	}
+	if value, ok := _c.mutation.RenewalRolloverAmount(); ok {
+		_spec.SetField(paymentorder.FieldRenewalRolloverAmount, field.TypeFloat64, value)
+		_node.RenewalRolloverAmount = value
+	}
+	if value, ok := _c.mutation.RenewalSourceSubscriptionID(); ok {
+		_spec.SetField(paymentorder.FieldRenewalSourceSubscriptionID, field.TypeInt64, value)
+		_node.RenewalSourceSubscriptionID = &value
+	}
+	if value, ok := _c.mutation.RenewalSourceExpiresAt(); ok {
+		_spec.SetField(paymentorder.FieldRenewalSourceExpiresAt, field.TypeTime, value)
+		_node.RenewalSourceExpiresAt = &value
 	}
 	if value, ok := _c.mutation.PayAmount(); ok {
 		_spec.SetField(paymentorder.FieldPayAmount, field.TypeFloat64, value)
@@ -1077,6 +1163,84 @@ func (u *PaymentOrderUpsert) UpdateAffiliateDiscount() *PaymentOrderUpsert {
 // AddAffiliateDiscount adds v to the "affiliate_discount" field.
 func (u *PaymentOrderUpsert) AddAffiliateDiscount(v float64) *PaymentOrderUpsert {
 	u.Add(paymentorder.FieldAffiliateDiscount, v)
+	return u
+}
+
+// SetRenewalDiscount sets the "renewal_discount" field.
+func (u *PaymentOrderUpsert) SetRenewalDiscount(v float64) *PaymentOrderUpsert {
+	u.Set(paymentorder.FieldRenewalDiscount, v)
+	return u
+}
+
+// UpdateRenewalDiscount sets the "renewal_discount" field to the value that was provided on create.
+func (u *PaymentOrderUpsert) UpdateRenewalDiscount() *PaymentOrderUpsert {
+	u.SetExcluded(paymentorder.FieldRenewalDiscount)
+	return u
+}
+
+// AddRenewalDiscount adds v to the "renewal_discount" field.
+func (u *PaymentOrderUpsert) AddRenewalDiscount(v float64) *PaymentOrderUpsert {
+	u.Add(paymentorder.FieldRenewalDiscount, v)
+	return u
+}
+
+// SetRenewalRolloverAmount sets the "renewal_rollover_amount" field.
+func (u *PaymentOrderUpsert) SetRenewalRolloverAmount(v float64) *PaymentOrderUpsert {
+	u.Set(paymentorder.FieldRenewalRolloverAmount, v)
+	return u
+}
+
+// UpdateRenewalRolloverAmount sets the "renewal_rollover_amount" field to the value that was provided on create.
+func (u *PaymentOrderUpsert) UpdateRenewalRolloverAmount() *PaymentOrderUpsert {
+	u.SetExcluded(paymentorder.FieldRenewalRolloverAmount)
+	return u
+}
+
+// AddRenewalRolloverAmount adds v to the "renewal_rollover_amount" field.
+func (u *PaymentOrderUpsert) AddRenewalRolloverAmount(v float64) *PaymentOrderUpsert {
+	u.Add(paymentorder.FieldRenewalRolloverAmount, v)
+	return u
+}
+
+// SetRenewalSourceSubscriptionID sets the "renewal_source_subscription_id" field.
+func (u *PaymentOrderUpsert) SetRenewalSourceSubscriptionID(v int64) *PaymentOrderUpsert {
+	u.Set(paymentorder.FieldRenewalSourceSubscriptionID, v)
+	return u
+}
+
+// UpdateRenewalSourceSubscriptionID sets the "renewal_source_subscription_id" field to the value that was provided on create.
+func (u *PaymentOrderUpsert) UpdateRenewalSourceSubscriptionID() *PaymentOrderUpsert {
+	u.SetExcluded(paymentorder.FieldRenewalSourceSubscriptionID)
+	return u
+}
+
+// AddRenewalSourceSubscriptionID adds v to the "renewal_source_subscription_id" field.
+func (u *PaymentOrderUpsert) AddRenewalSourceSubscriptionID(v int64) *PaymentOrderUpsert {
+	u.Add(paymentorder.FieldRenewalSourceSubscriptionID, v)
+	return u
+}
+
+// ClearRenewalSourceSubscriptionID clears the value of the "renewal_source_subscription_id" field.
+func (u *PaymentOrderUpsert) ClearRenewalSourceSubscriptionID() *PaymentOrderUpsert {
+	u.SetNull(paymentorder.FieldRenewalSourceSubscriptionID)
+	return u
+}
+
+// SetRenewalSourceExpiresAt sets the "renewal_source_expires_at" field.
+func (u *PaymentOrderUpsert) SetRenewalSourceExpiresAt(v time.Time) *PaymentOrderUpsert {
+	u.Set(paymentorder.FieldRenewalSourceExpiresAt, v)
+	return u
+}
+
+// UpdateRenewalSourceExpiresAt sets the "renewal_source_expires_at" field to the value that was provided on create.
+func (u *PaymentOrderUpsert) UpdateRenewalSourceExpiresAt() *PaymentOrderUpsert {
+	u.SetExcluded(paymentorder.FieldRenewalSourceExpiresAt)
+	return u
+}
+
+// ClearRenewalSourceExpiresAt clears the value of the "renewal_source_expires_at" field.
+func (u *PaymentOrderUpsert) ClearRenewalSourceExpiresAt() *PaymentOrderUpsert {
+	u.SetNull(paymentorder.FieldRenewalSourceExpiresAt)
 	return u
 }
 
@@ -1794,6 +1958,97 @@ func (u *PaymentOrderUpsertOne) AddAffiliateDiscount(v float64) *PaymentOrderUps
 func (u *PaymentOrderUpsertOne) UpdateAffiliateDiscount() *PaymentOrderUpsertOne {
 	return u.Update(func(s *PaymentOrderUpsert) {
 		s.UpdateAffiliateDiscount()
+	})
+}
+
+// SetRenewalDiscount sets the "renewal_discount" field.
+func (u *PaymentOrderUpsertOne) SetRenewalDiscount(v float64) *PaymentOrderUpsertOne {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.SetRenewalDiscount(v)
+	})
+}
+
+// AddRenewalDiscount adds v to the "renewal_discount" field.
+func (u *PaymentOrderUpsertOne) AddRenewalDiscount(v float64) *PaymentOrderUpsertOne {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.AddRenewalDiscount(v)
+	})
+}
+
+// UpdateRenewalDiscount sets the "renewal_discount" field to the value that was provided on create.
+func (u *PaymentOrderUpsertOne) UpdateRenewalDiscount() *PaymentOrderUpsertOne {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.UpdateRenewalDiscount()
+	})
+}
+
+// SetRenewalRolloverAmount sets the "renewal_rollover_amount" field.
+func (u *PaymentOrderUpsertOne) SetRenewalRolloverAmount(v float64) *PaymentOrderUpsertOne {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.SetRenewalRolloverAmount(v)
+	})
+}
+
+// AddRenewalRolloverAmount adds v to the "renewal_rollover_amount" field.
+func (u *PaymentOrderUpsertOne) AddRenewalRolloverAmount(v float64) *PaymentOrderUpsertOne {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.AddRenewalRolloverAmount(v)
+	})
+}
+
+// UpdateRenewalRolloverAmount sets the "renewal_rollover_amount" field to the value that was provided on create.
+func (u *PaymentOrderUpsertOne) UpdateRenewalRolloverAmount() *PaymentOrderUpsertOne {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.UpdateRenewalRolloverAmount()
+	})
+}
+
+// SetRenewalSourceSubscriptionID sets the "renewal_source_subscription_id" field.
+func (u *PaymentOrderUpsertOne) SetRenewalSourceSubscriptionID(v int64) *PaymentOrderUpsertOne {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.SetRenewalSourceSubscriptionID(v)
+	})
+}
+
+// AddRenewalSourceSubscriptionID adds v to the "renewal_source_subscription_id" field.
+func (u *PaymentOrderUpsertOne) AddRenewalSourceSubscriptionID(v int64) *PaymentOrderUpsertOne {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.AddRenewalSourceSubscriptionID(v)
+	})
+}
+
+// UpdateRenewalSourceSubscriptionID sets the "renewal_source_subscription_id" field to the value that was provided on create.
+func (u *PaymentOrderUpsertOne) UpdateRenewalSourceSubscriptionID() *PaymentOrderUpsertOne {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.UpdateRenewalSourceSubscriptionID()
+	})
+}
+
+// ClearRenewalSourceSubscriptionID clears the value of the "renewal_source_subscription_id" field.
+func (u *PaymentOrderUpsertOne) ClearRenewalSourceSubscriptionID() *PaymentOrderUpsertOne {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.ClearRenewalSourceSubscriptionID()
+	})
+}
+
+// SetRenewalSourceExpiresAt sets the "renewal_source_expires_at" field.
+func (u *PaymentOrderUpsertOne) SetRenewalSourceExpiresAt(v time.Time) *PaymentOrderUpsertOne {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.SetRenewalSourceExpiresAt(v)
+	})
+}
+
+// UpdateRenewalSourceExpiresAt sets the "renewal_source_expires_at" field to the value that was provided on create.
+func (u *PaymentOrderUpsertOne) UpdateRenewalSourceExpiresAt() *PaymentOrderUpsertOne {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.UpdateRenewalSourceExpiresAt()
+	})
+}
+
+// ClearRenewalSourceExpiresAt clears the value of the "renewal_source_expires_at" field.
+func (u *PaymentOrderUpsertOne) ClearRenewalSourceExpiresAt() *PaymentOrderUpsertOne {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.ClearRenewalSourceExpiresAt()
 	})
 }
 
@@ -2768,6 +3023,97 @@ func (u *PaymentOrderUpsertBulk) AddAffiliateDiscount(v float64) *PaymentOrderUp
 func (u *PaymentOrderUpsertBulk) UpdateAffiliateDiscount() *PaymentOrderUpsertBulk {
 	return u.Update(func(s *PaymentOrderUpsert) {
 		s.UpdateAffiliateDiscount()
+	})
+}
+
+// SetRenewalDiscount sets the "renewal_discount" field.
+func (u *PaymentOrderUpsertBulk) SetRenewalDiscount(v float64) *PaymentOrderUpsertBulk {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.SetRenewalDiscount(v)
+	})
+}
+
+// AddRenewalDiscount adds v to the "renewal_discount" field.
+func (u *PaymentOrderUpsertBulk) AddRenewalDiscount(v float64) *PaymentOrderUpsertBulk {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.AddRenewalDiscount(v)
+	})
+}
+
+// UpdateRenewalDiscount sets the "renewal_discount" field to the value that was provided on create.
+func (u *PaymentOrderUpsertBulk) UpdateRenewalDiscount() *PaymentOrderUpsertBulk {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.UpdateRenewalDiscount()
+	})
+}
+
+// SetRenewalRolloverAmount sets the "renewal_rollover_amount" field.
+func (u *PaymentOrderUpsertBulk) SetRenewalRolloverAmount(v float64) *PaymentOrderUpsertBulk {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.SetRenewalRolloverAmount(v)
+	})
+}
+
+// AddRenewalRolloverAmount adds v to the "renewal_rollover_amount" field.
+func (u *PaymentOrderUpsertBulk) AddRenewalRolloverAmount(v float64) *PaymentOrderUpsertBulk {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.AddRenewalRolloverAmount(v)
+	})
+}
+
+// UpdateRenewalRolloverAmount sets the "renewal_rollover_amount" field to the value that was provided on create.
+func (u *PaymentOrderUpsertBulk) UpdateRenewalRolloverAmount() *PaymentOrderUpsertBulk {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.UpdateRenewalRolloverAmount()
+	})
+}
+
+// SetRenewalSourceSubscriptionID sets the "renewal_source_subscription_id" field.
+func (u *PaymentOrderUpsertBulk) SetRenewalSourceSubscriptionID(v int64) *PaymentOrderUpsertBulk {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.SetRenewalSourceSubscriptionID(v)
+	})
+}
+
+// AddRenewalSourceSubscriptionID adds v to the "renewal_source_subscription_id" field.
+func (u *PaymentOrderUpsertBulk) AddRenewalSourceSubscriptionID(v int64) *PaymentOrderUpsertBulk {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.AddRenewalSourceSubscriptionID(v)
+	})
+}
+
+// UpdateRenewalSourceSubscriptionID sets the "renewal_source_subscription_id" field to the value that was provided on create.
+func (u *PaymentOrderUpsertBulk) UpdateRenewalSourceSubscriptionID() *PaymentOrderUpsertBulk {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.UpdateRenewalSourceSubscriptionID()
+	})
+}
+
+// ClearRenewalSourceSubscriptionID clears the value of the "renewal_source_subscription_id" field.
+func (u *PaymentOrderUpsertBulk) ClearRenewalSourceSubscriptionID() *PaymentOrderUpsertBulk {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.ClearRenewalSourceSubscriptionID()
+	})
+}
+
+// SetRenewalSourceExpiresAt sets the "renewal_source_expires_at" field.
+func (u *PaymentOrderUpsertBulk) SetRenewalSourceExpiresAt(v time.Time) *PaymentOrderUpsertBulk {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.SetRenewalSourceExpiresAt(v)
+	})
+}
+
+// UpdateRenewalSourceExpiresAt sets the "renewal_source_expires_at" field to the value that was provided on create.
+func (u *PaymentOrderUpsertBulk) UpdateRenewalSourceExpiresAt() *PaymentOrderUpsertBulk {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.UpdateRenewalSourceExpiresAt()
+	})
+}
+
+// ClearRenewalSourceExpiresAt clears the value of the "renewal_source_expires_at" field.
+func (u *PaymentOrderUpsertBulk) ClearRenewalSourceExpiresAt() *PaymentOrderUpsertBulk {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.ClearRenewalSourceExpiresAt()
 	})
 }
 

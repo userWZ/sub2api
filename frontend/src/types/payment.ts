@@ -78,6 +78,12 @@ export interface CheckoutInfoResponse {
     max_percent: number
     min_pay_amount: number
   }
+	 renewal_offer?: {
+	  enabled: boolean
+	  window_days: number
+	  rollover_percent: number
+	  discount_percent: number
+	}
 }
 
 // ==================== Orders ====================
@@ -134,6 +140,12 @@ export interface SubscriptionPlan {
   features: string[]
   for_sale: boolean
   sort_order: number
+	 renewal_offer?: {
+	  eligible: boolean
+	  discount_percent: number
+	  discounted_amount: number
+	  rollover_amount: number
+	}
 }
 
 export interface PaymentChannel {
@@ -204,6 +216,8 @@ export interface CreateOrderResult {
   amount: number
   original_amount?: number
   affiliate_discount?: number
+	 renewal_discount?: number
+	 renewal_rollover_amount?: number
   pay_url?: string
   qr_code?: string
   client_secret?: string

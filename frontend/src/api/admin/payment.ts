@@ -25,6 +25,11 @@ export interface AdminPaymentConfig {
   balance_disabled: boolean
   balance_recharge_multiplier: number
   recharge_fee_rate: number
+	 renewal_offer_enabled: boolean
+	 renewal_window_days: number
+	 renewal_rollover_percent: number
+	 renewal_discount_percent: number
+	 renewal_email_enabled: boolean
   load_balance_strategy: string
   product_name_prefix: string
   product_name_suffix: string
@@ -44,6 +49,11 @@ export interface UpdatePaymentConfigRequest {
   balance_disabled?: boolean
   balance_recharge_multiplier?: number
   recharge_fee_rate?: number
+	 renewal_offer_enabled?: boolean
+	 renewal_window_days?: number
+	 renewal_rollover_percent?: number
+	 renewal_discount_percent?: number
+	 renewal_email_enabled?: boolean
   load_balance_strategy?: string
   product_name_prefix?: string
   product_name_suffix?: string
