@@ -29,6 +29,33 @@ func NewAffiliateHandler(affiliateService *service.AffiliateService, adminServic
 	}
 }
 
+// GetSettings returns the dedicated invitation rebate and risk-control settings.
+// GET /api/v1/admin/affiliates/settings
+func (h *AffiliateHandler) GetSettings(c *gin.Context) {
+	settings, err := h.affiliateService.GetSettings(c.Request.Context())
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, settings)
+}
+
+// UpdateSettings updates only settings owned by the invitation rebate module.
+// PUT /api/v1/admin/affiliates/settings
+func (h *AffiliateHandler) UpdateSettings(c *gin.Context) {
+	var req service.AffiliateSettings
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Invalid request: "+err.Error())
+		return
+	}
+	settings, err := h.affiliateService.UpdateSettings(c.Request.Context(), req)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, settings)
+}
+
 // ListUsers returns paginated users with custom affiliate settings.
 // GET /api/v1/admin/affiliates/users
 func (h *AffiliateHandler) ListUsers(c *gin.Context) {
@@ -280,6 +307,58 @@ func (h *AffiliateHandler) ListTransferRecords(c *gin.Context) {
 		return
 	}
 	response.Paginated(c, items, total, filter.Page, filter.PageSize)
+}
+
+// ListUsageRewards returns first-usage invitation rewards and their review state.
+// GET /api/v1/admin/affiliates/usage-rewards
+func (h *AffiliateHandler) ListUsageRewards(c *gin.Context) {
+	page, pageSize := response.ParsePagination(c)
+	filter := service.AffiliateUsageRewardFilter{
+		Search:   c.Query("search"),
+		Status:   c.Query("status"),
+		Page:     page,
+		PageSize: pageSize,
+	}
+	userTZ := c.Query("timezone")
+	filter.StartAt = parseAffiliateRecordStartTime(c.Query("start_at"), userTZ)
+	filter.EndAt = parseAffiliateRecordEndTime(c.Query("end_at"), userTZ)
+	items, total, err := h.affiliateService.AdminListUsageRewards(c.Request.Context(), filter)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Paginated(c, items, total, filter.Page, filter.PageSize)
+}
+
+type ReviewAffiliateUsageRewardRequest struct {
+	Approve bool   `json:"approve"`
+	Remark  string `json:"remark"`
+}
+
+// ReviewUsageReward approves or rejects a pending high-risk reward.
+// POST /api/v1/admin/affiliates/usage-rewards/:reward_id/review
+func (h *AffiliateHandler) ReviewUsageReward(c *gin.Context) {
+	rewardID, err := strconv.ParseInt(c.Param("reward_id"), 10, 64)
+	if err != nil || rewardID <= 0 {
+		response.BadRequest(c, "Invalid reward_id")
+		return
+	}
+	subject, ok := middleware2.GetAuthSubjectFromContext(c)
+	if !ok || subject.UserID <= 0 {
+		response.Unauthorized(c, "admin authentication required")
+		return
+	}
+	var req ReviewAffiliateUsageRewardRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Invalid request: "+err.Error())
+		return
+	}
+	result, err := h.affiliateService.AdminReviewUsageReward(c.Request.Context(), rewardID, subject.UserID, req.Approve, req.Remark)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, result)
 }
 
 func parseAffiliateRecordFilter(c *gin.Context, page, pageSize int) service.AffiliateRecordFilter {

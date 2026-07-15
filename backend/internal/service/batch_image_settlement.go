@@ -60,6 +60,7 @@ type BatchImageSettlementService struct {
 	UsageLogRepo UsageLogRepository
 	Pricing      BatchImagePricingResolver
 	AuthCache    APIKeyAuthCacheInvalidator
+	Affiliate    *AffiliateService
 	Config       *config.Config
 }
 
@@ -157,6 +158,20 @@ func (s *BatchImageSettlementService) Settle(ctx context.Context, batchID string
 		return nil, err
 	}
 	s.invalidateAuthCache(ctx, job.UserID)
+	if actualCost > 0 && s.Affiliate != nil {
+		if _, rewardErr := s.Affiliate.ProcessFirstUsageReward(ctx, AffiliateUsageRewardEvent{
+			InviteeUserID: job.UserID,
+			RequestID:     result.RequestID,
+			APIKeyID:      *job.APIKeyID,
+			ActualCost:    actualCost,
+		}); rewardErr != nil {
+			logger.L().Error("batch_image.affiliate_usage_reward_failed",
+				zap.String("batch_id", job.BatchID),
+				zap.Int64("invitee_user_id", job.UserID),
+				zap.Error(rewardErr),
+			)
+		}
+	}
 
 	now := time.Now()
 	outputExpiresAt := now.Add(s.outputRetentionAfterTerminal())

@@ -131,29 +131,36 @@ const DingTalkConnectSyntheticEmailDomain = "@dingtalk-connect.invalid"
 // Setting keys
 const (
 	// 注册设置
-	SettingKeyRegistrationEnabled              = "registration_enabled"                // 是否开放注册
-	SettingKeyEmailVerifyEnabled               = "email_verify_enabled"                // 是否开启邮件验证
-	SettingKeyRegistrationEmailSuffixWhitelist = "registration_email_suffix_whitelist" // 注册邮箱后缀白名单（JSON 数组）
-	SettingKeyPromoCodeEnabled                 = "promo_code_enabled"                  // 是否启用优惠码功能
-	SettingKeyPasswordResetEnabled             = "password_reset_enabled"              // 是否启用忘记密码功能（需要先开启邮件验证）
-	SettingKeyFrontendURL                      = "frontend_url"                        // 前端基础URL，用于生成邮件中的重置密码链接
-	SettingKeyInvitationCodeEnabled            = "invitation_code_enabled"             // 是否启用邀请码注册
-	SettingKeyAffiliateEnabled                 = "affiliate_enabled"                   // 邀请返利功能总开关
-	SettingKeyAffiliateRebateRate              = "affiliate_rebate_rate"               // 邀请返利比例（百分比，0-100）
-	SettingKeyAffiliateRebateFreezeHours       = "affiliate_rebate_freeze_hours"       // 返利冻结期（小时，0=不冻结）
-	SettingKeyAffiliateRebateDurationDays      = "affiliate_rebate_duration_days"      // 返利有效期（天，0=永久）
-	SettingKeyAffiliateRebatePerInviteeCap     = "affiliate_rebate_per_invitee_cap"    // 单人返利上限（0=无上限）
-	SettingKeyAffiliateDiscountEnabled         = "affiliate_discount_enabled"          // 返利钱包是否可在购买时抵扣
-	SettingKeyAffiliateDiscountMaxPercent      = "affiliate_discount_max_percent"      // 单笔最大抵扣比例（百分比，0-100）
-	SettingKeyAffiliateDiscountMinPayAmount    = "affiliate_discount_min_pay_amount"   // 单笔最低实付金额
-	SettingKeyRiskControlEnabled               = "risk_control_enabled"                // 是否启用风控中心入口与审计链路
-	SettingKeyContentModerationConfig          = "content_moderation_config"           // 内容审计配置（JSON）
-	SettingKeyCyberSessionBlockEnabled         = "cyber_session_block_enabled"         // cyber 命中后会话级自动屏蔽总开关(默认关)
-	SettingKeyCyberSessionBlockTTLSeconds      = "cyber_session_block_ttl_seconds"     // 会话屏蔽 TTL 秒数(默认 3600)
-	SettingKeyLoginAgreementEnabled            = "login_agreement_enabled"             // 登录前是否要求同意条款
-	SettingKeyLoginAgreementMode               = "login_agreement_mode"                // 条款确认展示模式：modal / checkbox
-	SettingKeyLoginAgreementUpdatedAt          = "login_agreement_updated_at"          // 条款更新日期（展示用）
-	SettingKeyLoginAgreementDocuments          = "login_agreement_documents"           // 条款文档列表（JSON，Markdown 内容）
+	SettingKeyRegistrationEnabled              = "registration_enabled"                 // 是否开放注册
+	SettingKeyEmailVerifyEnabled               = "email_verify_enabled"                 // 是否开启邮件验证
+	SettingKeyRegistrationEmailSuffixWhitelist = "registration_email_suffix_whitelist"  // 注册邮箱后缀白名单（JSON 数组）
+	SettingKeyPromoCodeEnabled                 = "promo_code_enabled"                   // 是否启用优惠码功能
+	SettingKeyPasswordResetEnabled             = "password_reset_enabled"               // 是否启用忘记密码功能（需要先开启邮件验证）
+	SettingKeyFrontendURL                      = "frontend_url"                         // 前端基础URL，用于生成邮件中的重置密码链接
+	SettingKeyInvitationCodeEnabled            = "invitation_code_enabled"              // 是否启用邀请码注册
+	SettingKeyAffiliateEnabled                 = "affiliate_enabled"                    // 邀请返利功能总开关
+	SettingKeyAffiliateRebateRate              = "affiliate_rebate_rate"                // 邀请返利比例（百分比，0-100）
+	SettingKeyAffiliateRebateFreezeHours       = "affiliate_rebate_freeze_hours"        // 返利冻结期（小时，0=不冻结）
+	SettingKeyAffiliateRebateDurationDays      = "affiliate_rebate_duration_days"       // 返利有效期（天，0=永久）
+	SettingKeyAffiliateRebatePerInviteeCap     = "affiliate_rebate_per_invitee_cap"     // 单人返利上限（0=无上限）
+	SettingKeyAffiliateDiscountEnabled         = "affiliate_discount_enabled"           // 返利钱包是否可在购买时抵扣
+	SettingKeyAffiliateDiscountMaxPercent      = "affiliate_discount_max_percent"       // 单笔最大抵扣比例（百分比，0-100）
+	SettingKeyAffiliateDiscountMinPayAmount    = "affiliate_discount_min_pay_amount"    // 单笔最低实付金额
+	SettingKeyAffiliateUsageRewardEnabled      = "affiliate_usage_reward_enabled"       // 被邀请人首次实际用量奖励开关
+	SettingKeyAffiliateUsageRewardAmount       = "affiliate_usage_reward_amount"        // 首次实际用量奖励积分
+	SettingKeyAffiliateRewardInviterDailyLimit = "affiliate_reward_inviter_daily_limit" // 同一邀请人 24 小时奖励数上限
+	SettingKeyAffiliateRewardInviter30DayLimit = "affiliate_reward_inviter_30d_limit"   // 同一邀请人滚动 30 天奖励数上限
+	SettingKeyAffiliateRewardIPDailyLimit      = "affiliate_reward_ip_daily_limit"      // 同一 IP 24 小时触发奖励数上限
+	SettingKeyAffiliateRewardReviewSameIP      = "affiliate_reward_review_same_ip"      // 邀请双方近期使用 IP 相同时转人工审核
+	SettingKeyAffiliateRewardReviewMissingIP   = "affiliate_reward_review_missing_ip"   // 缺少触发 IP 时转人工审核
+	SettingKeyRiskControlEnabled               = "risk_control_enabled"                 // 是否启用风控中心入口与审计链路
+	SettingKeyContentModerationConfig          = "content_moderation_config"            // 内容审计配置（JSON）
+	SettingKeyCyberSessionBlockEnabled         = "cyber_session_block_enabled"          // cyber 命中后会话级自动屏蔽总开关(默认关)
+	SettingKeyCyberSessionBlockTTLSeconds      = "cyber_session_block_ttl_seconds"      // 会话屏蔽 TTL 秒数(默认 3600)
+	SettingKeyLoginAgreementEnabled            = "login_agreement_enabled"              // 登录前是否要求同意条款
+	SettingKeyLoginAgreementMode               = "login_agreement_mode"                 // 条款确认展示模式：modal / checkbox
+	SettingKeyLoginAgreementUpdatedAt          = "login_agreement_updated_at"           // 条款更新日期（展示用）
+	SettingKeyLoginAgreementDocuments          = "login_agreement_documents"            // 条款文档列表（JSON，Markdown 内容）
 
 	// 邮件服务设置
 	SettingKeySMTPHost     = "smtp_host"      // SMTP服务器地址

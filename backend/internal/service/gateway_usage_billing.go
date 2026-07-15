@@ -282,6 +282,7 @@ func applyUsageBilling(ctx context.Context, requestID string, usageLog *UsageLog
 	cmd := buildUsageBillingCommand(requestID, usageLog, p)
 	if cmd == nil || cmd.RequestID == "" || repo == nil {
 		postUsageBilling(ctx, p, deps)
+		processAffiliateUsageReward(ctx, requestID, usageLog, p, deps)
 		return true, nil
 	}
 
@@ -305,7 +306,27 @@ func applyUsageBilling(ctx context.Context, requestID string, usageLog *UsageLog
 	}
 
 	finalizePostUsageBilling(billingCtx, p, deps, result)
+	processAffiliateUsageReward(billingCtx, requestID, usageLog, p, deps)
 	return true, nil
+}
+
+func processAffiliateUsageReward(ctx context.Context, requestID string, usageLog *UsageLog, p *postUsageBillingParams, deps *billingDeps) {
+	if p == nil || p.Cost == nil || p.Cost.ActualCost <= 0 || p.User == nil || p.APIKey == nil || deps == nil || deps.affiliateService == nil {
+		return
+	}
+	ipAddress := ""
+	if usageLog != nil && usageLog.IPAddress != nil {
+		ipAddress = strings.TrimSpace(*usageLog.IPAddress)
+	}
+	if _, err := deps.affiliateService.ProcessFirstUsageReward(ctx, AffiliateUsageRewardEvent{
+		InviteeUserID: p.User.ID,
+		RequestID:     requestID,
+		APIKeyID:      p.APIKey.ID,
+		IPAddress:     ipAddress,
+		ActualCost:    p.Cost.ActualCost,
+	}); err != nil {
+		slog.Error("process affiliate first-usage reward failed", "invitee_user_id", p.User.ID, "request_id", requestID, "error", err)
+	}
 }
 
 func finalizePostUsageBilling(ctx context.Context, p *postUsageBillingParams, deps *billingDeps, result *UsageBillingApplyResult) {
@@ -491,6 +512,7 @@ type billingDeps struct {
 	deferredService       *DeferredService
 	balanceNotifyService  *BalanceNotifyService
 	userPlatformQuotaRepo UserPlatformQuotaRepository
+	affiliateService      *AffiliateService
 	cfg                   *config.Config
 }
 
@@ -503,6 +525,7 @@ func (s *GatewayService) billingDeps() *billingDeps {
 		deferredService:       s.deferredService,
 		balanceNotifyService:  s.balanceNotifyService,
 		userPlatformQuotaRepo: s.userPlatformQuotaRepo,
+		affiliateService:      s.affiliateService,
 		cfg:                   s.cfg,
 	}
 }

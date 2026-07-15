@@ -112,6 +112,57 @@ export interface AffiliateWithdrawResult {
   history_quota_after: number
 }
 
+export interface AffiliateSettings {
+  affiliate_enabled: boolean
+  rebate_rate: number
+  rebate_freeze_hours: number
+  rebate_duration_days: number
+  rebate_per_invitee_cap: number
+  discount_enabled: boolean
+  discount_max_percent: number
+  discount_min_pay_amount: number
+  usage_reward_enabled: boolean
+  usage_reward_amount: number
+  reward_inviter_daily_limit: number
+  reward_inviter_30d_limit: number
+  reward_ip_daily_limit: number
+  reward_review_same_ip: boolean
+  reward_review_missing_ip: boolean
+}
+
+export type AffiliateUsageRewardStatus = 'pending' | 'granted' | 'rejected'
+
+export interface AffiliateUsageRewardRecord {
+  id: number
+  inviter_id: number
+  inviter_email: string
+  inviter_username: string
+  invitee_id: number
+  invitee_email: string
+  invitee_username: string
+  amount: number
+  status: AffiliateUsageRewardStatus
+  risk_reason: string
+  trigger_request_id: string
+  trigger_ip?: string | null
+  trigger_actual_cost: number
+  reviewer_user_id?: number | null
+  reviewer_email?: string | null
+  review_remark: string
+  reviewed_at?: string | null
+  created_at: string
+}
+
+export interface ListAffiliateUsageRewardsParams {
+  page?: number
+  page_size?: number
+  search?: string
+  status?: AffiliateUsageRewardStatus | ''
+  start_at?: string
+  end_at?: string
+  timezone?: string
+}
+
 export interface UpdateAffiliateUserRequest {
   aff_code?: string
   aff_rebate_rate_percent?: number | null
@@ -250,6 +301,49 @@ export async function withdrawAffiliateQuota(
   return data
 }
 
+export async function getSettings(): Promise<AffiliateSettings> {
+  const { data } = await apiClient.get<AffiliateSettings>('/admin/affiliates/settings')
+  return data
+}
+
+export async function updateSettings(payload: AffiliateSettings): Promise<AffiliateSettings> {
+  const { data } = await apiClient.put<AffiliateSettings>('/admin/affiliates/settings', payload)
+  return data
+}
+
+export async function listUsageRewards(
+  params: ListAffiliateUsageRewardsParams = {},
+): Promise<PaginatedResponse<AffiliateUsageRewardRecord>> {
+  const { data } = await apiClient.get<PaginatedResponse<AffiliateUsageRewardRecord>>(
+    '/admin/affiliates/usage-rewards',
+    {
+      params: {
+        page: params.page ?? 1,
+        page_size: params.page_size ?? 20,
+        search: params.search ?? '',
+        status: params.status || undefined,
+        start_at: params.start_at || undefined,
+        end_at: params.end_at || undefined,
+        timezone: params.timezone || undefined,
+      },
+    },
+  )
+  return data
+}
+
+export async function reviewUsageReward(
+  rewardId: number,
+  payload: { approve: boolean; remark?: string },
+): Promise<{ reward_id: number; inviter_id: number; status: AffiliateUsageRewardStatus; amount: number }> {
+  const { data } = await apiClient.post<{
+    reward_id: number
+    inviter_id: number
+    status: AffiliateUsageRewardStatus
+    amount: number
+  }>(`/admin/affiliates/usage-rewards/${rewardId}/review`, payload)
+  return data
+}
+
 export const affiliatesAPI = {
   listUsers,
   lookupUsers,
@@ -261,6 +355,10 @@ export const affiliatesAPI = {
   listTransferRecords,
   getUserOverview,
   withdrawAffiliateQuota,
+  getSettings,
+  updateSettings,
+  listUsageRewards,
+  reviewUsageReward,
 }
 
 export default affiliatesAPI

@@ -6039,8 +6039,25 @@
           </div>
         </div>
 
-        <!-- Affiliate (邀请返利) feature card -->
+        <!-- Affiliate settings moved to a dedicated child page. -->
         <div class="card">
+          <div class="flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
+                {{ t('admin.settings.features.affiliate.title') }}
+              </h2>
+              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                {{ t('admin.affiliates.settings.description') }}
+              </p>
+            </div>
+            <router-link to="/admin/affiliates/settings" class="btn btn-secondary whitespace-nowrap">
+              {{ t('nav.affiliateSettings') }} →
+            </router-link>
+          </div>
+        </div>
+
+        <!-- Legacy inline affiliate editor is retained temporarily for source compatibility, but no longer rendered. -->
+        <div v-if="false" class="card">
           <div class="border-b border-gray-100 px-6 py-4 dark:border-dark-700">
             <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
               {{ t('admin.settings.features.affiliate.title') }}
@@ -9615,22 +9632,6 @@ async function saveSettings() {
       login_agreement_updated_at: form.login_agreement_updated_at,
       login_agreement_documents: form.login_agreement_documents,
       default_balance: form.default_balance,
-      affiliate_rebate_rate: Math.min(
-        100,
-        Math.max(0, Number(form.affiliate_rebate_rate) || 0),
-      ),
-      affiliate_rebate_freeze_hours: Math.max(0, Math.min(720, Number(form.affiliate_rebate_freeze_hours) || 0)),
-      affiliate_rebate_duration_days: Math.max(0, Math.min(3650, Math.floor(Number(form.affiliate_rebate_duration_days) || 0))),
-      affiliate_rebate_per_invitee_cap: Math.max(0, Number(form.affiliate_rebate_per_invitee_cap) || 0),
-      affiliate_discount_enabled: form.affiliate_discount_enabled,
-      affiliate_discount_max_percent: Math.min(
-        100,
-        Math.max(0, Number(form.affiliate_discount_max_percent) || 0),
-      ),
-      affiliate_discount_min_pay_amount: Math.max(
-        0,
-        Number(form.affiliate_discount_min_pay_amount) || 0,
-      ),
       default_concurrency: form.default_concurrency,
       default_subscriptions: normalizedDefaultSubscriptions,
       force_email_on_third_party_signup: form.force_email_on_third_party_signup,

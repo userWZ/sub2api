@@ -156,6 +156,8 @@ export default {
     redeem: 'Redeem',
     affiliate: 'Affiliate Rebates',
     affiliateManagement: 'Affiliate Rebates',
+	affiliateSettings: 'Campaign Settings',
+	affiliateUsageRewards: 'Usage Reward Reviews',
     affiliateInviteRecords: 'Invite Records',
     affiliateRebateRecords: 'Rebate Records',
     affiliateTransferRecords: 'Rebate Wallet Records',
