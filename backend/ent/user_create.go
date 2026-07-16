@@ -22,6 +22,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/usagelog"
 	"github.com/Wei-Shaw/sub2api/ent/user"
 	"github.com/Wei-Shaw/sub2api/ent/userattributevalue"
+	"github.com/Wei-Shaw/sub2api/ent/userplatformquota"
 	"github.com/Wei-Shaw/sub2api/ent/usersubscription"
 )
 
@@ -115,6 +116,20 @@ func (_c *UserCreate) SetNillableBalance(v *float64) *UserCreate {
 	return _c
 }
 
+// SetFrozenBalance sets the "frozen_balance" field.
+func (_c *UserCreate) SetFrozenBalance(v float64) *UserCreate {
+	_c.mutation.SetFrozenBalance(v)
+	return _c
+}
+
+// SetNillableFrozenBalance sets the "frozen_balance" field if the given value is not nil.
+func (_c *UserCreate) SetNillableFrozenBalance(v *float64) *UserCreate {
+	if v != nil {
+		_c.SetFrozenBalance(*v)
+	}
+	return _c
+}
+
 // SetConcurrency sets the "concurrency" field.
 func (_c *UserCreate) SetConcurrency(v int) *UserCreate {
 	_c.mutation.SetConcurrency(v)
@@ -139,6 +154,20 @@ func (_c *UserCreate) SetStatus(v string) *UserCreate {
 func (_c *UserCreate) SetNillableStatus(v *string) *UserCreate {
 	if v != nil {
 		_c.SetStatus(*v)
+	}
+	return _c
+}
+
+// SetCustomerType sets the "customer_type" field.
+func (_c *UserCreate) SetCustomerType(v string) *UserCreate {
+	_c.mutation.SetCustomerType(v)
+	return _c
+}
+
+// SetNillableCustomerType sets the "customer_type" field if the given value is not nil.
+func (_c *UserCreate) SetNillableCustomerType(v *string) *UserCreate {
+	if v != nil {
+		_c.SetCustomerType(*v)
 	}
 	return _c
 }
@@ -519,6 +548,21 @@ func (_c *UserCreate) AddPendingAuthSessions(v ...*PendingAuthSession) *UserCrea
 	return _c.AddPendingAuthSessionIDs(ids...)
 }
 
+// AddPlatformQuotaIDs adds the "platform_quotas" edge to the UserPlatformQuota entity by IDs.
+func (_c *UserCreate) AddPlatformQuotaIDs(ids ...int64) *UserCreate {
+	_c.mutation.AddPlatformQuotaIDs(ids...)
+	return _c
+}
+
+// AddPlatformQuotas adds the "platform_quotas" edges to the UserPlatformQuota entity.
+func (_c *UserCreate) AddPlatformQuotas(v ...*UserPlatformQuota) *UserCreate {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddPlatformQuotaIDs(ids...)
+}
+
 // Mutation returns the UserMutation object of the builder.
 func (_c *UserCreate) Mutation() *UserMutation {
 	return _c.mutation
@@ -578,6 +622,10 @@ func (_c *UserCreate) defaults() error {
 		v := user.DefaultBalance
 		_c.mutation.SetBalance(v)
 	}
+	if _, ok := _c.mutation.FrozenBalance(); !ok {
+		v := user.DefaultFrozenBalance
+		_c.mutation.SetFrozenBalance(v)
+	}
 	if _, ok := _c.mutation.Concurrency(); !ok {
 		v := user.DefaultConcurrency
 		_c.mutation.SetConcurrency(v)
@@ -585,6 +633,10 @@ func (_c *UserCreate) defaults() error {
 	if _, ok := _c.mutation.Status(); !ok {
 		v := user.DefaultStatus
 		_c.mutation.SetStatus(v)
+	}
+	if _, ok := _c.mutation.CustomerType(); !ok {
+		v := user.DefaultCustomerType
+		_c.mutation.SetCustomerType(v)
 	}
 	if _, ok := _c.mutation.Username(); !ok {
 		v := user.DefaultUsername
@@ -660,6 +712,9 @@ func (_c *UserCreate) check() error {
 	if _, ok := _c.mutation.Balance(); !ok {
 		return &ValidationError{Name: "balance", err: errors.New(`ent: missing required field "User.balance"`)}
 	}
+	if _, ok := _c.mutation.FrozenBalance(); !ok {
+		return &ValidationError{Name: "frozen_balance", err: errors.New(`ent: missing required field "User.frozen_balance"`)}
+	}
 	if _, ok := _c.mutation.Concurrency(); !ok {
 		return &ValidationError{Name: "concurrency", err: errors.New(`ent: missing required field "User.concurrency"`)}
 	}
@@ -669,6 +724,14 @@ func (_c *UserCreate) check() error {
 	if v, ok := _c.mutation.Status(); ok {
 		if err := user.StatusValidator(v); err != nil {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "User.status": %w`, err)}
+		}
+	}
+	if _, ok := _c.mutation.CustomerType(); !ok {
+		return &ValidationError{Name: "customer_type", err: errors.New(`ent: missing required field "User.customer_type"`)}
+	}
+	if v, ok := _c.mutation.CustomerType(); ok {
+		if err := user.CustomerTypeValidator(v); err != nil {
+			return &ValidationError{Name: "customer_type", err: fmt.Errorf(`ent: validator failed for field "User.customer_type": %w`, err)}
 		}
 	}
 	if _, ok := _c.mutation.Username(); !ok {
@@ -763,6 +826,10 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 		_spec.SetField(user.FieldBalance, field.TypeFloat64, value)
 		_node.Balance = value
 	}
+	if value, ok := _c.mutation.FrozenBalance(); ok {
+		_spec.SetField(user.FieldFrozenBalance, field.TypeFloat64, value)
+		_node.FrozenBalance = value
+	}
 	if value, ok := _c.mutation.Concurrency(); ok {
 		_spec.SetField(user.FieldConcurrency, field.TypeInt, value)
 		_node.Concurrency = value
@@ -770,6 +837,10 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Status(); ok {
 		_spec.SetField(user.FieldStatus, field.TypeString, value)
 		_node.Status = value
+	}
+	if value, ok := _c.mutation.CustomerType(); ok {
+		_spec.SetField(user.FieldCustomerType, field.TypeString, value)
+		_node.CustomerType = value
 	}
 	if value, ok := _c.mutation.Username(); ok {
 		_spec.SetField(user.FieldUsername, field.TypeString, value)
@@ -1023,6 +1094,22 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 		}
 		_spec.Edges = append(_spec.Edges, edge)
 	}
+	if nodes := _c.mutation.PlatformQuotasIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.PlatformQuotasTable,
+			Columns: []string{user.PlatformQuotasColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(userplatformquota.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
 	return _node, _spec
 }
 
@@ -1159,6 +1246,24 @@ func (u *UserUpsert) AddBalance(v float64) *UserUpsert {
 	return u
 }
 
+// SetFrozenBalance sets the "frozen_balance" field.
+func (u *UserUpsert) SetFrozenBalance(v float64) *UserUpsert {
+	u.Set(user.FieldFrozenBalance, v)
+	return u
+}
+
+// UpdateFrozenBalance sets the "frozen_balance" field to the value that was provided on create.
+func (u *UserUpsert) UpdateFrozenBalance() *UserUpsert {
+	u.SetExcluded(user.FieldFrozenBalance)
+	return u
+}
+
+// AddFrozenBalance adds v to the "frozen_balance" field.
+func (u *UserUpsert) AddFrozenBalance(v float64) *UserUpsert {
+	u.Add(user.FieldFrozenBalance, v)
+	return u
+}
+
 // SetConcurrency sets the "concurrency" field.
 func (u *UserUpsert) SetConcurrency(v int) *UserUpsert {
 	u.Set(user.FieldConcurrency, v)
@@ -1186,6 +1291,18 @@ func (u *UserUpsert) SetStatus(v string) *UserUpsert {
 // UpdateStatus sets the "status" field to the value that was provided on create.
 func (u *UserUpsert) UpdateStatus() *UserUpsert {
 	u.SetExcluded(user.FieldStatus)
+	return u
+}
+
+// SetCustomerType sets the "customer_type" field.
+func (u *UserUpsert) SetCustomerType(v string) *UserUpsert {
+	u.Set(user.FieldCustomerType, v)
+	return u
+}
+
+// UpdateCustomerType sets the "customer_type" field to the value that was provided on create.
+func (u *UserUpsert) UpdateCustomerType() *UserUpsert {
+	u.SetExcluded(user.FieldCustomerType)
 	return u
 }
 
@@ -1548,6 +1665,27 @@ func (u *UserUpsertOne) UpdateBalance() *UserUpsertOne {
 	})
 }
 
+// SetFrozenBalance sets the "frozen_balance" field.
+func (u *UserUpsertOne) SetFrozenBalance(v float64) *UserUpsertOne {
+	return u.Update(func(s *UserUpsert) {
+		s.SetFrozenBalance(v)
+	})
+}
+
+// AddFrozenBalance adds v to the "frozen_balance" field.
+func (u *UserUpsertOne) AddFrozenBalance(v float64) *UserUpsertOne {
+	return u.Update(func(s *UserUpsert) {
+		s.AddFrozenBalance(v)
+	})
+}
+
+// UpdateFrozenBalance sets the "frozen_balance" field to the value that was provided on create.
+func (u *UserUpsertOne) UpdateFrozenBalance() *UserUpsertOne {
+	return u.Update(func(s *UserUpsert) {
+		s.UpdateFrozenBalance()
+	})
+}
+
 // SetConcurrency sets the "concurrency" field.
 func (u *UserUpsertOne) SetConcurrency(v int) *UserUpsertOne {
 	return u.Update(func(s *UserUpsert) {
@@ -1580,6 +1718,20 @@ func (u *UserUpsertOne) SetStatus(v string) *UserUpsertOne {
 func (u *UserUpsertOne) UpdateStatus() *UserUpsertOne {
 	return u.Update(func(s *UserUpsert) {
 		s.UpdateStatus()
+	})
+}
+
+// SetCustomerType sets the "customer_type" field.
+func (u *UserUpsertOne) SetCustomerType(v string) *UserUpsertOne {
+	return u.Update(func(s *UserUpsert) {
+		s.SetCustomerType(v)
+	})
+}
+
+// UpdateCustomerType sets the "customer_type" field to the value that was provided on create.
+func (u *UserUpsertOne) UpdateCustomerType() *UserUpsertOne {
+	return u.Update(func(s *UserUpsert) {
+		s.UpdateCustomerType()
 	})
 }
 
@@ -2144,6 +2296,27 @@ func (u *UserUpsertBulk) UpdateBalance() *UserUpsertBulk {
 	})
 }
 
+// SetFrozenBalance sets the "frozen_balance" field.
+func (u *UserUpsertBulk) SetFrozenBalance(v float64) *UserUpsertBulk {
+	return u.Update(func(s *UserUpsert) {
+		s.SetFrozenBalance(v)
+	})
+}
+
+// AddFrozenBalance adds v to the "frozen_balance" field.
+func (u *UserUpsertBulk) AddFrozenBalance(v float64) *UserUpsertBulk {
+	return u.Update(func(s *UserUpsert) {
+		s.AddFrozenBalance(v)
+	})
+}
+
+// UpdateFrozenBalance sets the "frozen_balance" field to the value that was provided on create.
+func (u *UserUpsertBulk) UpdateFrozenBalance() *UserUpsertBulk {
+	return u.Update(func(s *UserUpsert) {
+		s.UpdateFrozenBalance()
+	})
+}
+
 // SetConcurrency sets the "concurrency" field.
 func (u *UserUpsertBulk) SetConcurrency(v int) *UserUpsertBulk {
 	return u.Update(func(s *UserUpsert) {
@@ -2176,6 +2349,20 @@ func (u *UserUpsertBulk) SetStatus(v string) *UserUpsertBulk {
 func (u *UserUpsertBulk) UpdateStatus() *UserUpsertBulk {
 	return u.Update(func(s *UserUpsert) {
 		s.UpdateStatus()
+	})
+}
+
+// SetCustomerType sets the "customer_type" field.
+func (u *UserUpsertBulk) SetCustomerType(v string) *UserUpsertBulk {
+	return u.Update(func(s *UserUpsert) {
+		s.SetCustomerType(v)
+	})
+}
+
+// UpdateCustomerType sets the "customer_type" field to the value that was provided on create.
+func (u *UserUpsertBulk) UpdateCustomerType() *UserUpsertBulk {
+	return u.Update(func(s *UserUpsert) {
+		s.UpdateCustomerType()
 	})
 }
 

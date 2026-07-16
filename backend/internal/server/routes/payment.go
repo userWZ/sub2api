@@ -28,7 +28,6 @@ func RegisterPaymentRoutes(
 		authenticated.GET("/config", paymentHandler.GetPaymentConfig)
 		authenticated.GET("/checkout-info", paymentHandler.GetCheckoutInfo)
 		authenticated.GET("/plans", paymentHandler.GetPlans)
-		authenticated.GET("/channels", paymentHandler.GetChannels)
 		authenticated.GET("/limits", paymentHandler.GetLimits)
 
 		orders := authenticated.Group("/orders")
@@ -68,6 +67,7 @@ func RegisterPaymentRoutes(
 	// --- Admin payment endpoints (admin auth) ---
 	adminGroup := v1.Group("/admin/payment")
 	adminGroup.Use(gin.HandlerFunc(adminAuth))
+	adminGroup.Use(middleware.AdminComplianceGuard(settingService))
 	{
 		// Dashboard
 		adminGroup.GET("/dashboard", adminPaymentHandler.GetDashboard)
@@ -75,6 +75,8 @@ func RegisterPaymentRoutes(
 		// Config
 		adminGroup.GET("/config", adminPaymentHandler.GetConfig)
 		adminGroup.PUT("/config", adminPaymentHandler.UpdateConfig)
+		adminGroup.GET("/renewal", adminPaymentHandler.GetRenewalSettings)
+		adminGroup.PUT("/renewal", adminPaymentHandler.UpdateRenewalSettings)
 
 		// Orders
 		adminOrders := adminGroup.Group("/orders")
@@ -84,6 +86,7 @@ func RegisterPaymentRoutes(
 			adminOrders.POST("/:id/cancel", adminPaymentHandler.CancelOrder)
 			adminOrders.POST("/:id/retry", adminPaymentHandler.RetryFulfillment)
 			adminOrders.POST("/:id/refund", adminPaymentHandler.ProcessRefund)
+			adminOrders.POST("/:id/refund/query", adminPaymentHandler.QueryAndFinalizeRefund)
 		}
 
 		// Subscription Plans
@@ -94,6 +97,8 @@ func RegisterPaymentRoutes(
 			plans.PUT("/:id", adminPaymentHandler.UpdatePlan)
 			plans.DELETE("/:id", adminPaymentHandler.DeletePlan)
 		}
+		adminGroup.GET("/home-pricing", adminPaymentHandler.GetHomePricingConfig)
+		adminGroup.PUT("/home-pricing", adminPaymentHandler.UpdateHomePricingConfig)
 
 		// Provider Instances
 		providers := adminGroup.Group("/providers")

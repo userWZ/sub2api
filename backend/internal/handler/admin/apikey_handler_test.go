@@ -19,7 +19,7 @@ import (
 func setupAPIKeyHandler(adminSvc service.AdminService) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
-	h := NewAdminAPIKeyHandler(adminSvc)
+	h := NewAdminAPIKeyHandler(adminSvc, nil)
 	router.PUT("/api/v1/admin/api-keys/:id", h.UpdateGroup)
 	return router
 }
@@ -157,6 +157,31 @@ func TestAdminAPIKeyHandler_ResetRateLimitUsage(t *testing.T) {
 	require.Nil(t, resp.Data.APIKey.Window7dStart)
 }
 
+func TestAdminAPIKeyHandler_UpdatePolicyStatusAndQuotaDisabled(t *testing.T) {
+	svc := newStubAdminService()
+	svc.apiKeys[0].Status = service.StatusAPIKeyQuotaExhausted
+	router := setupAPIKeyHandler(svc)
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/admin/api-keys/10", bytes.NewBufferString(`{"status":"inactive","quota_disabled":true}`))
+	req.Header.Set("Content-Type", "application/json")
+	router.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	var resp struct {
+		Data struct {
+			APIKey struct {
+				Status        string `json:"status"`
+				QuotaDisabled bool   `json:"quota_disabled"`
+			} `json:"api_key"`
+		} `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
+	require.Equal(t, "inactive", resp.Data.APIKey.Status)
+	require.True(t, resp.Data.APIKey.QuotaDisabled)
+}
+
 func TestAdminAPIKeyHandler_UpdateGroup_ServiceError(t *testing.T) {
 	svc := &failingUpdateGroupService{
 		stubAdminService: newStubAdminService(),
@@ -239,4 +264,28 @@ type failingUpdateGroupService struct {
 
 func (f *failingUpdateGroupService) AdminUpdateAPIKeyGroupID(_ context.Context, _ int64, _ *int64) (*service.AdminUpdateAPIKeyGroupIDResult, error) {
 	return nil, f.err
+}
+
+func TestNormalizeManagedKeyRequestDefaults(t *testing.T) {
+	got, err := normalizeManagedKeyRequest(CreateManagedKeyRequest{
+		CustomerName: "  Acme Team  ",
+		Contact:      " ops@example.com ",
+	})
+	require.NoError(t, err)
+	require.Equal(t, "Acme Team", got.CustomerName)
+	require.Equal(t, "Acme Team API Key", got.KeyName)
+	require.Equal(t, float64(defaultManagedKeyFunds), got.balanceValue)
+	require.Equal(t, 1, got.Concurrency)
+	require.NotNil(t, got.ExpiresInDays)
+	require.Equal(t, defaultManagedKeyDays, *got.ExpiresInDays)
+}
+
+func TestValidateManagedKeyGroupRejectsSubscriptionGroup(t *testing.T) {
+	err := validateManagedKeyGroup(&service.Group{
+		ID:               10,
+		Status:           service.StatusActive,
+		SubscriptionType: service.SubscriptionTypeSubscription,
+	})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "standard group")
 }

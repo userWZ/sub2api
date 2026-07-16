@@ -11,7 +11,7 @@ import type {
   SubscriptionPlan,
   ProviderInstance
 } from '@/types/payment'
-import type { BasePaginationResponse } from '@/types'
+import type { BasePaginationResponse, HomePricingConfig } from '@/types'
 
 /** Admin-facing payment config returned by GET /admin/payment/config */
 export interface AdminPaymentConfig {
@@ -24,6 +24,12 @@ export interface AdminPaymentConfig {
   enabled_payment_types: string[]
   balance_disabled: boolean
   balance_recharge_multiplier: number
+  recharge_fee_rate: number
+	 renewal_offer_enabled: boolean
+	 renewal_window_days: number
+	 renewal_rollover_percent: number
+	 renewal_discount_percent: number
+	 renewal_email_enabled: boolean
   load_balance_strategy: string
   product_name_prefix: string
   product_name_suffix: string
@@ -42,11 +48,41 @@ export interface UpdatePaymentConfigRequest {
   enabled_payment_types?: string[]
   balance_disabled?: boolean
   balance_recharge_multiplier?: number
+  recharge_fee_rate?: number
+	 renewal_offer_enabled?: boolean
+	 renewal_window_days?: number
+	 renewal_rollover_percent?: number
+	 renewal_discount_percent?: number
+	 renewal_email_enabled?: boolean
   load_balance_strategy?: string
   product_name_prefix?: string
   product_name_suffix?: string
   help_image_url?: string
   help_text?: string
+}
+
+export interface RenewalSettings {
+  offer_enabled: boolean
+  before_expiry_days: number
+  after_expiry_days: number
+  discount_enabled: boolean
+  discount_percent: number
+  discount_min_order_amount: number
+  discount_max_amount: number
+  rollover_enabled: boolean
+  rollover_percent: number
+  rollover_min_unused_amount: number
+  rollover_max_amount: number
+  email_enabled: boolean
+  email_reminder_days: number[]
+}
+
+export interface RefundResult {
+  success: boolean
+  warning?: string
+  require_force?: boolean
+  balance_deducted?: number
+  subscription_days_deducted?: number
 }
 
 export const adminPaymentAPI = {
@@ -60,6 +96,16 @@ export const adminPaymentAPI = {
   /** Update payment configuration */
   updateConfig(data: UpdatePaymentConfigRequest) {
     return apiClient.put('/admin/payment/config', data)
+  },
+
+  /** Get the dedicated subscription renewal campaign settings. */
+  getRenewalSettings() {
+    return apiClient.get<RenewalSettings>('/admin/payment/renewal')
+  },
+
+  /** Update only subscription renewal campaign settings. */
+  updateRenewalSettings(data: RenewalSettings) {
+    return apiClient.put<RenewalSettings>('/admin/payment/renewal', data)
   },
 
   // ==================== Dashboard ====================
@@ -105,7 +151,12 @@ export const adminPaymentAPI = {
 
   /** Process a refund */
   refundOrder(id: number, data: { amount: number; reason: string; deduct_balance?: boolean; force?: boolean }) {
-    return apiClient.post(`/admin/payment/orders/${id}/refund`, data)
+    return apiClient.post<RefundResult>(`/admin/payment/orders/${id}/refund`, data)
+  },
+
+  /** Query and finalize a pending refund */
+  queryRefund(id: number) {
+    return apiClient.post<RefundResult>(`/admin/payment/orders/${id}/refund/query`)
   },
 
   // ==================== Channels ====================
@@ -150,6 +201,16 @@ export const adminPaymentAPI = {
   /** Delete a subscription plan */
   deletePlan(id: number) {
     return apiClient.delete(`/admin/payment/plans/${id}`)
+  },
+
+  /** Get public homepage pricing display config */
+  getHomePricingConfig() {
+    return apiClient.get<HomePricingConfig>('/admin/payment/home-pricing')
+  },
+
+  /** Update public homepage pricing display config */
+  updateHomePricingConfig(data: HomePricingConfig) {
+    return apiClient.put<HomePricingConfig>('/admin/payment/home-pricing', data)
   },
 
   // ==================== Provider Instances ====================

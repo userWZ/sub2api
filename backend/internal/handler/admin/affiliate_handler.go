@@ -7,6 +7,7 @@ import (
 
 	"github.com/Wei-Shaw/sub2api/internal/pkg/response"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/timezone"
+	middleware2 "github.com/Wei-Shaw/sub2api/internal/server/middleware"
 	"github.com/Wei-Shaw/sub2api/internal/service"
 
 	"github.com/gin-gonic/gin"
@@ -26,6 +27,33 @@ func NewAffiliateHandler(affiliateService *service.AffiliateService, adminServic
 		affiliateService: affiliateService,
 		adminService:     adminService,
 	}
+}
+
+// GetSettings returns the dedicated invitation rebate and risk-control settings.
+// GET /api/v1/admin/affiliates/settings
+func (h *AffiliateHandler) GetSettings(c *gin.Context) {
+	settings, err := h.affiliateService.GetSettings(c.Request.Context())
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, settings)
+}
+
+// UpdateSettings updates only settings owned by the invitation rebate module.
+// PUT /api/v1/admin/affiliates/settings
+func (h *AffiliateHandler) UpdateSettings(c *gin.Context) {
+	var req service.AffiliateSettings
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Invalid request: "+err.Error())
+		return
+	}
+	settings, err := h.affiliateService.UpdateSettings(c.Request.Context(), req)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, settings)
 }
 
 // ListUsers returns paginated users with custom affiliate settings.
@@ -157,6 +185,47 @@ func (h *AffiliateHandler) BatchSetRate(c *gin.Context) {
 	response.Success(c, gin.H{"affected": len(req.UserIDs)})
 }
 
+// WithdrawAffiliateQuota deducts available affiliate quota after an admin has
+// paid the user offline.
+// POST /api/v1/admin/affiliates/users/:user_id/withdraw
+type WithdrawAffiliateQuotaRequest struct {
+	Amount      float64 `json:"amount" binding:"required"`
+	Remark      string  `json:"remark"`
+	ExternalRef string  `json:"external_ref"`
+}
+
+func (h *AffiliateHandler) WithdrawAffiliateQuota(c *gin.Context) {
+	userID, err := strconv.ParseInt(c.Param("user_id"), 10, 64)
+	if err != nil || userID <= 0 {
+		response.BadRequest(c, "Invalid user_id")
+		return
+	}
+	subject, ok := middleware2.GetAuthSubjectFromContext(c)
+	if !ok || subject.UserID <= 0 {
+		response.Unauthorized(c, "admin authentication required")
+		return
+	}
+
+	var req WithdrawAffiliateQuotaRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Invalid request: "+err.Error())
+		return
+	}
+	result, err := h.affiliateService.AdminWithdrawAffiliateQuota(
+		c.Request.Context(),
+		userID,
+		subject.UserID,
+		req.Amount,
+		req.Remark,
+		req.ExternalRef,
+	)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, result)
+}
+
 // AffiliateUserSummary is the minimal user shape returned by LookupUsers,
 // shared with the frontend's add-custom-user picker.
 type AffiliateUserSummary struct {
@@ -227,7 +296,7 @@ func (h *AffiliateHandler) ListRebateRecords(c *gin.Context) {
 	response.Paginated(c, items, total, filter.Page, filter.PageSize)
 }
 
-// ListTransferRecords returns all affiliate quota-to-balance transfer records.
+// ListTransferRecords returns affiliate wallet discount, restore, and payout records.
 // GET /api/v1/admin/affiliates/transfers
 func (h *AffiliateHandler) ListTransferRecords(c *gin.Context) {
 	page, pageSize := response.ParsePagination(c)
@@ -240,11 +309,64 @@ func (h *AffiliateHandler) ListTransferRecords(c *gin.Context) {
 	response.Paginated(c, items, total, filter.Page, filter.PageSize)
 }
 
+// ListUsageRewards returns first-usage invitation rewards and their review state.
+// GET /api/v1/admin/affiliates/usage-rewards
+func (h *AffiliateHandler) ListUsageRewards(c *gin.Context) {
+	page, pageSize := response.ParsePagination(c)
+	filter := service.AffiliateUsageRewardFilter{
+		Search:   c.Query("search"),
+		Status:   c.Query("status"),
+		Page:     page,
+		PageSize: pageSize,
+	}
+	userTZ := c.Query("timezone")
+	filter.StartAt = parseAffiliateRecordStartTime(c.Query("start_at"), userTZ)
+	filter.EndAt = parseAffiliateRecordEndTime(c.Query("end_at"), userTZ)
+	items, total, err := h.affiliateService.AdminListUsageRewards(c.Request.Context(), filter)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Paginated(c, items, total, filter.Page, filter.PageSize)
+}
+
+type ReviewAffiliateUsageRewardRequest struct {
+	Approve bool   `json:"approve"`
+	Remark  string `json:"remark"`
+}
+
+// ReviewUsageReward approves or rejects a pending high-risk reward.
+// POST /api/v1/admin/affiliates/usage-rewards/:reward_id/review
+func (h *AffiliateHandler) ReviewUsageReward(c *gin.Context) {
+	rewardID, err := strconv.ParseInt(c.Param("reward_id"), 10, 64)
+	if err != nil || rewardID <= 0 {
+		response.BadRequest(c, "Invalid reward_id")
+		return
+	}
+	subject, ok := middleware2.GetAuthSubjectFromContext(c)
+	if !ok || subject.UserID <= 0 {
+		response.Unauthorized(c, "admin authentication required")
+		return
+	}
+	var req ReviewAffiliateUsageRewardRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Invalid request: "+err.Error())
+		return
+	}
+	result, err := h.affiliateService.AdminReviewUsageReward(c.Request.Context(), rewardID, subject.UserID, req.Approve, req.Remark)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, result)
+}
+
 func parseAffiliateRecordFilter(c *gin.Context, page, pageSize int) service.AffiliateRecordFilter {
 	filter := service.AffiliateRecordFilter{
 		Search:   c.Query("search"),
 		Page:     page,
 		PageSize: pageSize,
+		Action:   c.Query("action"),
 		SortBy:   c.Query("sort_by"),
 		SortDesc: c.Query("sort_order") != "asc",
 	}

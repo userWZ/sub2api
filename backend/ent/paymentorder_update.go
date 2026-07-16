@@ -112,6 +112,137 @@ func (_u *PaymentOrderUpdate) AddAmount(v float64) *PaymentOrderUpdate {
 	return _u
 }
 
+// SetOriginalAmount sets the "original_amount" field.
+func (_u *PaymentOrderUpdate) SetOriginalAmount(v float64) *PaymentOrderUpdate {
+	_u.mutation.ResetOriginalAmount()
+	_u.mutation.SetOriginalAmount(v)
+	return _u
+}
+
+// SetNillableOriginalAmount sets the "original_amount" field if the given value is not nil.
+func (_u *PaymentOrderUpdate) SetNillableOriginalAmount(v *float64) *PaymentOrderUpdate {
+	if v != nil {
+		_u.SetOriginalAmount(*v)
+	}
+	return _u
+}
+
+// AddOriginalAmount adds value to the "original_amount" field.
+func (_u *PaymentOrderUpdate) AddOriginalAmount(v float64) *PaymentOrderUpdate {
+	_u.mutation.AddOriginalAmount(v)
+	return _u
+}
+
+// SetAffiliateDiscount sets the "affiliate_discount" field.
+func (_u *PaymentOrderUpdate) SetAffiliateDiscount(v float64) *PaymentOrderUpdate {
+	_u.mutation.ResetAffiliateDiscount()
+	_u.mutation.SetAffiliateDiscount(v)
+	return _u
+}
+
+// SetNillableAffiliateDiscount sets the "affiliate_discount" field if the given value is not nil.
+func (_u *PaymentOrderUpdate) SetNillableAffiliateDiscount(v *float64) *PaymentOrderUpdate {
+	if v != nil {
+		_u.SetAffiliateDiscount(*v)
+	}
+	return _u
+}
+
+// AddAffiliateDiscount adds value to the "affiliate_discount" field.
+func (_u *PaymentOrderUpdate) AddAffiliateDiscount(v float64) *PaymentOrderUpdate {
+	_u.mutation.AddAffiliateDiscount(v)
+	return _u
+}
+
+// SetRenewalDiscount sets the "renewal_discount" field.
+func (_u *PaymentOrderUpdate) SetRenewalDiscount(v float64) *PaymentOrderUpdate {
+	_u.mutation.ResetRenewalDiscount()
+	_u.mutation.SetRenewalDiscount(v)
+	return _u
+}
+
+// SetNillableRenewalDiscount sets the "renewal_discount" field if the given value is not nil.
+func (_u *PaymentOrderUpdate) SetNillableRenewalDiscount(v *float64) *PaymentOrderUpdate {
+	if v != nil {
+		_u.SetRenewalDiscount(*v)
+	}
+	return _u
+}
+
+// AddRenewalDiscount adds value to the "renewal_discount" field.
+func (_u *PaymentOrderUpdate) AddRenewalDiscount(v float64) *PaymentOrderUpdate {
+	_u.mutation.AddRenewalDiscount(v)
+	return _u
+}
+
+// SetRenewalRolloverAmount sets the "renewal_rollover_amount" field.
+func (_u *PaymentOrderUpdate) SetRenewalRolloverAmount(v float64) *PaymentOrderUpdate {
+	_u.mutation.ResetRenewalRolloverAmount()
+	_u.mutation.SetRenewalRolloverAmount(v)
+	return _u
+}
+
+// SetNillableRenewalRolloverAmount sets the "renewal_rollover_amount" field if the given value is not nil.
+func (_u *PaymentOrderUpdate) SetNillableRenewalRolloverAmount(v *float64) *PaymentOrderUpdate {
+	if v != nil {
+		_u.SetRenewalRolloverAmount(*v)
+	}
+	return _u
+}
+
+// AddRenewalRolloverAmount adds value to the "renewal_rollover_amount" field.
+func (_u *PaymentOrderUpdate) AddRenewalRolloverAmount(v float64) *PaymentOrderUpdate {
+	_u.mutation.AddRenewalRolloverAmount(v)
+	return _u
+}
+
+// SetRenewalSourceSubscriptionID sets the "renewal_source_subscription_id" field.
+func (_u *PaymentOrderUpdate) SetRenewalSourceSubscriptionID(v int64) *PaymentOrderUpdate {
+	_u.mutation.ResetRenewalSourceSubscriptionID()
+	_u.mutation.SetRenewalSourceSubscriptionID(v)
+	return _u
+}
+
+// SetNillableRenewalSourceSubscriptionID sets the "renewal_source_subscription_id" field if the given value is not nil.
+func (_u *PaymentOrderUpdate) SetNillableRenewalSourceSubscriptionID(v *int64) *PaymentOrderUpdate {
+	if v != nil {
+		_u.SetRenewalSourceSubscriptionID(*v)
+	}
+	return _u
+}
+
+// AddRenewalSourceSubscriptionID adds value to the "renewal_source_subscription_id" field.
+func (_u *PaymentOrderUpdate) AddRenewalSourceSubscriptionID(v int64) *PaymentOrderUpdate {
+	_u.mutation.AddRenewalSourceSubscriptionID(v)
+	return _u
+}
+
+// ClearRenewalSourceSubscriptionID clears the value of the "renewal_source_subscription_id" field.
+func (_u *PaymentOrderUpdate) ClearRenewalSourceSubscriptionID() *PaymentOrderUpdate {
+	_u.mutation.ClearRenewalSourceSubscriptionID()
+	return _u
+}
+
+// SetRenewalSourceExpiresAt sets the "renewal_source_expires_at" field.
+func (_u *PaymentOrderUpdate) SetRenewalSourceExpiresAt(v time.Time) *PaymentOrderUpdate {
+	_u.mutation.SetRenewalSourceExpiresAt(v)
+	return _u
+}
+
+// SetNillableRenewalSourceExpiresAt sets the "renewal_source_expires_at" field if the given value is not nil.
+func (_u *PaymentOrderUpdate) SetNillableRenewalSourceExpiresAt(v *time.Time) *PaymentOrderUpdate {
+	if v != nil {
+		_u.SetRenewalSourceExpiresAt(*v)
+	}
+	return _u
+}
+
+// ClearRenewalSourceExpiresAt clears the value of the "renewal_source_expires_at" field.
+func (_u *PaymentOrderUpdate) ClearRenewalSourceExpiresAt() *PaymentOrderUpdate {
+	_u.mutation.ClearRenewalSourceExpiresAt()
+	return _u
+}
+
 // SetPayAmount sets the "pay_amount" field.
 func (_u *PaymentOrderUpdate) SetPayAmount(v float64) *PaymentOrderUpdate {
 	_u.mutation.ResetPayAmount()
@@ -869,6 +1000,45 @@ func (_u *PaymentOrderUpdate) sqlSave(ctx context.Context) (_node int, err error
 	if value, ok := _u.mutation.AddedAmount(); ok {
 		_spec.AddField(paymentorder.FieldAmount, field.TypeFloat64, value)
 	}
+	if value, ok := _u.mutation.OriginalAmount(); ok {
+		_spec.SetField(paymentorder.FieldOriginalAmount, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.AddedOriginalAmount(); ok {
+		_spec.AddField(paymentorder.FieldOriginalAmount, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.AffiliateDiscount(); ok {
+		_spec.SetField(paymentorder.FieldAffiliateDiscount, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.AddedAffiliateDiscount(); ok {
+		_spec.AddField(paymentorder.FieldAffiliateDiscount, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.RenewalDiscount(); ok {
+		_spec.SetField(paymentorder.FieldRenewalDiscount, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.AddedRenewalDiscount(); ok {
+		_spec.AddField(paymentorder.FieldRenewalDiscount, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.RenewalRolloverAmount(); ok {
+		_spec.SetField(paymentorder.FieldRenewalRolloverAmount, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.AddedRenewalRolloverAmount(); ok {
+		_spec.AddField(paymentorder.FieldRenewalRolloverAmount, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.RenewalSourceSubscriptionID(); ok {
+		_spec.SetField(paymentorder.FieldRenewalSourceSubscriptionID, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedRenewalSourceSubscriptionID(); ok {
+		_spec.AddField(paymentorder.FieldRenewalSourceSubscriptionID, field.TypeInt64, value)
+	}
+	if _u.mutation.RenewalSourceSubscriptionIDCleared() {
+		_spec.ClearField(paymentorder.FieldRenewalSourceSubscriptionID, field.TypeInt64)
+	}
+	if value, ok := _u.mutation.RenewalSourceExpiresAt(); ok {
+		_spec.SetField(paymentorder.FieldRenewalSourceExpiresAt, field.TypeTime, value)
+	}
+	if _u.mutation.RenewalSourceExpiresAtCleared() {
+		_spec.ClearField(paymentorder.FieldRenewalSourceExpiresAt, field.TypeTime)
+	}
 	if value, ok := _u.mutation.PayAmount(); ok {
 		_spec.SetField(paymentorder.FieldPayAmount, field.TypeFloat64, value)
 	}
@@ -1172,6 +1342,137 @@ func (_u *PaymentOrderUpdateOne) SetNillableAmount(v *float64) *PaymentOrderUpda
 // AddAmount adds value to the "amount" field.
 func (_u *PaymentOrderUpdateOne) AddAmount(v float64) *PaymentOrderUpdateOne {
 	_u.mutation.AddAmount(v)
+	return _u
+}
+
+// SetOriginalAmount sets the "original_amount" field.
+func (_u *PaymentOrderUpdateOne) SetOriginalAmount(v float64) *PaymentOrderUpdateOne {
+	_u.mutation.ResetOriginalAmount()
+	_u.mutation.SetOriginalAmount(v)
+	return _u
+}
+
+// SetNillableOriginalAmount sets the "original_amount" field if the given value is not nil.
+func (_u *PaymentOrderUpdateOne) SetNillableOriginalAmount(v *float64) *PaymentOrderUpdateOne {
+	if v != nil {
+		_u.SetOriginalAmount(*v)
+	}
+	return _u
+}
+
+// AddOriginalAmount adds value to the "original_amount" field.
+func (_u *PaymentOrderUpdateOne) AddOriginalAmount(v float64) *PaymentOrderUpdateOne {
+	_u.mutation.AddOriginalAmount(v)
+	return _u
+}
+
+// SetAffiliateDiscount sets the "affiliate_discount" field.
+func (_u *PaymentOrderUpdateOne) SetAffiliateDiscount(v float64) *PaymentOrderUpdateOne {
+	_u.mutation.ResetAffiliateDiscount()
+	_u.mutation.SetAffiliateDiscount(v)
+	return _u
+}
+
+// SetNillableAffiliateDiscount sets the "affiliate_discount" field if the given value is not nil.
+func (_u *PaymentOrderUpdateOne) SetNillableAffiliateDiscount(v *float64) *PaymentOrderUpdateOne {
+	if v != nil {
+		_u.SetAffiliateDiscount(*v)
+	}
+	return _u
+}
+
+// AddAffiliateDiscount adds value to the "affiliate_discount" field.
+func (_u *PaymentOrderUpdateOne) AddAffiliateDiscount(v float64) *PaymentOrderUpdateOne {
+	_u.mutation.AddAffiliateDiscount(v)
+	return _u
+}
+
+// SetRenewalDiscount sets the "renewal_discount" field.
+func (_u *PaymentOrderUpdateOne) SetRenewalDiscount(v float64) *PaymentOrderUpdateOne {
+	_u.mutation.ResetRenewalDiscount()
+	_u.mutation.SetRenewalDiscount(v)
+	return _u
+}
+
+// SetNillableRenewalDiscount sets the "renewal_discount" field if the given value is not nil.
+func (_u *PaymentOrderUpdateOne) SetNillableRenewalDiscount(v *float64) *PaymentOrderUpdateOne {
+	if v != nil {
+		_u.SetRenewalDiscount(*v)
+	}
+	return _u
+}
+
+// AddRenewalDiscount adds value to the "renewal_discount" field.
+func (_u *PaymentOrderUpdateOne) AddRenewalDiscount(v float64) *PaymentOrderUpdateOne {
+	_u.mutation.AddRenewalDiscount(v)
+	return _u
+}
+
+// SetRenewalRolloverAmount sets the "renewal_rollover_amount" field.
+func (_u *PaymentOrderUpdateOne) SetRenewalRolloverAmount(v float64) *PaymentOrderUpdateOne {
+	_u.mutation.ResetRenewalRolloverAmount()
+	_u.mutation.SetRenewalRolloverAmount(v)
+	return _u
+}
+
+// SetNillableRenewalRolloverAmount sets the "renewal_rollover_amount" field if the given value is not nil.
+func (_u *PaymentOrderUpdateOne) SetNillableRenewalRolloverAmount(v *float64) *PaymentOrderUpdateOne {
+	if v != nil {
+		_u.SetRenewalRolloverAmount(*v)
+	}
+	return _u
+}
+
+// AddRenewalRolloverAmount adds value to the "renewal_rollover_amount" field.
+func (_u *PaymentOrderUpdateOne) AddRenewalRolloverAmount(v float64) *PaymentOrderUpdateOne {
+	_u.mutation.AddRenewalRolloverAmount(v)
+	return _u
+}
+
+// SetRenewalSourceSubscriptionID sets the "renewal_source_subscription_id" field.
+func (_u *PaymentOrderUpdateOne) SetRenewalSourceSubscriptionID(v int64) *PaymentOrderUpdateOne {
+	_u.mutation.ResetRenewalSourceSubscriptionID()
+	_u.mutation.SetRenewalSourceSubscriptionID(v)
+	return _u
+}
+
+// SetNillableRenewalSourceSubscriptionID sets the "renewal_source_subscription_id" field if the given value is not nil.
+func (_u *PaymentOrderUpdateOne) SetNillableRenewalSourceSubscriptionID(v *int64) *PaymentOrderUpdateOne {
+	if v != nil {
+		_u.SetRenewalSourceSubscriptionID(*v)
+	}
+	return _u
+}
+
+// AddRenewalSourceSubscriptionID adds value to the "renewal_source_subscription_id" field.
+func (_u *PaymentOrderUpdateOne) AddRenewalSourceSubscriptionID(v int64) *PaymentOrderUpdateOne {
+	_u.mutation.AddRenewalSourceSubscriptionID(v)
+	return _u
+}
+
+// ClearRenewalSourceSubscriptionID clears the value of the "renewal_source_subscription_id" field.
+func (_u *PaymentOrderUpdateOne) ClearRenewalSourceSubscriptionID() *PaymentOrderUpdateOne {
+	_u.mutation.ClearRenewalSourceSubscriptionID()
+	return _u
+}
+
+// SetRenewalSourceExpiresAt sets the "renewal_source_expires_at" field.
+func (_u *PaymentOrderUpdateOne) SetRenewalSourceExpiresAt(v time.Time) *PaymentOrderUpdateOne {
+	_u.mutation.SetRenewalSourceExpiresAt(v)
+	return _u
+}
+
+// SetNillableRenewalSourceExpiresAt sets the "renewal_source_expires_at" field if the given value is not nil.
+func (_u *PaymentOrderUpdateOne) SetNillableRenewalSourceExpiresAt(v *time.Time) *PaymentOrderUpdateOne {
+	if v != nil {
+		_u.SetRenewalSourceExpiresAt(*v)
+	}
+	return _u
+}
+
+// ClearRenewalSourceExpiresAt clears the value of the "renewal_source_expires_at" field.
+func (_u *PaymentOrderUpdateOne) ClearRenewalSourceExpiresAt() *PaymentOrderUpdateOne {
+	_u.mutation.ClearRenewalSourceExpiresAt()
 	return _u
 }
 
@@ -1961,6 +2262,45 @@ func (_u *PaymentOrderUpdateOne) sqlSave(ctx context.Context) (_node *PaymentOrd
 	}
 	if value, ok := _u.mutation.AddedAmount(); ok {
 		_spec.AddField(paymentorder.FieldAmount, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.OriginalAmount(); ok {
+		_spec.SetField(paymentorder.FieldOriginalAmount, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.AddedOriginalAmount(); ok {
+		_spec.AddField(paymentorder.FieldOriginalAmount, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.AffiliateDiscount(); ok {
+		_spec.SetField(paymentorder.FieldAffiliateDiscount, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.AddedAffiliateDiscount(); ok {
+		_spec.AddField(paymentorder.FieldAffiliateDiscount, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.RenewalDiscount(); ok {
+		_spec.SetField(paymentorder.FieldRenewalDiscount, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.AddedRenewalDiscount(); ok {
+		_spec.AddField(paymentorder.FieldRenewalDiscount, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.RenewalRolloverAmount(); ok {
+		_spec.SetField(paymentorder.FieldRenewalRolloverAmount, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.AddedRenewalRolloverAmount(); ok {
+		_spec.AddField(paymentorder.FieldRenewalRolloverAmount, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.RenewalSourceSubscriptionID(); ok {
+		_spec.SetField(paymentorder.FieldRenewalSourceSubscriptionID, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedRenewalSourceSubscriptionID(); ok {
+		_spec.AddField(paymentorder.FieldRenewalSourceSubscriptionID, field.TypeInt64, value)
+	}
+	if _u.mutation.RenewalSourceSubscriptionIDCleared() {
+		_spec.ClearField(paymentorder.FieldRenewalSourceSubscriptionID, field.TypeInt64)
+	}
+	if value, ok := _u.mutation.RenewalSourceExpiresAt(); ok {
+		_spec.SetField(paymentorder.FieldRenewalSourceExpiresAt, field.TypeTime, value)
+	}
+	if _u.mutation.RenewalSourceExpiresAtCleared() {
+		_spec.ClearField(paymentorder.FieldRenewalSourceExpiresAt, field.TypeTime)
 	}
 	if value, ok := _u.mutation.PayAmount(); ok {
 		_spec.SetField(paymentorder.FieldPayAmount, field.TypeFloat64, value)

@@ -11,12 +11,14 @@ describe('parseWechatResumeRoute', () => {
       amount: '12.5',
       order_type: 'subscription',
       plan_id: '7',
+      use_affiliate_discount: 'false',
     }, [], 88)).toEqual({
       wechatResumeToken: 'resume-token-123',
       paymentType: 'wxpay',
       orderType: 'subscription',
       orderAmount: 0,
       planId: 7,
+      useAffiliateDiscount: false,
     })
   })
 
@@ -27,12 +29,14 @@ describe('parseWechatResumeRoute', () => {
       payment_type: 'wxpay',
       amount: '12.5',
       order_type: 'balance',
+      use_affiliate_discount: '1',
     }, [], 88)).toEqual({
       openid: 'openid-123',
       paymentType: 'wxpay',
       orderType: 'balance',
       orderAmount: 12.5,
       planId: undefined,
+      useAffiliateDiscount: true,
     })
   })
 })
@@ -50,6 +54,7 @@ describe('stripWechatResumeQuery', () => {
       plan_id: '7',
       state: 'state-123',
       scope: 'snsapi_base',
+      use_affiliate_discount: 'false',
     })).toEqual({
       foo: 'bar',
     })

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -14,26 +15,41 @@ import (
 )
 
 const (
-	SettingPaymentEnabled      = "payment_enabled"
-	SettingMinRechargeAmount   = "MIN_RECHARGE_AMOUNT"
-	SettingMaxRechargeAmount   = "MAX_RECHARGE_AMOUNT"
-	SettingDailyRechargeLimit  = "DAILY_RECHARGE_LIMIT"
-	SettingOrderTimeoutMinutes = "ORDER_TIMEOUT_MINUTES"
-	SettingMaxPendingOrders    = "MAX_PENDING_ORDERS"
-	SettingEnabledPaymentTypes = "ENABLED_PAYMENT_TYPES"
-	SettingLoadBalanceStrategy = "LOAD_BALANCE_STRATEGY"
-	SettingBalancePayDisabled  = "BALANCE_PAYMENT_DISABLED"
-	SettingBalanceRechargeMult = "BALANCE_RECHARGE_MULTIPLIER"
-	SettingRechargeFeeRate     = "RECHARGE_FEE_RATE"
-	SettingProductNamePrefix   = "PRODUCT_NAME_PREFIX"
-	SettingProductNameSuffix   = "PRODUCT_NAME_SUFFIX"
-	SettingHelpImageURL        = "PAYMENT_HELP_IMAGE_URL"
-	SettingHelpText            = "PAYMENT_HELP_TEXT"
-	SettingCancelRateLimitOn   = "CANCEL_RATE_LIMIT_ENABLED"
-	SettingCancelRateLimitMax  = "CANCEL_RATE_LIMIT_MAX"
-	SettingCancelWindowSize    = "CANCEL_RATE_LIMIT_WINDOW"
-	SettingCancelWindowUnit    = "CANCEL_RATE_LIMIT_UNIT"
-	SettingCancelWindowMode    = "CANCEL_RATE_LIMIT_WINDOW_MODE"
+	SettingPaymentEnabled           = "payment_enabled"
+	SettingMinRechargeAmount        = "MIN_RECHARGE_AMOUNT"
+	SettingMaxRechargeAmount        = "MAX_RECHARGE_AMOUNT"
+	SettingDailyRechargeLimit       = "DAILY_RECHARGE_LIMIT"
+	SettingOrderTimeoutMinutes      = "ORDER_TIMEOUT_MINUTES"
+	SettingMaxPendingOrders         = "MAX_PENDING_ORDERS"
+	SettingEnabledPaymentTypes      = "ENABLED_PAYMENT_TYPES"
+	SettingLoadBalanceStrategy      = "LOAD_BALANCE_STRATEGY"
+	SettingBalancePayDisabled       = "BALANCE_PAYMENT_DISABLED"
+	SettingBalanceRechargeMult      = "BALANCE_RECHARGE_MULTIPLIER"
+	SettingRechargeFeeRate          = "RECHARGE_FEE_RATE"
+	SettingProductNamePrefix        = "PRODUCT_NAME_PREFIX"
+	SettingProductNameSuffix        = "PRODUCT_NAME_SUFFIX"
+	SettingHelpImageURL             = "PAYMENT_HELP_IMAGE_URL"
+	SettingHelpText                 = "PAYMENT_HELP_TEXT"
+	SettingCancelRateLimitOn        = "CANCEL_RATE_LIMIT_ENABLED"
+	SettingCancelRateLimitMax       = "CANCEL_RATE_LIMIT_MAX"
+	SettingCancelWindowSize         = "CANCEL_RATE_LIMIT_WINDOW"
+	SettingCancelWindowUnit         = "CANCEL_RATE_LIMIT_UNIT"
+	SettingCancelWindowMode         = "CANCEL_RATE_LIMIT_WINDOW_MODE"
+	SettingAlipayForceQRCode        = "ALIPAY_FORCE_QRCODE"
+	SettingRenewalOfferEnabled      = "SUBSCRIPTION_RENEWAL_OFFER_ENABLED"
+	SettingRenewalWindowDays        = "SUBSCRIPTION_RENEWAL_WINDOW_DAYS"
+	SettingRenewalBeforeDays        = "SUBSCRIPTION_RENEWAL_BEFORE_DAYS"
+	SettingRenewalAfterDays         = "SUBSCRIPTION_RENEWAL_AFTER_DAYS"
+	SettingRenewalDiscountEnabled   = "SUBSCRIPTION_RENEWAL_DISCOUNT_ENABLED"
+	SettingRenewalRolloverPercent   = "SUBSCRIPTION_RENEWAL_ROLLOVER_PERCENT"
+	SettingRenewalDiscountPercent   = "SUBSCRIPTION_RENEWAL_DISCOUNT_PERCENT"
+	SettingRenewalDiscountMinOrder  = "SUBSCRIPTION_RENEWAL_DISCOUNT_MIN_ORDER_AMOUNT"
+	SettingRenewalDiscountMaxAmount = "SUBSCRIPTION_RENEWAL_DISCOUNT_MAX_AMOUNT"
+	SettingRenewalRolloverEnabled   = "SUBSCRIPTION_RENEWAL_ROLLOVER_ENABLED"
+	SettingRenewalRolloverMinUnused = "SUBSCRIPTION_RENEWAL_ROLLOVER_MIN_UNUSED_AMOUNT"
+	SettingRenewalRolloverMaxAmount = "SUBSCRIPTION_RENEWAL_ROLLOVER_MAX_AMOUNT"
+	SettingRenewalEmailEnabled      = "SUBSCRIPTION_RENEWAL_EMAIL_ENABLED"
+	SettingRenewalEmailReminderDays = "SUBSCRIPTION_RENEWAL_EMAIL_REMINDER_DAYS"
 )
 
 // Default values for payment configuration settings.
@@ -67,6 +83,42 @@ type PaymentConfig struct {
 	CancelRateLimitWindow  int    `json:"cancel_rate_limit_window"`
 	CancelRateLimitUnit    string `json:"cancel_rate_limit_unit"`
 	CancelRateLimitMode    string `json:"cancel_rate_limit_window_mode"`
+
+	// Force Alipay mobile users to use QR code instead of mobile redirect
+	AlipayForceQRCode bool `json:"alipay_force_qrcode"`
+
+	RenewalOfferEnabled      bool    `json:"renewal_offer_enabled"`
+	RenewalWindowDays        int     `json:"renewal_window_days"`
+	RenewalBeforeDays        int     `json:"renewal_before_days"`
+	RenewalAfterDays         int     `json:"renewal_after_days"`
+	RenewalDiscountEnabled   bool    `json:"renewal_discount_enabled"`
+	RenewalDiscountPercent   float64 `json:"renewal_discount_percent"`
+	RenewalDiscountMinOrder  float64 `json:"renewal_discount_min_order_amount"`
+	RenewalDiscountMaxAmount float64 `json:"renewal_discount_max_amount"`
+	RenewalRolloverEnabled   bool    `json:"renewal_rollover_enabled"`
+	RenewalRolloverPercent   float64 `json:"renewal_rollover_percent"`
+	RenewalRolloverMinUnused float64 `json:"renewal_rollover_min_unused_amount"`
+	RenewalRolloverMaxAmount float64 `json:"renewal_rollover_max_amount"`
+	RenewalEmailEnabled      bool    `json:"renewal_email_enabled"`
+	RenewalEmailReminderDays []int   `json:"renewal_email_reminder_days"`
+}
+
+// RenewalSettings is the dedicated admin-facing configuration for renewal campaigns.
+// It intentionally remains separate from the general payment settings API.
+type RenewalSettings struct {
+	OfferEnabled      bool    `json:"offer_enabled"`
+	BeforeExpiryDays  int     `json:"before_expiry_days"`
+	AfterExpiryDays   int     `json:"after_expiry_days"`
+	DiscountEnabled   bool    `json:"discount_enabled"`
+	DiscountPercent   float64 `json:"discount_percent"`
+	DiscountMinOrder  float64 `json:"discount_min_order_amount"`
+	DiscountMaxAmount float64 `json:"discount_max_amount"`
+	RolloverEnabled   bool    `json:"rollover_enabled"`
+	RolloverPercent   float64 `json:"rollover_percent"`
+	RolloverMinUnused float64 `json:"rollover_min_unused_amount"`
+	RolloverMaxAmount float64 `json:"rollover_max_amount"`
+	EmailEnabled      bool    `json:"email_enabled"`
+	EmailReminderDays []int   `json:"email_reminder_days"`
 }
 
 // UpdatePaymentConfigRequest contains fields to update payment configuration.
@@ -94,6 +146,15 @@ type UpdatePaymentConfigRequest struct {
 	CancelRateLimitUnit    *string `json:"cancel_rate_limit_unit"`
 	CancelRateLimitMode    *string `json:"cancel_rate_limit_window_mode"`
 
+	// Force Alipay mobile users to use QR code instead of mobile redirect
+	AlipayForceQRCode *bool `json:"alipay_force_qrcode"`
+
+	RenewalOfferEnabled    *bool    `json:"renewal_offer_enabled"`
+	RenewalWindowDays      *int     `json:"renewal_window_days"`
+	RenewalRolloverPercent *float64 `json:"renewal_rollover_percent"`
+	RenewalDiscountPercent *float64 `json:"renewal_discount_percent"`
+	RenewalEmailEnabled    *bool    `json:"renewal_email_enabled"`
+
 	VisibleMethodAlipaySource  *string `json:"payment_visible_method_alipay_source"`
 	VisibleMethodWxpaySource   *string `json:"payment_visible_method_wxpay_source"`
 	VisibleMethodAlipayEnabled *bool   `json:"payment_visible_method_alipay_enabled"`
@@ -103,11 +164,15 @@ type UpdatePaymentConfigRequest struct {
 // MethodLimits holds per-payment-type limits.
 type MethodLimits struct {
 	PaymentType string  `json:"payment_type"`
+	DisplayName string  `json:"display_name,omitempty"`
 	Currency    string  `json:"currency"`
 	FeeRate     float64 `json:"fee_rate"`
 	DailyLimit  float64 `json:"daily_limit"`
+	DailyUsed   float64 `json:"daily_used"`
+	DailyRemain float64 `json:"daily_remaining"`
 	SingleMin   float64 `json:"single_min"`
 	SingleMax   float64 `json:"single_max"`
+	Available   bool    `json:"available"`
 }
 
 // MethodLimitsResponse is the full response for the user-facing /limits API.
@@ -202,6 +267,11 @@ func (s *PaymentConfigService) GetPaymentConfig(ctx context.Context) (*PaymentCo
 		SettingHelpImageURL, SettingHelpText,
 		SettingCancelRateLimitOn, SettingCancelRateLimitMax,
 		SettingCancelWindowSize, SettingCancelWindowUnit, SettingCancelWindowMode,
+		SettingAlipayForceQRCode,
+		SettingRenewalOfferEnabled, SettingRenewalWindowDays, SettingRenewalBeforeDays, SettingRenewalAfterDays,
+		SettingRenewalDiscountEnabled, SettingRenewalDiscountPercent, SettingRenewalDiscountMinOrder, SettingRenewalDiscountMaxAmount,
+		SettingRenewalRolloverEnabled, SettingRenewalRolloverPercent, SettingRenewalRolloverMinUnused, SettingRenewalRolloverMaxAmount,
+		SettingRenewalEmailEnabled, SettingRenewalEmailReminderDays,
 		SettingPaymentVisibleMethodAlipayEnabled, SettingPaymentVisibleMethodAlipaySource,
 		SettingPaymentVisibleMethodWxpayEnabled, SettingPaymentVisibleMethodWxpaySource,
 	}
@@ -216,6 +286,9 @@ func (s *PaymentConfigService) GetPaymentConfig(ctx context.Context) (*PaymentCo
 }
 
 func (s *PaymentConfigService) parsePaymentConfig(vals map[string]string) *PaymentConfig {
+	legacyRenewalWindow := pcParseInt(vals[SettingRenewalWindowDays], 14)
+	renewalBeforeDays := pcParseInt(vals[SettingRenewalBeforeDays], legacyRenewalWindow)
+	renewalAfterDays := pcParseInt(vals[SettingRenewalAfterDays], legacyRenewalWindow)
 	cfg := &PaymentConfig{
 		Enabled:                   vals[SettingPaymentEnabled] == "true",
 		MinAmount:                 pcParseFloat(vals[SettingMinRechargeAmount], 1),
@@ -237,6 +310,23 @@ func (s *PaymentConfigService) parsePaymentConfig(vals map[string]string) *Payme
 		CancelRateLimitWindow:  pcParseInt(vals[SettingCancelWindowSize], 1),
 		CancelRateLimitUnit:    vals[SettingCancelWindowUnit],
 		CancelRateLimitMode:    vals[SettingCancelWindowMode],
+
+		AlipayForceQRCode: vals[SettingAlipayForceQRCode] == "true",
+
+		RenewalOfferEnabled:      vals[SettingRenewalOfferEnabled] == "true",
+		RenewalWindowDays:        legacyRenewalWindow,
+		RenewalBeforeDays:        renewalBeforeDays,
+		RenewalAfterDays:         renewalAfterDays,
+		RenewalDiscountEnabled:   vals[SettingRenewalDiscountEnabled] != "false",
+		RenewalDiscountPercent:   pcParseFloat(vals[SettingRenewalDiscountPercent], 10),
+		RenewalDiscountMinOrder:  pcParseFloat(vals[SettingRenewalDiscountMinOrder], 0),
+		RenewalDiscountMaxAmount: pcParseFloat(vals[SettingRenewalDiscountMaxAmount], 0),
+		RenewalRolloverEnabled:   vals[SettingRenewalRolloverEnabled] != "false",
+		RenewalRolloverPercent:   pcParseFloat(vals[SettingRenewalRolloverPercent], 20),
+		RenewalRolloverMinUnused: pcParseFloat(vals[SettingRenewalRolloverMinUnused], 0),
+		RenewalRolloverMaxAmount: pcParseFloat(vals[SettingRenewalRolloverMaxAmount], 0),
+		RenewalEmailEnabled:      vals[SettingRenewalEmailEnabled] != "false",
+		RenewalEmailReminderDays: parseRenewalReminderDays(vals[SettingRenewalEmailReminderDays], renewalBeforeDays),
 	}
 	if cfg.LoadBalanceStrategy == "" {
 		cfg.LoadBalanceStrategy = payment.DefaultLoadBalanceStrategy
@@ -252,6 +342,61 @@ func (s *PaymentConfigService) parsePaymentConfig(vals map[string]string) *Payme
 		cfg.EnabledTypes = NormalizeVisibleMethods(types)
 	}
 	return cfg
+}
+
+// GetRenewalSettings returns the complete configuration owned by the renewal module.
+func (s *PaymentConfigService) GetRenewalSettings(ctx context.Context) (*RenewalSettings, error) {
+	cfg, err := s.GetPaymentConfig(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &RenewalSettings{
+		OfferEnabled:      cfg.RenewalOfferEnabled,
+		BeforeExpiryDays:  cfg.RenewalBeforeDays,
+		AfterExpiryDays:   cfg.RenewalAfterDays,
+		DiscountEnabled:   cfg.RenewalDiscountEnabled,
+		DiscountPercent:   cfg.RenewalDiscountPercent,
+		DiscountMinOrder:  cfg.RenewalDiscountMinOrder,
+		DiscountMaxAmount: cfg.RenewalDiscountMaxAmount,
+		RolloverEnabled:   cfg.RenewalRolloverEnabled,
+		RolloverPercent:   cfg.RenewalRolloverPercent,
+		RolloverMinUnused: cfg.RenewalRolloverMinUnused,
+		RolloverMaxAmount: cfg.RenewalRolloverMaxAmount,
+		EmailEnabled:      cfg.RenewalEmailEnabled,
+		EmailReminderDays: append([]int(nil), cfg.RenewalEmailReminderDays...),
+	}, nil
+}
+
+// UpdateRenewalSettings validates and persists only renewal campaign settings.
+func (s *PaymentConfigService) UpdateRenewalSettings(ctx context.Context, settings RenewalSettings) (*RenewalSettings, error) {
+	if err := validateRenewalSettings(settings); err != nil {
+		return nil, err
+	}
+	settings.EmailReminderDays = normalizeRenewalReminderDays(settings.EmailReminderDays)
+	legacyWindow := settings.BeforeExpiryDays
+	if settings.AfterExpiryDays > legacyWindow {
+		legacyWindow = settings.AfterExpiryDays
+	}
+	values := map[string]string{
+		SettingRenewalOfferEnabled:      strconv.FormatBool(settings.OfferEnabled),
+		SettingRenewalWindowDays:        strconv.Itoa(legacyWindow),
+		SettingRenewalBeforeDays:        strconv.Itoa(settings.BeforeExpiryDays),
+		SettingRenewalAfterDays:         strconv.Itoa(settings.AfterExpiryDays),
+		SettingRenewalDiscountEnabled:   strconv.FormatBool(settings.DiscountEnabled),
+		SettingRenewalDiscountPercent:   strconv.FormatFloat(settings.DiscountPercent, 'f', 2, 64),
+		SettingRenewalDiscountMinOrder:  strconv.FormatFloat(settings.DiscountMinOrder, 'f', 2, 64),
+		SettingRenewalDiscountMaxAmount: strconv.FormatFloat(settings.DiscountMaxAmount, 'f', 2, 64),
+		SettingRenewalRolloverEnabled:   strconv.FormatBool(settings.RolloverEnabled),
+		SettingRenewalRolloverPercent:   strconv.FormatFloat(settings.RolloverPercent, 'f', 2, 64),
+		SettingRenewalRolloverMinUnused: strconv.FormatFloat(settings.RolloverMinUnused, 'f', 10, 64),
+		SettingRenewalRolloverMaxAmount: strconv.FormatFloat(settings.RolloverMaxAmount, 'f', 10, 64),
+		SettingRenewalEmailEnabled:      strconv.FormatBool(settings.EmailEnabled),
+		SettingRenewalEmailReminderDays: formatRenewalReminderDays(settings.EmailReminderDays),
+	}
+	if err := s.settingRepo.SetMultiple(ctx, values); err != nil {
+		return nil, fmt.Errorf("update renewal settings: %w", err)
+	}
+	return s.GetRenewalSettings(ctx)
 }
 
 // getStripePublishableKey finds the publishable key from the first enabled Stripe provider instance.
@@ -294,6 +439,15 @@ func (s *PaymentConfigService) UpdatePaymentConfig(ctx context.Context, req Upda
 			return infraerrors.BadRequest("INVALID_RECHARGE_FEE_RATE", "recharge fee rate allows at most 2 decimal places")
 		}
 	}
+	if req.RenewalWindowDays != nil && (*req.RenewalWindowDays < 1 || *req.RenewalWindowDays > 365) {
+		return infraerrors.BadRequest("INVALID_RENEWAL_WINDOW_DAYS", "renewal window days must be between 1 and 365")
+	}
+	if value := req.RenewalRolloverPercent; value != nil && (math.IsNaN(*value) || math.IsInf(*value, 0) || *value < 0 || *value > 100) {
+		return infraerrors.BadRequest("INVALID_RENEWAL_ROLLOVER_PERCENT", "renewal rollover percent must be between 0 and 100")
+	}
+	if value := req.RenewalDiscountPercent; value != nil && (math.IsNaN(*value) || math.IsInf(*value, 0) || *value < 0 || *value >= 100) {
+		return infraerrors.BadRequest("INVALID_RENEWAL_DISCOUNT_PERCENT", "renewal discount percent must be at least 0 and less than 100")
+	}
 	m := map[string]string{
 		SettingPaymentEnabled:                    formatBoolOrEmpty(req.Enabled),
 		SettingMinRechargeAmount:                 formatPositiveFloat(req.MinAmount),
@@ -314,6 +468,12 @@ func (s *PaymentConfigService) UpdatePaymentConfig(ctx context.Context, req Upda
 		SettingCancelWindowSize:                  formatPositiveInt(req.CancelRateLimitWindow),
 		SettingCancelWindowUnit:                  derefStr(req.CancelRateLimitUnit),
 		SettingCancelWindowMode:                  derefStr(req.CancelRateLimitMode),
+		SettingAlipayForceQRCode:                 formatBoolOrEmpty(req.AlipayForceQRCode),
+		SettingRenewalOfferEnabled:               formatBoolOrEmpty(req.RenewalOfferEnabled),
+		SettingRenewalWindowDays:                 formatPositiveInt(req.RenewalWindowDays),
+		SettingRenewalRolloverPercent:            formatNonNegativeFloat(req.RenewalRolloverPercent),
+		SettingRenewalDiscountPercent:            formatNonNegativeFloat(req.RenewalDiscountPercent),
+		SettingRenewalEmailEnabled:               formatBoolOrEmpty(req.RenewalEmailEnabled),
 		SettingPaymentVisibleMethodAlipaySource:  derefStr(req.VisibleMethodAlipaySource),
 		SettingPaymentVisibleMethodWxpaySource:   derefStr(req.VisibleMethodWxpaySource),
 		SettingPaymentVisibleMethodAlipayEnabled: formatBoolOrEmpty(req.VisibleMethodAlipayEnabled),
@@ -334,11 +494,107 @@ func formatBoolOrEmpty(v *bool) string {
 	return strconv.FormatBool(*v)
 }
 
+func validateRenewalSettings(settings RenewalSettings) error {
+	if settings.BeforeExpiryDays < 0 || settings.BeforeExpiryDays > 365 || settings.AfterExpiryDays < 0 || settings.AfterExpiryDays > 365 {
+		return infraerrors.BadRequest("INVALID_RENEWAL_WINDOW_DAYS", "renewal window days must be between 0 and 365")
+	}
+	if !validFiniteRange(settings.DiscountPercent, 0, 100, false) {
+		return infraerrors.BadRequest("INVALID_RENEWAL_DISCOUNT_PERCENT", "renewal discount percent must be at least 0 and less than 100")
+	}
+	if !validFiniteRange(settings.RolloverPercent, 0, 100, true) {
+		return infraerrors.BadRequest("INVALID_RENEWAL_ROLLOVER_PERCENT", "renewal rollover percent must be between 0 and 100")
+	}
+	for _, item := range []struct {
+		value float64
+		code  string
+		name  string
+	}{
+		{settings.DiscountMinOrder, "INVALID_RENEWAL_DISCOUNT_MIN_ORDER", "discount minimum order amount"},
+		{settings.DiscountMaxAmount, "INVALID_RENEWAL_DISCOUNT_MAX_AMOUNT", "discount maximum amount"},
+		{settings.RolloverMinUnused, "INVALID_RENEWAL_ROLLOVER_MIN_UNUSED", "rollover minimum unused amount"},
+		{settings.RolloverMaxAmount, "INVALID_RENEWAL_ROLLOVER_MAX_AMOUNT", "rollover maximum amount"},
+	} {
+		if math.IsNaN(item.value) || math.IsInf(item.value, 0) || item.value < 0 {
+			return infraerrors.BadRequest(item.code, item.name+" must be a non-negative finite number")
+		}
+	}
+	if len(settings.EmailReminderDays) > 20 {
+		return infraerrors.BadRequest("INVALID_RENEWAL_EMAIL_REMINDER_DAYS", "at most 20 renewal email reminder days are allowed")
+	}
+	if settings.EmailEnabled && len(settings.EmailReminderDays) == 0 {
+		return infraerrors.BadRequest("INVALID_RENEWAL_EMAIL_REMINDER_DAYS", "at least one renewal email reminder day is required when email is enabled")
+	}
+	for _, day := range settings.EmailReminderDays {
+		if day < 0 || day > settings.BeforeExpiryDays {
+			return infraerrors.BadRequest("INVALID_RENEWAL_EMAIL_REMINDER_DAYS", "renewal email reminder days must be within the pre-expiry renewal window")
+		}
+	}
+	return nil
+}
+
+func validFiniteRange(value, minValue, maxValue float64, inclusiveMax bool) bool {
+	if math.IsNaN(value) || math.IsInf(value, 0) || value < minValue {
+		return false
+	}
+	if inclusiveMax {
+		return value <= maxValue
+	}
+	return value < maxValue
+}
+
+func parseRenewalReminderDays(raw string, fallback int) []int {
+	if strings.TrimSpace(raw) == "" {
+		return []int{fallback}
+	}
+	days := make([]int, 0, 4)
+	for _, item := range strings.Split(raw, ",") {
+		day, err := strconv.Atoi(strings.TrimSpace(item))
+		if err == nil && day >= 0 && day <= 365 {
+			days = append(days, day)
+		}
+	}
+	if len(days) == 0 {
+		return []int{fallback}
+	}
+	return normalizeRenewalReminderDays(days)
+}
+
+func normalizeRenewalReminderDays(days []int) []int {
+	seen := make(map[int]struct{}, len(days))
+	result := make([]int, 0, len(days))
+	for _, day := range days {
+		if _, ok := seen[day]; ok {
+			continue
+		}
+		seen[day] = struct{}{}
+		result = append(result, day)
+	}
+	sort.Sort(sort.Reverse(sort.IntSlice(result)))
+	return result
+}
+
+func formatRenewalReminderDays(days []int) string {
+	normalized := normalizeRenewalReminderDays(days)
+	parts := make([]string, 0, len(normalized))
+	for _, day := range normalized {
+		parts = append(parts, strconv.Itoa(day))
+	}
+	return strings.Join(parts, ",")
+}
+
 func formatPositiveFloat(v *float64) string {
 	if v == nil || *v <= 0 {
 		return "" // empty → parsePaymentConfig uses default
 	}
 	return strconv.FormatFloat(*v, 'f', 2, 64)
+}
+
+// formatPositiveFloatExact 保留完整精度，用于汇率等对小数位敏感的配置。
+func formatPositiveFloatExact(v *float64) string {
+	if v == nil || *v <= 0 {
+		return "" // empty → parsePaymentConfig 视为未配置（换算关闭）
+	}
+	return strconv.FormatFloat(*v, 'f', -1, 64)
 }
 
 func formatNonNegativeFloat(v *float64) string {

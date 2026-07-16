@@ -23,6 +23,10 @@ func TestAffiliateRecordQueriesUseLedgerAuditFields(t *testing.T) {
 	require.Contains(t, content, "JOIN payment_orders po ON po.id = ual.source_order_id")
 	require.Contains(t, content, "ual.amount::double precision")
 	require.Contains(t, content, "ual.balance_after::double precision")
+	require.Contains(t, content, "WHERE ual.action IN ('discount', 'withdraw')")
+	require.Contains(t, content, "ual.action = $%d")
+	require.NotContains(t, content, "WHERE ual.action IN ('discount', 'discount_restore', 'withdraw')")
+	require.NotContains(t, content, "WHERE ual.action IN ('discount', 'withdraw', 'transfer')")
 	require.NotContains(t, content, "parseAffiliateRebateAmount")
 	require.NotContains(t, content, `"current_balance": "u.balance"`)
 }

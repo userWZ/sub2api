@@ -80,6 +80,36 @@ func Amount(v float64) predicate.PaymentOrder {
 	return predicate.PaymentOrder(sql.FieldEQ(FieldAmount, v))
 }
 
+// OriginalAmount applies equality check predicate on the "original_amount" field. It's identical to OriginalAmountEQ.
+func OriginalAmount(v float64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldEQ(FieldOriginalAmount, v))
+}
+
+// AffiliateDiscount applies equality check predicate on the "affiliate_discount" field. It's identical to AffiliateDiscountEQ.
+func AffiliateDiscount(v float64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldEQ(FieldAffiliateDiscount, v))
+}
+
+// RenewalDiscount applies equality check predicate on the "renewal_discount" field. It's identical to RenewalDiscountEQ.
+func RenewalDiscount(v float64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldEQ(FieldRenewalDiscount, v))
+}
+
+// RenewalRolloverAmount applies equality check predicate on the "renewal_rollover_amount" field. It's identical to RenewalRolloverAmountEQ.
+func RenewalRolloverAmount(v float64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldEQ(FieldRenewalRolloverAmount, v))
+}
+
+// RenewalSourceSubscriptionID applies equality check predicate on the "renewal_source_subscription_id" field. It's identical to RenewalSourceSubscriptionIDEQ.
+func RenewalSourceSubscriptionID(v int64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldEQ(FieldRenewalSourceSubscriptionID, v))
+}
+
+// RenewalSourceExpiresAt applies equality check predicate on the "renewal_source_expires_at" field. It's identical to RenewalSourceExpiresAtEQ.
+func RenewalSourceExpiresAt(v time.Time) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldEQ(FieldRenewalSourceExpiresAt, v))
+}
+
 // PayAmount applies equality check predicate on the "pay_amount" field. It's identical to PayAmountEQ.
 func PayAmount(v float64) predicate.PaymentOrder {
 	return predicate.PaymentOrder(sql.FieldEQ(FieldPayAmount, v))
@@ -508,6 +538,266 @@ func AmountLT(v float64) predicate.PaymentOrder {
 // AmountLTE applies the LTE predicate on the "amount" field.
 func AmountLTE(v float64) predicate.PaymentOrder {
 	return predicate.PaymentOrder(sql.FieldLTE(FieldAmount, v))
+}
+
+// OriginalAmountEQ applies the EQ predicate on the "original_amount" field.
+func OriginalAmountEQ(v float64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldEQ(FieldOriginalAmount, v))
+}
+
+// OriginalAmountNEQ applies the NEQ predicate on the "original_amount" field.
+func OriginalAmountNEQ(v float64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldNEQ(FieldOriginalAmount, v))
+}
+
+// OriginalAmountIn applies the In predicate on the "original_amount" field.
+func OriginalAmountIn(vs ...float64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldIn(FieldOriginalAmount, vs...))
+}
+
+// OriginalAmountNotIn applies the NotIn predicate on the "original_amount" field.
+func OriginalAmountNotIn(vs ...float64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldNotIn(FieldOriginalAmount, vs...))
+}
+
+// OriginalAmountGT applies the GT predicate on the "original_amount" field.
+func OriginalAmountGT(v float64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldGT(FieldOriginalAmount, v))
+}
+
+// OriginalAmountGTE applies the GTE predicate on the "original_amount" field.
+func OriginalAmountGTE(v float64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldGTE(FieldOriginalAmount, v))
+}
+
+// OriginalAmountLT applies the LT predicate on the "original_amount" field.
+func OriginalAmountLT(v float64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldLT(FieldOriginalAmount, v))
+}
+
+// OriginalAmountLTE applies the LTE predicate on the "original_amount" field.
+func OriginalAmountLTE(v float64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldLTE(FieldOriginalAmount, v))
+}
+
+// AffiliateDiscountEQ applies the EQ predicate on the "affiliate_discount" field.
+func AffiliateDiscountEQ(v float64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldEQ(FieldAffiliateDiscount, v))
+}
+
+// AffiliateDiscountNEQ applies the NEQ predicate on the "affiliate_discount" field.
+func AffiliateDiscountNEQ(v float64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldNEQ(FieldAffiliateDiscount, v))
+}
+
+// AffiliateDiscountIn applies the In predicate on the "affiliate_discount" field.
+func AffiliateDiscountIn(vs ...float64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldIn(FieldAffiliateDiscount, vs...))
+}
+
+// AffiliateDiscountNotIn applies the NotIn predicate on the "affiliate_discount" field.
+func AffiliateDiscountNotIn(vs ...float64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldNotIn(FieldAffiliateDiscount, vs...))
+}
+
+// AffiliateDiscountGT applies the GT predicate on the "affiliate_discount" field.
+func AffiliateDiscountGT(v float64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldGT(FieldAffiliateDiscount, v))
+}
+
+// AffiliateDiscountGTE applies the GTE predicate on the "affiliate_discount" field.
+func AffiliateDiscountGTE(v float64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldGTE(FieldAffiliateDiscount, v))
+}
+
+// AffiliateDiscountLT applies the LT predicate on the "affiliate_discount" field.
+func AffiliateDiscountLT(v float64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldLT(FieldAffiliateDiscount, v))
+}
+
+// AffiliateDiscountLTE applies the LTE predicate on the "affiliate_discount" field.
+func AffiliateDiscountLTE(v float64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldLTE(FieldAffiliateDiscount, v))
+}
+
+// RenewalDiscountEQ applies the EQ predicate on the "renewal_discount" field.
+func RenewalDiscountEQ(v float64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldEQ(FieldRenewalDiscount, v))
+}
+
+// RenewalDiscountNEQ applies the NEQ predicate on the "renewal_discount" field.
+func RenewalDiscountNEQ(v float64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldNEQ(FieldRenewalDiscount, v))
+}
+
+// RenewalDiscountIn applies the In predicate on the "renewal_discount" field.
+func RenewalDiscountIn(vs ...float64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldIn(FieldRenewalDiscount, vs...))
+}
+
+// RenewalDiscountNotIn applies the NotIn predicate on the "renewal_discount" field.
+func RenewalDiscountNotIn(vs ...float64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldNotIn(FieldRenewalDiscount, vs...))
+}
+
+// RenewalDiscountGT applies the GT predicate on the "renewal_discount" field.
+func RenewalDiscountGT(v float64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldGT(FieldRenewalDiscount, v))
+}
+
+// RenewalDiscountGTE applies the GTE predicate on the "renewal_discount" field.
+func RenewalDiscountGTE(v float64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldGTE(FieldRenewalDiscount, v))
+}
+
+// RenewalDiscountLT applies the LT predicate on the "renewal_discount" field.
+func RenewalDiscountLT(v float64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldLT(FieldRenewalDiscount, v))
+}
+
+// RenewalDiscountLTE applies the LTE predicate on the "renewal_discount" field.
+func RenewalDiscountLTE(v float64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldLTE(FieldRenewalDiscount, v))
+}
+
+// RenewalRolloverAmountEQ applies the EQ predicate on the "renewal_rollover_amount" field.
+func RenewalRolloverAmountEQ(v float64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldEQ(FieldRenewalRolloverAmount, v))
+}
+
+// RenewalRolloverAmountNEQ applies the NEQ predicate on the "renewal_rollover_amount" field.
+func RenewalRolloverAmountNEQ(v float64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldNEQ(FieldRenewalRolloverAmount, v))
+}
+
+// RenewalRolloverAmountIn applies the In predicate on the "renewal_rollover_amount" field.
+func RenewalRolloverAmountIn(vs ...float64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldIn(FieldRenewalRolloverAmount, vs...))
+}
+
+// RenewalRolloverAmountNotIn applies the NotIn predicate on the "renewal_rollover_amount" field.
+func RenewalRolloverAmountNotIn(vs ...float64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldNotIn(FieldRenewalRolloverAmount, vs...))
+}
+
+// RenewalRolloverAmountGT applies the GT predicate on the "renewal_rollover_amount" field.
+func RenewalRolloverAmountGT(v float64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldGT(FieldRenewalRolloverAmount, v))
+}
+
+// RenewalRolloverAmountGTE applies the GTE predicate on the "renewal_rollover_amount" field.
+func RenewalRolloverAmountGTE(v float64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldGTE(FieldRenewalRolloverAmount, v))
+}
+
+// RenewalRolloverAmountLT applies the LT predicate on the "renewal_rollover_amount" field.
+func RenewalRolloverAmountLT(v float64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldLT(FieldRenewalRolloverAmount, v))
+}
+
+// RenewalRolloverAmountLTE applies the LTE predicate on the "renewal_rollover_amount" field.
+func RenewalRolloverAmountLTE(v float64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldLTE(FieldRenewalRolloverAmount, v))
+}
+
+// RenewalSourceSubscriptionIDEQ applies the EQ predicate on the "renewal_source_subscription_id" field.
+func RenewalSourceSubscriptionIDEQ(v int64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldEQ(FieldRenewalSourceSubscriptionID, v))
+}
+
+// RenewalSourceSubscriptionIDNEQ applies the NEQ predicate on the "renewal_source_subscription_id" field.
+func RenewalSourceSubscriptionIDNEQ(v int64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldNEQ(FieldRenewalSourceSubscriptionID, v))
+}
+
+// RenewalSourceSubscriptionIDIn applies the In predicate on the "renewal_source_subscription_id" field.
+func RenewalSourceSubscriptionIDIn(vs ...int64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldIn(FieldRenewalSourceSubscriptionID, vs...))
+}
+
+// RenewalSourceSubscriptionIDNotIn applies the NotIn predicate on the "renewal_source_subscription_id" field.
+func RenewalSourceSubscriptionIDNotIn(vs ...int64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldNotIn(FieldRenewalSourceSubscriptionID, vs...))
+}
+
+// RenewalSourceSubscriptionIDGT applies the GT predicate on the "renewal_source_subscription_id" field.
+func RenewalSourceSubscriptionIDGT(v int64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldGT(FieldRenewalSourceSubscriptionID, v))
+}
+
+// RenewalSourceSubscriptionIDGTE applies the GTE predicate on the "renewal_source_subscription_id" field.
+func RenewalSourceSubscriptionIDGTE(v int64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldGTE(FieldRenewalSourceSubscriptionID, v))
+}
+
+// RenewalSourceSubscriptionIDLT applies the LT predicate on the "renewal_source_subscription_id" field.
+func RenewalSourceSubscriptionIDLT(v int64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldLT(FieldRenewalSourceSubscriptionID, v))
+}
+
+// RenewalSourceSubscriptionIDLTE applies the LTE predicate on the "renewal_source_subscription_id" field.
+func RenewalSourceSubscriptionIDLTE(v int64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldLTE(FieldRenewalSourceSubscriptionID, v))
+}
+
+// RenewalSourceSubscriptionIDIsNil applies the IsNil predicate on the "renewal_source_subscription_id" field.
+func RenewalSourceSubscriptionIDIsNil() predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldIsNull(FieldRenewalSourceSubscriptionID))
+}
+
+// RenewalSourceSubscriptionIDNotNil applies the NotNil predicate on the "renewal_source_subscription_id" field.
+func RenewalSourceSubscriptionIDNotNil() predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldNotNull(FieldRenewalSourceSubscriptionID))
+}
+
+// RenewalSourceExpiresAtEQ applies the EQ predicate on the "renewal_source_expires_at" field.
+func RenewalSourceExpiresAtEQ(v time.Time) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldEQ(FieldRenewalSourceExpiresAt, v))
+}
+
+// RenewalSourceExpiresAtNEQ applies the NEQ predicate on the "renewal_source_expires_at" field.
+func RenewalSourceExpiresAtNEQ(v time.Time) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldNEQ(FieldRenewalSourceExpiresAt, v))
+}
+
+// RenewalSourceExpiresAtIn applies the In predicate on the "renewal_source_expires_at" field.
+func RenewalSourceExpiresAtIn(vs ...time.Time) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldIn(FieldRenewalSourceExpiresAt, vs...))
+}
+
+// RenewalSourceExpiresAtNotIn applies the NotIn predicate on the "renewal_source_expires_at" field.
+func RenewalSourceExpiresAtNotIn(vs ...time.Time) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldNotIn(FieldRenewalSourceExpiresAt, vs...))
+}
+
+// RenewalSourceExpiresAtGT applies the GT predicate on the "renewal_source_expires_at" field.
+func RenewalSourceExpiresAtGT(v time.Time) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldGT(FieldRenewalSourceExpiresAt, v))
+}
+
+// RenewalSourceExpiresAtGTE applies the GTE predicate on the "renewal_source_expires_at" field.
+func RenewalSourceExpiresAtGTE(v time.Time) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldGTE(FieldRenewalSourceExpiresAt, v))
+}
+
+// RenewalSourceExpiresAtLT applies the LT predicate on the "renewal_source_expires_at" field.
+func RenewalSourceExpiresAtLT(v time.Time) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldLT(FieldRenewalSourceExpiresAt, v))
+}
+
+// RenewalSourceExpiresAtLTE applies the LTE predicate on the "renewal_source_expires_at" field.
+func RenewalSourceExpiresAtLTE(v time.Time) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldLTE(FieldRenewalSourceExpiresAt, v))
+}
+
+// RenewalSourceExpiresAtIsNil applies the IsNil predicate on the "renewal_source_expires_at" field.
+func RenewalSourceExpiresAtIsNil() predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldIsNull(FieldRenewalSourceExpiresAt))
+}
+
+// RenewalSourceExpiresAtNotNil applies the NotNil predicate on the "renewal_source_expires_at" field.
+func RenewalSourceExpiresAtNotNil() predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldNotNull(FieldRenewalSourceExpiresAt))
 }
 
 // PayAmountEQ applies the EQ predicate on the "pay_amount" field.

@@ -24,6 +24,18 @@ const (
 	FieldUserNotes = "user_notes"
 	// FieldAmount holds the string denoting the amount field in the database.
 	FieldAmount = "amount"
+	// FieldOriginalAmount holds the string denoting the original_amount field in the database.
+	FieldOriginalAmount = "original_amount"
+	// FieldAffiliateDiscount holds the string denoting the affiliate_discount field in the database.
+	FieldAffiliateDiscount = "affiliate_discount"
+	// FieldRenewalDiscount holds the string denoting the renewal_discount field in the database.
+	FieldRenewalDiscount = "renewal_discount"
+	// FieldRenewalRolloverAmount holds the string denoting the renewal_rollover_amount field in the database.
+	FieldRenewalRolloverAmount = "renewal_rollover_amount"
+	// FieldRenewalSourceSubscriptionID holds the string denoting the renewal_source_subscription_id field in the database.
+	FieldRenewalSourceSubscriptionID = "renewal_source_subscription_id"
+	// FieldRenewalSourceExpiresAt holds the string denoting the renewal_source_expires_at field in the database.
+	FieldRenewalSourceExpiresAt = "renewal_source_expires_at"
 	// FieldPayAmount holds the string denoting the pay_amount field in the database.
 	FieldPayAmount = "pay_amount"
 	// FieldFeeRate holds the string denoting the fee_rate field in the database.
@@ -113,6 +125,12 @@ var Columns = []string{
 	FieldUserName,
 	FieldUserNotes,
 	FieldAmount,
+	FieldOriginalAmount,
+	FieldAffiliateDiscount,
+	FieldRenewalDiscount,
+	FieldRenewalRolloverAmount,
+	FieldRenewalSourceSubscriptionID,
+	FieldRenewalSourceExpiresAt,
 	FieldPayAmount,
 	FieldFeeRate,
 	FieldRechargeCode,
@@ -164,6 +182,14 @@ var (
 	UserEmailValidator func(string) error
 	// UserNameValidator is a validator for the "user_name" field. It is called by the builders before save.
 	UserNameValidator func(string) error
+	// DefaultOriginalAmount holds the default value on creation for the "original_amount" field.
+	DefaultOriginalAmount float64
+	// DefaultAffiliateDiscount holds the default value on creation for the "affiliate_discount" field.
+	DefaultAffiliateDiscount float64
+	// DefaultRenewalDiscount holds the default value on creation for the "renewal_discount" field.
+	DefaultRenewalDiscount float64
+	// DefaultRenewalRolloverAmount holds the default value on creation for the "renewal_rollover_amount" field.
+	DefaultRenewalRolloverAmount float64
 	// DefaultFeeRate holds the default value on creation for the "fee_rate" field.
 	DefaultFeeRate float64
 	// RechargeCodeValidator is a validator for the "recharge_code" field. It is called by the builders before save.
@@ -237,6 +263,36 @@ func ByUserNotes(opts ...sql.OrderTermOption) OrderOption {
 // ByAmount orders the results by the amount field.
 func ByAmount(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldAmount, opts...).ToFunc()
+}
+
+// ByOriginalAmount orders the results by the original_amount field.
+func ByOriginalAmount(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldOriginalAmount, opts...).ToFunc()
+}
+
+// ByAffiliateDiscount orders the results by the affiliate_discount field.
+func ByAffiliateDiscount(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldAffiliateDiscount, opts...).ToFunc()
+}
+
+// ByRenewalDiscount orders the results by the renewal_discount field.
+func ByRenewalDiscount(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldRenewalDiscount, opts...).ToFunc()
+}
+
+// ByRenewalRolloverAmount orders the results by the renewal_rollover_amount field.
+func ByRenewalRolloverAmount(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldRenewalRolloverAmount, opts...).ToFunc()
+}
+
+// ByRenewalSourceSubscriptionID orders the results by the renewal_source_subscription_id field.
+func ByRenewalSourceSubscriptionID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldRenewalSourceSubscriptionID, opts...).ToFunc()
+}
+
+// ByRenewalSourceExpiresAt orders the results by the renewal_source_expires_at field.
+func ByRenewalSourceExpiresAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldRenewalSourceExpiresAt, opts...).ToFunc()
 }
 
 // ByPayAmount orders the results by the pay_amount field.

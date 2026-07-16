@@ -90,6 +90,11 @@ func Balance(v float64) predicate.User {
 	return predicate.User(sql.FieldEQ(FieldBalance, v))
 }
 
+// FrozenBalance applies equality check predicate on the "frozen_balance" field. It's identical to FrozenBalanceEQ.
+func FrozenBalance(v float64) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldFrozenBalance, v))
+}
+
 // Concurrency applies equality check predicate on the "concurrency" field. It's identical to ConcurrencyEQ.
 func Concurrency(v int) predicate.User {
 	return predicate.User(sql.FieldEQ(FieldConcurrency, v))
@@ -98,6 +103,11 @@ func Concurrency(v int) predicate.User {
 // Status applies equality check predicate on the "status" field. It's identical to StatusEQ.
 func Status(v string) predicate.User {
 	return predicate.User(sql.FieldEQ(FieldStatus, v))
+}
+
+// CustomerType applies equality check predicate on the "customer_type" field. It's identical to CustomerTypeEQ.
+func CustomerType(v string) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldCustomerType, v))
 }
 
 // Username applies equality check predicate on the "username" field. It's identical to UsernameEQ.
@@ -535,6 +545,46 @@ func BalanceLTE(v float64) predicate.User {
 	return predicate.User(sql.FieldLTE(FieldBalance, v))
 }
 
+// FrozenBalanceEQ applies the EQ predicate on the "frozen_balance" field.
+func FrozenBalanceEQ(v float64) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldFrozenBalance, v))
+}
+
+// FrozenBalanceNEQ applies the NEQ predicate on the "frozen_balance" field.
+func FrozenBalanceNEQ(v float64) predicate.User {
+	return predicate.User(sql.FieldNEQ(FieldFrozenBalance, v))
+}
+
+// FrozenBalanceIn applies the In predicate on the "frozen_balance" field.
+func FrozenBalanceIn(vs ...float64) predicate.User {
+	return predicate.User(sql.FieldIn(FieldFrozenBalance, vs...))
+}
+
+// FrozenBalanceNotIn applies the NotIn predicate on the "frozen_balance" field.
+func FrozenBalanceNotIn(vs ...float64) predicate.User {
+	return predicate.User(sql.FieldNotIn(FieldFrozenBalance, vs...))
+}
+
+// FrozenBalanceGT applies the GT predicate on the "frozen_balance" field.
+func FrozenBalanceGT(v float64) predicate.User {
+	return predicate.User(sql.FieldGT(FieldFrozenBalance, v))
+}
+
+// FrozenBalanceGTE applies the GTE predicate on the "frozen_balance" field.
+func FrozenBalanceGTE(v float64) predicate.User {
+	return predicate.User(sql.FieldGTE(FieldFrozenBalance, v))
+}
+
+// FrozenBalanceLT applies the LT predicate on the "frozen_balance" field.
+func FrozenBalanceLT(v float64) predicate.User {
+	return predicate.User(sql.FieldLT(FieldFrozenBalance, v))
+}
+
+// FrozenBalanceLTE applies the LTE predicate on the "frozen_balance" field.
+func FrozenBalanceLTE(v float64) predicate.User {
+	return predicate.User(sql.FieldLTE(FieldFrozenBalance, v))
+}
+
 // ConcurrencyEQ applies the EQ predicate on the "concurrency" field.
 func ConcurrencyEQ(v int) predicate.User {
 	return predicate.User(sql.FieldEQ(FieldConcurrency, v))
@@ -638,6 +688,71 @@ func StatusEqualFold(v string) predicate.User {
 // StatusContainsFold applies the ContainsFold predicate on the "status" field.
 func StatusContainsFold(v string) predicate.User {
 	return predicate.User(sql.FieldContainsFold(FieldStatus, v))
+}
+
+// CustomerTypeEQ applies the EQ predicate on the "customer_type" field.
+func CustomerTypeEQ(v string) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldCustomerType, v))
+}
+
+// CustomerTypeNEQ applies the NEQ predicate on the "customer_type" field.
+func CustomerTypeNEQ(v string) predicate.User {
+	return predicate.User(sql.FieldNEQ(FieldCustomerType, v))
+}
+
+// CustomerTypeIn applies the In predicate on the "customer_type" field.
+func CustomerTypeIn(vs ...string) predicate.User {
+	return predicate.User(sql.FieldIn(FieldCustomerType, vs...))
+}
+
+// CustomerTypeNotIn applies the NotIn predicate on the "customer_type" field.
+func CustomerTypeNotIn(vs ...string) predicate.User {
+	return predicate.User(sql.FieldNotIn(FieldCustomerType, vs...))
+}
+
+// CustomerTypeGT applies the GT predicate on the "customer_type" field.
+func CustomerTypeGT(v string) predicate.User {
+	return predicate.User(sql.FieldGT(FieldCustomerType, v))
+}
+
+// CustomerTypeGTE applies the GTE predicate on the "customer_type" field.
+func CustomerTypeGTE(v string) predicate.User {
+	return predicate.User(sql.FieldGTE(FieldCustomerType, v))
+}
+
+// CustomerTypeLT applies the LT predicate on the "customer_type" field.
+func CustomerTypeLT(v string) predicate.User {
+	return predicate.User(sql.FieldLT(FieldCustomerType, v))
+}
+
+// CustomerTypeLTE applies the LTE predicate on the "customer_type" field.
+func CustomerTypeLTE(v string) predicate.User {
+	return predicate.User(sql.FieldLTE(FieldCustomerType, v))
+}
+
+// CustomerTypeContains applies the Contains predicate on the "customer_type" field.
+func CustomerTypeContains(v string) predicate.User {
+	return predicate.User(sql.FieldContains(FieldCustomerType, v))
+}
+
+// CustomerTypeHasPrefix applies the HasPrefix predicate on the "customer_type" field.
+func CustomerTypeHasPrefix(v string) predicate.User {
+	return predicate.User(sql.FieldHasPrefix(FieldCustomerType, v))
+}
+
+// CustomerTypeHasSuffix applies the HasSuffix predicate on the "customer_type" field.
+func CustomerTypeHasSuffix(v string) predicate.User {
+	return predicate.User(sql.FieldHasSuffix(FieldCustomerType, v))
+}
+
+// CustomerTypeEqualFold applies the EqualFold predicate on the "customer_type" field.
+func CustomerTypeEqualFold(v string) predicate.User {
+	return predicate.User(sql.FieldEqualFold(FieldCustomerType, v))
+}
+
+// CustomerTypeContainsFold applies the ContainsFold predicate on the "customer_type" field.
+func CustomerTypeContainsFold(v string) predicate.User {
+	return predicate.User(sql.FieldContainsFold(FieldCustomerType, v))
 }
 
 // UsernameEQ applies the EQ predicate on the "username" field.
@@ -1608,6 +1723,29 @@ func HasPendingAuthSessions() predicate.User {
 func HasPendingAuthSessionsWith(preds ...predicate.PendingAuthSession) predicate.User {
 	return predicate.User(func(s *sql.Selector) {
 		step := newPendingAuthSessionsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasPlatformQuotas applies the HasEdge predicate on the "platform_quotas" edge.
+func HasPlatformQuotas() predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, PlatformQuotasTable, PlatformQuotasColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasPlatformQuotasWith applies the HasEdge predicate on the "platform_quotas" edge with a given conditions (other predicates).
+func HasPlatformQuotasWith(preds ...predicate.UserPlatformQuota) predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := newPlatformQuotasStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)

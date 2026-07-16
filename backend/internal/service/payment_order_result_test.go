@@ -91,6 +91,41 @@ func TestBuildCreateOrderResponseCopiesJSAPIPayload(t *testing.T) {
 	}
 }
 
+func TestSanitizeCreatePaymentResponseDetailsRemovesNULBytes(t *testing.T) {
+	t.Parallel()
+
+	resp := &payment.CreatePaymentResponse{
+		TradeNo:      "trade\x00-no",
+		PayURL:       "https://pay.example.com/\x00checkout",
+		QRCode:       "wxp://payment-token\x00",
+		ClientSecret: "secret\x00unchanged",
+	}
+
+	sanitizeCreatePaymentResponseDetails(resp)
+
+	if strings.ContainsRune(resp.TradeNo, 0) {
+		t.Fatalf("trade_no still contains NUL: %q", resp.TradeNo)
+	}
+	if strings.ContainsRune(resp.PayURL, 0) {
+		t.Fatalf("pay_url still contains NUL: %q", resp.PayURL)
+	}
+	if strings.ContainsRune(resp.QRCode, 0) {
+		t.Fatalf("qr_code still contains NUL: %q", resp.QRCode)
+	}
+	if resp.TradeNo != "trade-no" {
+		t.Fatalf("trade_no = %q, want trade-no", resp.TradeNo)
+	}
+	if resp.PayURL != "https://pay.example.com/checkout" {
+		t.Fatalf("pay_url = %q, want sanitized URL", resp.PayURL)
+	}
+	if resp.QRCode != "wxp://payment-token" {
+		t.Fatalf("qr_code = %q, want sanitized QR code", resp.QRCode)
+	}
+	if resp.ClientSecret != "secret\x00unchanged" {
+		t.Fatalf("client_secret = %q, should not be touched by payment detail sanitization", resp.ClientSecret)
+	}
+}
+
 func TestValidateSelectedCreateOrderAmountCurrencyRejectsFractionalZeroDecimal(t *testing.T) {
 	t.Parallel()
 
@@ -126,6 +161,32 @@ func TestCalculateCreateOrderPayAmountUsesCurrencyPrecision(t *testing.T) {
 	}
 }
 
+func TestCalculateCreateOrderPayAmountChargesConfiguredPriceDirectly(t *testing.T) {
+	t.Parallel()
+
+	amountStr, amount, err := calculateCreateOrderPayAmount(9.99, 2.5, "CNY")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if amountStr != "10.24" || amount != 10.24 {
+		t.Fatalf("CNY pay amount with fee = (%q, %v), want (10.24, 10.24)", amountStr, amount)
+	}
+}
+
+func TestCalculateCreditedBalanceStillUsesRechargeMultiplier(t *testing.T) {
+	t.Parallel()
+
+	got := calculateCreditedBalance(10, 0.14)
+	if got != 1.4 {
+		t.Fatalf("credited balance = %v, want 1.4", got)
+	}
+
+	got = calculateCreditedBalance(5, 10)
+	if got != 50 {
+		t.Fatalf("credited balance = %v, want 50", got)
+	}
+}
+
 func TestCalculateCreateOrderPayAmountRejectsFractionalZeroDecimal(t *testing.T) {
 	t.Parallel()
 
@@ -135,6 +196,69 @@ func TestCalculateCreateOrderPayAmountRejectsFractionalZeroDecimal(t *testing.T)
 	}
 	if appErr := infraerrors.FromError(err); appErr.Reason != "INVALID_AMOUNT" {
 		t.Fatalf("reason = %q, want INVALID_AMOUNT", appErr.Reason)
+	}
+}
+
+func TestComputeValidityDaysSupportsSingularAndPluralUnits(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		days int
+		unit string
+		want int
+	}{
+		{name: "days", days: 1, unit: "days", want: 1},
+		{name: "week", days: 1, unit: "week", want: 7},
+		{name: "weeks", days: 2, unit: "weeks", want: 14},
+		{name: "month", days: 1, unit: "month", want: 30},
+		{name: "months", days: 1, unit: "months", want: 30},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			if got := psComputeValidityDays(tt.days, tt.unit); got != tt.want {
+				t.Fatalf("psComputeValidityDays(%d, %q) = %d, want %d", tt.days, tt.unit, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestBuildPaymentSubjectAppliesAffixToSubscriptionPlanProductName(t *testing.T) {
+	t.Parallel()
+
+	svc := &PaymentService{}
+	cfg := &PaymentConfig{
+		ProductNamePrefix: "PRE",
+		ProductNameSuffix: "SUF",
+	}
+	plan := &dbent.SubscriptionPlan{
+		Name:        "Pro Monthly",
+		ProductName: "Claude Pro",
+	}
+
+	got := svc.buildPaymentSubject(plan, 0, cfg, nil)
+	if got != "PRE Claude Pro SUF" {
+		t.Fatalf("buildPaymentSubject() = %q, want %q", got, "PRE Claude Pro SUF")
+	}
+}
+
+func TestBuildPaymentSubjectAppliesAffixToSubscriptionPlanDefaultName(t *testing.T) {
+	t.Parallel()
+
+	svc := &PaymentService{}
+	cfg := &PaymentConfig{
+		ProductNamePrefix: "PRE",
+		ProductNameSuffix: "SUF",
+	}
+	plan := &dbent.SubscriptionPlan{Name: "Team Monthly"}
+
+	got := svc.buildPaymentSubject(plan, 0, cfg, nil)
+	if got != "PRE Sub2API Subscription Team Monthly SUF" {
+		t.Fatalf("buildPaymentSubject() = %q, want %q", got, "PRE Sub2API Subscription Team Monthly SUF")
 	}
 }
 
@@ -302,7 +426,7 @@ func TestMaybeBuildWeChatOAuthRequiredResponseForSelectionSkipsEasyPayProvider(t
 		PaymentType:     payment.TypeWxpay,
 		IsWeChatBrowser: true,
 		OrderType:       payment.OrderTypeBalance,
-	}, 12.5, 12.88, 0.03, &payment.InstanceSelection{
+	}, 12.5, 12.88, 0.03, 0, &payment.InstanceSelection{
 		ProviderKey: payment.TypeEasyPay,
 	})
 	if err != nil {

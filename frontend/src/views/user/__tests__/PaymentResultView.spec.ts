@@ -7,6 +7,7 @@ const routeState = vi.hoisted(() => ({
 
 const routerPush = vi.hoisted(() => vi.fn())
 const pollOrderStatus = vi.hoisted(() => vi.fn())
+const verifyOrder = vi.hoisted(() => vi.fn())
 const verifyOrderPublic = vi.hoisted(() => vi.fn())
 const resolveOrderPublicByResumeToken = vi.hoisted(() => vi.fn())
 
@@ -37,6 +38,7 @@ vi.mock('@/stores/payment', () => ({
 
 vi.mock('@/api/payment', () => ({
   paymentAPI: {
+    verifyOrder,
     verifyOrderPublic,
     resolveOrderPublicByResumeToken,
   },
@@ -46,7 +48,7 @@ import PaymentResultView from '../PaymentResultView.vue'
 import { PAYMENT_RECOVERY_STORAGE_KEY } from '@/components/payment/paymentFlow'
 import { formatPaymentAmount } from '@/components/payment/currency'
 
-const orderFactory = (status: string) => ({
+const orderFactory = (status: string, overrides: Record<string, unknown> = {}) => ({
   id: 42,
   user_id: 9,
   amount: 88,
@@ -59,6 +61,7 @@ const orderFactory = (status: string) => ({
   created_at: '2026-04-20T12:00:00Z',
   expires_at: '2026-04-20T12:30:00Z',
   refund_amount: 0,
+  ...overrides,
 })
 
 const recoverySnapshotFactory = (resumeToken: string) => ({
@@ -86,6 +89,7 @@ describe('PaymentResultView', () => {
     routeState.query = {}
     routerPush.mockReset()
     pollOrderStatus.mockReset()
+    verifyOrder.mockReset()
     verifyOrderPublic.mockReset()
     resolveOrderPublicByResumeToken.mockReset()
     window.localStorage.clear()
@@ -191,6 +195,40 @@ describe('PaymentResultView', () => {
     expect(wrapper.text()).toContain('103.00')
     expect(wrapper.text()).toContain('100.00')
     expect(window.localStorage.getItem(PAYMENT_RECOVERY_STORAGE_KEY)).toBeNull()
+  })
+
+  it('shows affiliate discount amount from the resolved order', async () => {
+    routeState.query = {
+      resume_token: 'resume-affiliate-discount',
+    }
+    window.localStorage.setItem(
+      PAYMENT_RECOVERY_STORAGE_KEY,
+      JSON.stringify(recoverySnapshotFactory('resume-affiliate-discount')),
+    )
+    resolveOrderPublicByResumeToken.mockResolvedValue({
+      data: orderFactory('PAID', {
+        original_amount: 100,
+        affiliate_discount: 40,
+        pay_amount: 60,
+        amount: 100,
+      }),
+    })
+
+    const wrapper = mount(PaymentResultView, {
+      global: {
+        stubs: {
+          OrderStatusBadge: true,
+        },
+      },
+    })
+
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('payment.orders.baseAmount')
+    expect(wrapper.text()).toContain(formatPaymentAmount(100, 'CNY'))
+    expect(wrapper.text()).toContain('payment.orders.affiliateDiscount')
+    expect(wrapper.text()).toContain(formatPaymentAmount(40, 'CNY'))
+    expect(wrapper.text()).toContain(formatPaymentAmount(60, 'CNY'))
   })
 
   it('refreshes a pending resume-token result until the order becomes paid', async () => {
@@ -329,6 +367,7 @@ describe('PaymentResultView', () => {
       out_trade_no: 'legacy-123',
       trade_status: 'TRADE_SUCCESS',
     }
+    verifyOrder.mockRejectedValue(new Error('auth required'))
     verifyOrderPublic.mockResolvedValue({
       data: orderFactory('PAID'),
     })
@@ -343,8 +382,64 @@ describe('PaymentResultView', () => {
 
     await flushPromises()
 
+    expect(verifyOrder).toHaveBeenCalledWith('legacy-123')
     expect(verifyOrderPublic).toHaveBeenCalledWith('legacy-123')
     expect(pollOrderStatus).not.toHaveBeenCalled()
+    expect(wrapper.text()).toContain('payment.result.success')
+  })
+
+  it('renders the minimal public out_trade_no verification result without payment_type', async () => {
+    routeState.query = {
+      out_trade_no: 'legacy-minimal',
+      trade_status: 'TRADE_SUCCESS',
+    }
+    verifyOrder.mockRejectedValue(new Error('auth required'))
+    verifyOrderPublic.mockResolvedValue({
+      data: {
+        out_trade_no: 'legacy-minimal',
+        status: 'PAID',
+        paid: true,
+        created_at: '2026-04-20T12:00:00Z',
+        expires_at: '2026-04-20T12:30:00Z',
+      },
+    })
+
+    const wrapper = mount(PaymentResultView, {
+      global: {
+        stubs: {
+          OrderStatusBadge: true,
+        },
+      },
+    })
+
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('payment.result.success')
+    expect(wrapper.text()).toContain('legacy-minimal')
+    expect(wrapper.text()).not.toContain('payment.orders.paymentMethod')
+  })
+
+  it('prefers authenticated order verification before falling back to public lookup', async () => {
+    routeState.query = {
+      out_trade_no: 'auth-verify-123',
+      trade_status: 'TRADE_SUCCESS',
+    }
+    verifyOrder.mockResolvedValue({
+      data: orderFactory('COMPLETED'),
+    })
+
+    const wrapper = mount(PaymentResultView, {
+      global: {
+        stubs: {
+          OrderStatusBadge: true,
+        },
+      },
+    })
+
+    await flushPromises()
+
+    expect(verifyOrder).toHaveBeenCalledWith('auth-verify-123')
+    expect(verifyOrderPublic).not.toHaveBeenCalled()
     expect(wrapper.text()).toContain('payment.result.success')
   })
 

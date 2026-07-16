@@ -30,6 +30,7 @@ const (
 	OrderStatusFailed            = payment.OrderStatusFailed
 	OrderStatusRefundRequested   = payment.OrderStatusRefundRequested
 	OrderStatusRefunding         = payment.OrderStatusRefunding
+	OrderStatusRefundPending     = payment.OrderStatusRefundPending
 	OrderStatusPartiallyRefunded = payment.OrderStatusPartiallyRefunded
 	OrderStatusRefunded          = payment.OrderStatusRefunded
 	OrderStatusRefundFailed      = payment.OrderStatusRefundFailed
@@ -70,43 +71,49 @@ func generateRandomString(n int) string {
 }
 
 type CreateOrderRequest struct {
-	UserID          int64
-	Amount          float64
-	PaymentType     string
-	OpenID          string
-	ClientIP        string
-	IsMobile        bool
-	IsWeChatBrowser bool
-	SrcHost         string
-	SrcURL          string
-	ReturnURL       string
-	PaymentSource   string
-	OrderType       string
-	PlanID          int64
+	UserID               int64
+	Amount               float64
+	PaymentType          string
+	OpenID               string
+	ClientIP             string
+	IsMobile             bool
+	IsWeChatBrowser      bool
+	SrcHost              string
+	SrcURL               string
+	ReturnURL            string
+	PaymentSource        string
+	OrderType            string
+	PlanID               int64
+	Locale               string
+	UseAffiliateDiscount *bool
 }
 
 type CreateOrderResponse struct {
-	OrderID      int64                           `json:"order_id"`
-	Amount       float64                         `json:"amount"`
-	PayAmount    float64                         `json:"pay_amount"`
-	FeeRate      float64                         `json:"fee_rate"`
-	Status       string                          `json:"status"`
-	ResultType   payment.CreatePaymentResultType `json:"result_type,omitempty"`
-	PaymentType  string                          `json:"payment_type"`
-	OutTradeNo   string                          `json:"out_trade_no,omitempty"`
-	PayURL       string                          `json:"pay_url,omitempty"`
-	QRCode       string                          `json:"qr_code,omitempty"`
-	ClientSecret string                          `json:"client_secret,omitempty"`
-	IntentID     string                          `json:"intent_id,omitempty"`
-	Currency     string                          `json:"currency,omitempty"`
-	CountryCode  string                          `json:"country_code,omitempty"`
-	PaymentEnv   string                          `json:"payment_env,omitempty"`
-	OAuth        *payment.WechatOAuthInfo        `json:"oauth,omitempty"`
-	JSAPI        *payment.WechatJSAPIPayload     `json:"jsapi,omitempty"`
-	JSAPIPayload *payment.WechatJSAPIPayload     `json:"jsapi_payload,omitempty"`
-	ExpiresAt    time.Time                       `json:"expires_at"`
-	PaymentMode  string                          `json:"payment_mode,omitempty"`
-	ResumeToken  string                          `json:"resume_token,omitempty"`
+	OrderID           int64                           `json:"order_id"`
+	Amount            float64                         `json:"amount"`
+	OriginalAmount    float64                         `json:"original_amount"`
+	AffiliateDiscount float64                         `json:"affiliate_discount"`
+	RenewalDiscount   float64                         `json:"renewal_discount"`
+	RenewalRollover   float64                         `json:"renewal_rollover_amount"`
+	PayAmount         float64                         `json:"pay_amount"`
+	FeeRate           float64                         `json:"fee_rate"`
+	Status            string                          `json:"status"`
+	ResultType        payment.CreatePaymentResultType `json:"result_type,omitempty"`
+	PaymentType       string                          `json:"payment_type"`
+	OutTradeNo        string                          `json:"out_trade_no,omitempty"`
+	PayURL            string                          `json:"pay_url,omitempty"`
+	QRCode            string                          `json:"qr_code,omitempty"`
+	ClientSecret      string                          `json:"client_secret,omitempty"`
+	IntentID          string                          `json:"intent_id,omitempty"`
+	Currency          string                          `json:"currency,omitempty"`
+	CountryCode       string                          `json:"country_code,omitempty"`
+	PaymentEnv        string                          `json:"payment_env,omitempty"`
+	OAuth             *payment.WechatOAuthInfo        `json:"oauth,omitempty"`
+	JSAPI             *payment.WechatJSAPIPayload     `json:"jsapi,omitempty"`
+	JSAPIPayload      *payment.WechatJSAPIPayload     `json:"jsapi_payload,omitempty"`
+	ExpiresAt         time.Time                       `json:"expires_at"`
+	PaymentMode       string                          `json:"payment_mode,omitempty"`
+	ResumeToken       string                          `json:"resume_token,omitempty"`
 }
 
 type OrderListParams struct {
@@ -119,17 +126,20 @@ type OrderListParams struct {
 }
 
 type RefundPlan struct {
-	OrderID         int64
-	Order           *dbent.PaymentOrder
-	RefundAmount    float64
-	GatewayAmount   float64
-	Reason          string
-	Force           bool
-	DeductBalance   bool
-	DeductionType   string
-	BalanceToDeduct float64
-	SubDaysToDeduct int
-	SubscriptionID  int64
+	OrderID              int64
+	Order                *dbent.PaymentOrder
+	RefundAmount         float64
+	PreviousRefundAmount float64
+	TotalRefundAmount    float64
+	GatewayAmount        float64
+	OriginalStatus       string
+	Reason               string
+	Force                bool
+	DeductBalance        bool
+	DeductionType        string
+	BalanceToDeduct      float64
+	SubDaysToDeduct      int
+	SubscriptionID       int64
 }
 
 type RefundResult struct {
@@ -174,24 +184,29 @@ type TopUserStat struct {
 // --- Service ---
 
 type PaymentService struct {
-	providerMu       sync.Mutex
-	providersLoaded  bool
-	entClient        *dbent.Client
-	registry         *payment.Registry
-	loadBalancer     payment.LoadBalancer
-	redeemService    *RedeemService
-	subscriptionSvc  *SubscriptionService
-	configService    *PaymentConfigService
-	userRepo         UserRepository
-	groupRepo        GroupRepository
-	resumeService    *PaymentResumeService
-	affiliateService *AffiliateService
+	providerMu               sync.Mutex
+	providersLoaded          bool
+	entClient                *dbent.Client
+	registry                 *payment.Registry
+	loadBalancer             payment.LoadBalancer
+	redeemService            *RedeemService
+	subscriptionSvc          *SubscriptionService
+	configService            *PaymentConfigService
+	userRepo                 UserRepository
+	groupRepo                GroupRepository
+	resumeService            *PaymentResumeService
+	affiliateService         *AffiliateService
+	notificationEmailService *NotificationEmailService
 }
 
 func NewPaymentService(entClient *dbent.Client, registry *payment.Registry, loadBalancer payment.LoadBalancer, redeemService *RedeemService, subscriptionSvc *SubscriptionService, configService *PaymentConfigService, userRepo UserRepository, groupRepo GroupRepository, affiliateService *AffiliateService) *PaymentService {
 	svc := &PaymentService{entClient: entClient, registry: registry, loadBalancer: newVisibleMethodLoadBalancer(loadBalancer, configService), redeemService: redeemService, subscriptionSvc: subscriptionSvc, configService: configService, userRepo: userRepo, groupRepo: groupRepo, affiliateService: affiliateService}
 	svc.resumeService = psNewPaymentResumeService(configService)
 	return svc
+}
+
+func (s *PaymentService) SetNotificationEmailService(notificationEmailService *NotificationEmailService) {
+	s.notificationEmailService = notificationEmailService
 }
 
 // --- Provider Registry ---
@@ -246,7 +261,7 @@ func (s *PaymentService) loadProviders(ctx context.Context) {
 
 func psIsRefundStatus(s string) bool {
 	switch s {
-	case OrderStatusRefundRequested, OrderStatusRefunding, OrderStatusPartiallyRefunded, OrderStatusRefunded, OrderStatusRefundFailed:
+	case OrderStatusRefundRequested, OrderStatusRefunding, OrderStatusRefundPending, OrderStatusPartiallyRefunded, OrderStatusRefunded, OrderStatusRefundFailed:
 		return true
 	}
 	return false
@@ -331,15 +346,17 @@ func psSliceContains(sl []string, s string) bool {
 
 // Subscription validity period unit constants.
 const (
-	validityUnitWeek  = "week"
-	validityUnitMonth = "month"
+	validityUnitWeek   = "week"
+	validityUnitWeeks  = "weeks"
+	validityUnitMonth  = "month"
+	validityUnitMonths = "months"
 )
 
 func psComputeValidityDays(days int, unit string) int {
 	switch unit {
-	case validityUnitWeek:
+	case validityUnitWeek, validityUnitWeeks:
 		return days * 7
-	case validityUnitMonth:
+	case validityUnitMonth, validityUnitMonths:
 		return days * 30
 	default:
 		return days

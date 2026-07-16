@@ -16,6 +16,15 @@ type billingCacheWorkerStub struct {
 	subscriptionUpdates int64
 }
 
+type subscriptionWindowCacheStub struct {
+	billingCacheWorkerStub
+	data *SubscriptionCacheData
+}
+
+func (b *subscriptionWindowCacheStub) GetSubscriptionCache(ctx context.Context, userID, groupID int64) (*SubscriptionCacheData, error) {
+	return b.data, nil
+}
+
 func (b *billingCacheWorkerStub) GetUserBalance(ctx context.Context, userID int64) (float64, error) {
 	return 0, errors.New("not implemented")
 }
@@ -68,9 +77,37 @@ func (b *billingCacheWorkerStub) InvalidateAPIKeyRateLimit(ctx context.Context, 
 	return nil
 }
 
+func (b *billingCacheWorkerStub) GetUserPlatformQuotaCache(ctx context.Context, userID int64, platform string) (*UserPlatformQuotaCacheEntry, bool, error) {
+	return nil, false, nil
+}
+
+func (b *billingCacheWorkerStub) SetUserPlatformQuotaCache(ctx context.Context, userID int64, platform string, entry *UserPlatformQuotaCacheEntry, ttl time.Duration) error {
+	return nil
+}
+
+func (b *billingCacheWorkerStub) DeleteUserPlatformQuotaCache(ctx context.Context, userID int64, platform string) error {
+	return nil
+}
+
+func (b *billingCacheWorkerStub) IncrUserPlatformQuotaUsageCache(ctx context.Context, userID int64, platform string, cost float64, ttl time.Duration, markDirty bool) error {
+	return nil
+}
+
+func (b *billingCacheWorkerStub) PopDirtyUserPlatformQuotaKeys(ctx context.Context, n int) ([]UserPlatformQuotaKey, error) {
+	return nil, nil
+}
+
+func (b *billingCacheWorkerStub) ReaddDirtyUserPlatformQuotaKeys(ctx context.Context, keys []UserPlatformQuotaKey) error {
+	return nil
+}
+
+func (b *billingCacheWorkerStub) BatchGetUserPlatformQuotaCache(ctx context.Context, keys []UserPlatformQuotaKey) ([]*UserPlatformQuotaCacheEntry, error) {
+	return nil, nil
+}
+
 func TestBillingCacheServiceQueueHighLoad(t *testing.T) {
 	cache := &billingCacheWorkerStub{}
-	svc := NewBillingCacheService(cache, nil, nil, nil, nil, nil, &config.Config{})
+	svc := NewBillingCacheService(cache, nil, nil, nil, nil, nil, &config.Config{}, nil)
 	t.Cleanup(svc.Stop)
 
 	start := time.Now()
@@ -92,7 +129,7 @@ func TestBillingCacheServiceQueueHighLoad(t *testing.T) {
 
 func TestBillingCacheServiceEnqueueAfterStopReturnsFalse(t *testing.T) {
 	cache := &billingCacheWorkerStub{}
-	svc := NewBillingCacheService(cache, nil, nil, nil, nil, nil, &config.Config{})
+	svc := NewBillingCacheService(cache, nil, nil, nil, nil, nil, &config.Config{}, nil)
 	svc.Stop()
 
 	enqueued := svc.enqueueCacheWrite(cacheWriteTask{
@@ -101,4 +138,70 @@ func TestBillingCacheServiceEnqueueAfterStopReturnsFalse(t *testing.T) {
 		amount: 1,
 	})
 	require.False(t, enqueued)
+}
+
+func TestBillingCacheServiceCheckSubscriptionEligibilityResetsExpiredDailyWindow(t *testing.T) {
+	now := time.Now()
+	staleWindow := now.Add(-25 * time.Hour)
+	dailyLimit := 30.0
+	cache := &subscriptionWindowCacheStub{
+		data: &SubscriptionCacheData{
+			Status:           SubscriptionStatusActive,
+			ExpiresAt:        now.Add(24 * time.Hour),
+			DailyUsage:       dailyLimit + 0.1,
+			DailyWindowStart: &staleWindow,
+			Version:          now.Unix(),
+		},
+	}
+	svc := NewBillingCacheService(cache, nil, nil, nil, nil, nil, &config.Config{}, nil)
+	t.Cleanup(svc.Stop)
+
+	subscription := &UserSubscription{
+		Status:           SubscriptionStatusActive,
+		StartsAt:         now.Add(-48 * time.Hour),
+		ExpiresAt:        now.Add(24 * time.Hour),
+		DailyUsageUSD:    dailyLimit + 0.1,
+		DailyWindowStart: &staleWindow,
+	}
+	group := &Group{
+		ID:            17,
+		DailyLimitUSD: &dailyLimit,
+	}
+
+	err := svc.checkSubscriptionEligibility(context.Background(), 95, group, subscription)
+	require.NoError(t, err)
+}
+
+func TestBillingCacheServiceCheckSubscriptionEligibilityUsesCachedWindowWhenSubscriptionWasNormalized(t *testing.T) {
+	now := time.Now()
+	staleWindow := now.Add(-25 * time.Hour)
+	dailyLimit := 30.0
+	cache := &subscriptionWindowCacheStub{
+		data: &SubscriptionCacheData{
+			Status:           SubscriptionStatusActive,
+			ExpiresAt:        now.Add(24 * time.Hour),
+			DailyUsage:       dailyLimit + 0.1,
+			DailyWindowStart: &staleWindow,
+			Version:          now.Unix(),
+		},
+	}
+	svc := NewBillingCacheService(cache, nil, nil, nil, nil, nil, &config.Config{}, nil)
+	t.Cleanup(svc.Stop)
+
+	// Automatic subscription resolution may pass a display-normalized
+	// subscription whose expired window was cleared. Billing must still trust the
+	// DB/Redis window stored in subData when deciding whether stale usage resets.
+	subscription := &UserSubscription{
+		Status:        SubscriptionStatusActive,
+		StartsAt:      now.Add(-48 * time.Hour),
+		ExpiresAt:     now.Add(24 * time.Hour),
+		DailyUsageUSD: 0,
+	}
+	group := &Group{
+		ID:            17,
+		DailyLimitUSD: &dailyLimit,
+	}
+
+	err := svc.checkSubscriptionEligibility(context.Background(), 95, group, subscription)
+	require.NoError(t, err)
 }

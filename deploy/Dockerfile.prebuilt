@@ -1,0 +1,41 @@
+# =============================================================================
+# Sub2API Runtime Image for Locally Prebuilt Binaries
+# =============================================================================
+# Build frontend/backend on the host first, then use this Dockerfile only to
+# package the linux/amd64 binary into the same runtime shape as deploy/Dockerfile.
+# =============================================================================
+
+ARG ALPINE_IMAGE=alpine:3.20
+
+FROM ${ALPINE_IMAGE}
+
+LABEL maintainer="Wei-Shaw <github.com/Wei-Shaw>"
+LABEL description="Sub2API - AI API Gateway Platform"
+LABEL org.opencontainers.image.source="https://github.com/Wei-Shaw/sub2api"
+
+RUN apk add --no-cache \
+    ca-certificates \
+    tzdata \
+    curl \
+    su-exec \
+    && rm -rf /var/cache/apk/*
+
+RUN addgroup -g 1000 sub2api && \
+    adduser -u 1000 -G sub2api -s /bin/sh -D sub2api
+
+WORKDIR /app
+
+COPY sub2api /app/sub2api
+COPY docker-entrypoint.sh /app/docker-entrypoint.sh
+
+RUN chmod +x /app/sub2api /app/docker-entrypoint.sh && \
+    mkdir -p /app/data && \
+    chown -R sub2api:sub2api /app
+
+EXPOSE 8080
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD wget -q -T 5 -O /dev/null http://localhost:${SERVER_PORT:-8080}/health || exit 1
+
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
+CMD ["/app/sub2api"]

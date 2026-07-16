@@ -59,6 +59,29 @@ describe('getVisibleMethods', () => {
     expect(visible.alipay.single_min).toBe(2)
     expect(visible.wxpay.fee_rate).toBe(1.2)
   })
+
+  it('treats legacy method limits without an available flag as available', () => {
+    const legacyLimit = methodLimit({ single_min: 1 }) as Partial<MethodLimit>
+    delete legacyLimit.available
+
+    const visible = getVisibleMethods({
+      alipay: legacyLimit as MethodLimit,
+    })
+
+    expect(visible.alipay.available).toBe(true)
+  })
+
+  it('keeps custom EasyPay methods as visible methods', () => {
+    const visible = getVisibleMethods({
+      ldc: methodLimit({ single_min: 3 }),
+      usdt_trc20: methodLimit({ fee_rate: 1 }),
+    })
+
+    expect(visible).toEqual({
+      ldc: methodLimit({ single_min: 3 }),
+      usdt_trc20: methodLimit({ fee_rate: 1 }),
+    })
+  })
 })
 
 describe('decidePaymentLaunch', () => {
@@ -220,6 +243,36 @@ describe('decidePaymentLaunch', () => {
     expect(decision.jsapi?.appId).toBe('wx123')
     expect(decision.paymentState.orderType).toBe('subscription')
   })
+
+  it('forces qr_waiting for mobile alipay when forceQRCode is enabled', () => {
+    const decision = decidePaymentLaunch(createOrderResult({
+      pay_url: 'https://pay.example.com/mobile/session',
+      qr_code: 'https://pay.example.com/qr/session',
+    }), {
+      visibleMethod: 'alipay',
+      orderType: 'balance',
+      isMobile: true,
+      forceQRCode: true,
+    })
+
+    expect(decision.kind).toBe('qr_waiting')
+    expect(decision.paymentState.qrCode).toBe('https://pay.example.com/qr/session')
+  })
+
+  it('does not affect non-alipay methods when forceQRCode is enabled', () => {
+    const decision = decidePaymentLaunch(createOrderResult({
+      pay_url: 'https://pay.example.com/mobile/session',
+      qr_code: 'https://pay.example.com/qr/session',
+    }), {
+      visibleMethod: 'wxpay',
+      orderType: 'balance',
+      isMobile: true,
+      forceQRCode: true,
+    })
+
+    // wxpay mobile with pay_url still redirects
+    expect(decision.kind).toBe('redirect_waiting')
+  })
 })
 
 describe('buildCreateOrderPayload', () => {
@@ -238,6 +291,7 @@ describe('buildCreateOrderPayload', () => {
       return_url: 'https://app.example.com/payment/result',
       is_mobile: true,
       payment_source: 'hosted_redirect',
+      use_affiliate_discount: true,
     })
   })
 
@@ -258,6 +312,49 @@ describe('buildCreateOrderPayload', () => {
       return_url: 'https://app.example.com/payment/result',
       is_mobile: false,
       payment_source: 'wechat_in_app_resume',
+      use_affiliate_discount: true,
+    })
+  })
+
+  it('passes an explicit affiliate discount opt-out', () => {
+    expect(buildCreateOrderPayload({
+      amount: 128,
+      paymentType: 'wxpay',
+      orderType: 'subscription',
+      origin: 'https://app.example.com',
+      isMobile: true,
+      isWechatBrowser: false,
+      useAffiliateDiscount: false,
+    })).toMatchObject({
+      use_affiliate_discount: false,
+    })
+  })
+
+  it('passes is_mobile: false when forceQRCode is enabled for alipay', () => {
+    expect(buildCreateOrderPayload({
+      amount: 50,
+      paymentType: 'alipay',
+      orderType: 'balance',
+      origin: 'https://app.example.com',
+      isMobile: true,
+      isWechatBrowser: false,
+      forceQRCode: true,
+    })).toMatchObject({
+      is_mobile: false,
+    })
+  })
+
+  it('still passes is_mobile: true when forceQRCode is enabled for non-alipay methods', () => {
+    expect(buildCreateOrderPayload({
+      amount: 50,
+      paymentType: 'wxpay',
+      orderType: 'balance',
+      origin: 'https://app.example.com',
+      isMobile: true,
+      isWechatBrowser: false,
+      forceQRCode: true,
+    })).toMatchObject({
+      is_mobile: true,
     })
   })
 })
@@ -278,6 +375,8 @@ describe('readPaymentRecoverySnapshot', () => {
       countryCode: '',
       paymentEnv: '',
       payAmount: 18,
+      originalAmount: 18,
+      affiliateDiscount: 0,
       orderType: 'balance',
       paymentMode: 'popup',
       resumeToken: 'resume-33',
@@ -307,6 +406,8 @@ describe('readPaymentRecoverySnapshot', () => {
       countryCode: '',
       paymentEnv: '',
       payAmount: 18,
+      originalAmount: 18,
+      affiliateDiscount: 0,
       orderType: 'balance',
       paymentMode: 'popup',
       resumeToken: 'resume-55',
@@ -376,5 +477,7 @@ describe('readPaymentRecoverySnapshot', () => {
     expect(restored?.currency).toBe('')
     expect(restored?.countryCode).toBe('')
     expect(restored?.paymentEnv).toBe('')
+    expect(restored?.originalAmount).toBe(28)
+    expect(restored?.affiliateDiscount).toBe(0)
   })
 })

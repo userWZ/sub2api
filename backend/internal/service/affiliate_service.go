@@ -12,15 +12,19 @@ import (
 )
 
 var (
-	ErrAffiliateProfileNotFound = infraerrors.NotFound("AFFILIATE_PROFILE_NOT_FOUND", "affiliate profile not found")
-	ErrAffiliateCodeInvalid     = infraerrors.BadRequest("AFFILIATE_CODE_INVALID", "invalid affiliate code")
-	ErrAffiliateCodeTaken       = infraerrors.Conflict("AFFILIATE_CODE_TAKEN", "affiliate code already in use")
-	ErrAffiliateAlreadyBound    = infraerrors.Conflict("AFFILIATE_ALREADY_BOUND", "affiliate inviter already bound")
-	ErrAffiliateQuotaEmpty      = infraerrors.BadRequest("AFFILIATE_QUOTA_EMPTY", "no affiliate quota available to transfer")
+	ErrAffiliateProfileNotFound   = infraerrors.NotFound("AFFILIATE_PROFILE_NOT_FOUND", "affiliate profile not found")
+	ErrAffiliateCodeInvalid       = infraerrors.BadRequest("AFFILIATE_CODE_INVALID", "invalid affiliate code")
+	ErrAffiliateCodeTaken         = infraerrors.Conflict("AFFILIATE_CODE_TAKEN", "affiliate code already in use")
+	ErrAffiliateAlreadyBound      = infraerrors.Conflict("AFFILIATE_ALREADY_BOUND", "affiliate inviter already bound")
+	ErrAffiliateQuotaEmpty        = infraerrors.BadRequest("AFFILIATE_QUOTA_EMPTY", "no affiliate quota available to transfer")
+	ErrAffiliateQuotaInsufficient = infraerrors.BadRequest("AFFILIATE_QUOTA_INSUFFICIENT", "insufficient affiliate quota")
+	ErrAffiliateDiscountChanged   = infraerrors.Conflict("AFFILIATE_DISCOUNT_CHANGED", "affiliate discount changed, please retry")
 )
 
 const (
-	affiliateInviteesLimit = 100
+	affiliateInviteesLimit                = 100
+	affiliateWithdrawRemarkMaxLength      = 500
+	affiliateWithdrawExternalRefMaxLength = 128
 	// AffiliateCodeMinLength / AffiliateCodeMaxLength bound both system-generated
 	// 12-char codes and admin-customized codes (e.g. "VIP2026").
 	AffiliateCodeMinLength = 4
@@ -102,6 +106,11 @@ type AffiliateRepository interface {
 	GetAccruedRebateFromInvitee(ctx context.Context, inviterID, inviteeUserID int64) (float64, error)
 	ThawFrozenQuota(ctx context.Context, userID int64) (float64, error)
 	TransferQuotaToBalance(ctx context.Context, userID int64) (float64, float64, error)
+	WithdrawQuota(ctx context.Context, userID, operatorUserID int64, amount float64, remark, externalRef string) (*AffiliateWithdrawResult, error)
+	GetAvailableDiscountQuota(ctx context.Context, userID int64) (float64, error)
+	ClaimDiscountForOrder(ctx context.Context, userID int64, amount float64, sourceOrderID int64) (float64, error)
+	RestoreDiscountForOrder(ctx context.Context, userID int64, amount float64, sourceOrderID int64) (bool, error)
+	ReverseAccruedRebateForOrder(ctx context.Context, sourceOrderID int64) (float64, error)
 	ListInvitees(ctx context.Context, inviterID int64, limit int) ([]AffiliateInvitee, error)
 
 	// 管理端：用户级专属配置
@@ -113,6 +122,7 @@ type AffiliateRepository interface {
 	ListAffiliateInviteRecords(ctx context.Context, filter AffiliateRecordFilter) ([]AffiliateInviteRecord, int64, error)
 	ListAffiliateRebateRecords(ctx context.Context, filter AffiliateRecordFilter) ([]AffiliateRebateRecord, int64, error)
 	ListAffiliateTransferRecords(ctx context.Context, filter AffiliateRecordFilter) ([]AffiliateTransferRecord, int64, error)
+	ListUserAffiliateLedgerRecords(ctx context.Context, userID int64, filter AffiliateRecordFilter) ([]AffiliateLedgerRecord, int64, error)
 	GetAffiliateUserOverview(ctx context.Context, userID int64) (*AffiliateUserOverview, error)
 }
 
@@ -140,6 +150,7 @@ type AffiliateRecordFilter struct {
 	PageSize int
 	StartAt  *time.Time
 	EndAt    *time.Time
+	Action   string
 	SortBy   string
 	SortDesc bool
 }
@@ -178,7 +189,14 @@ type AffiliateTransferRecord struct {
 	UserID              int64     `json:"user_id"`
 	UserEmail           string    `json:"user_email"`
 	Username            string    `json:"username"`
+	Action              string    `json:"action"`
 	Amount              float64   `json:"amount"`
+	SourceOrderID       *int64    `json:"source_order_id,omitempty"`
+	OutTradeNo          *string   `json:"out_trade_no,omitempty"`
+	OperatorUserID      *int64    `json:"operator_user_id,omitempty"`
+	OperatorEmail       *string   `json:"operator_email,omitempty"`
+	Remark              *string   `json:"remark,omitempty"`
+	ExternalRef         *string   `json:"external_ref,omitempty"`
 	BalanceAfter        *float64  `json:"balance_after,omitempty"`
 	AvailableQuotaAfter *float64  `json:"available_quota_after,omitempty"`
 	FrozenQuotaAfter    *float64  `json:"frozen_quota_after,omitempty"`
@@ -189,6 +207,28 @@ type AffiliateTransferRecord struct {
 	FrozenQuota         float64   `json:"-"`
 	HistoryQuota        float64   `json:"-"`
 	CreatedAt           time.Time `json:"created_at"`
+}
+
+type AffiliateLedgerRecord struct {
+	LedgerID            int64      `json:"ledger_id"`
+	Action              string     `json:"action"`
+	Amount              float64    `json:"amount"`
+	SourceOrderID       *int64     `json:"source_order_id,omitempty"`
+	OutTradeNo          *string    `json:"out_trade_no,omitempty"`
+	Remark              *string    `json:"remark,omitempty"`
+	AvailableQuotaAfter *float64   `json:"available_quota_after,omitempty"`
+	FrozenQuotaAfter    *float64   `json:"frozen_quota_after,omitempty"`
+	HistoryQuotaAfter   *float64   `json:"history_quota_after,omitempty"`
+	FrozenUntil         *time.Time `json:"frozen_until,omitempty"`
+	CreatedAt           time.Time  `json:"created_at"`
+}
+
+type AffiliateWithdrawResult struct {
+	UserID              int64   `json:"user_id"`
+	Amount              float64 `json:"amount"`
+	AvailableQuotaAfter float64 `json:"available_quota_after"`
+	FrozenQuotaAfter    float64 `json:"frozen_quota_after"`
+	HistoryQuotaAfter   float64 `json:"history_quota_after"`
 }
 
 type AffiliateUserOverview struct {
@@ -423,6 +463,60 @@ func (s *AffiliateService) TransferAffiliateQuota(ctx context.Context, userID in
 	return transferred, balance, nil
 }
 
+func (s *AffiliateService) GetAvailableDiscountQuota(ctx context.Context, userID int64) (float64, error) {
+	if s == nil || s.repo == nil {
+		return 0, nil
+	}
+	if userID <= 0 || !s.IsEnabled(ctx) {
+		return 0, nil
+	}
+	if s.settingService != nil && !s.settingService.IsAffiliateDiscountEnabled(ctx) {
+		return 0, nil
+	}
+	return s.repo.GetAvailableDiscountQuota(ctx, userID)
+}
+
+func (s *AffiliateService) ClaimDiscountForOrder(ctx context.Context, userID int64, amount float64, sourceOrderID int64) (float64, error) {
+	if s == nil || s.repo == nil {
+		return 0, nil
+	}
+	if userID <= 0 || amount <= 0 || sourceOrderID <= 0 || !s.IsEnabled(ctx) {
+		return 0, nil
+	}
+	if s.settingService != nil && !s.settingService.IsAffiliateDiscountEnabled(ctx) {
+		return 0, nil
+	}
+	claimed, err := s.repo.ClaimDiscountForOrder(ctx, userID, amount, sourceOrderID)
+	if err != nil {
+		return 0, err
+	}
+	if claimed > 0 {
+		s.invalidateAffiliateCaches(ctx, userID)
+	}
+	return claimed, nil
+}
+
+func (s *AffiliateService) RestoreDiscountForOrder(ctx context.Context, userID int64, amount float64, sourceOrderID int64) (bool, error) {
+	if s == nil || s.repo == nil || userID <= 0 || amount <= 0 || sourceOrderID <= 0 {
+		return false, nil
+	}
+	restored, err := s.repo.RestoreDiscountForOrder(ctx, userID, amount, sourceOrderID)
+	if err != nil {
+		return false, err
+	}
+	if restored {
+		s.invalidateAffiliateCaches(ctx, userID)
+	}
+	return restored, nil
+}
+
+func (s *AffiliateService) ReverseAccruedRebateForOrder(ctx context.Context, sourceOrderID int64) (float64, error) {
+	if s == nil || s.repo == nil || sourceOrderID <= 0 {
+		return 0, nil
+	}
+	return s.repo.ReverseAccruedRebateForOrder(ctx, sourceOrderID)
+}
+
 func (s *AffiliateService) listInvitees(ctx context.Context, inviterID int64) ([]AffiliateInvitee, error) {
 	if s == nil || s.repo == nil {
 		return nil, infraerrors.ServiceUnavailable("SERVICE_UNAVAILABLE", "affiliate service unavailable")
@@ -588,6 +682,53 @@ func (s *AffiliateService) AdminListTransferRecords(ctx context.Context, filter 
 	return s.repo.ListAffiliateTransferRecords(ctx, normalizeAffiliateRecordFilter(filter))
 }
 
+func (s *AffiliateService) ListUserAffiliateRecords(ctx context.Context, userID int64, filter AffiliateRecordFilter) ([]AffiliateLedgerRecord, int64, error) {
+	if userID <= 0 {
+		return nil, 0, infraerrors.BadRequest("INVALID_USER", "invalid user")
+	}
+	if s == nil || s.repo == nil {
+		return nil, 0, infraerrors.ServiceUnavailable("SERVICE_UNAVAILABLE", "affiliate service unavailable")
+	}
+	return s.repo.ListUserAffiliateLedgerRecords(ctx, userID, normalizeUserAffiliateRecordFilter(filter))
+}
+
+func (s *AffiliateService) AdminWithdrawAffiliateQuota(ctx context.Context, userID, operatorUserID int64, amount float64, remark, externalRef string) (*AffiliateWithdrawResult, error) {
+	if userID <= 0 {
+		return nil, infraerrors.BadRequest("INVALID_USER", "invalid user")
+	}
+	if operatorUserID <= 0 {
+		return nil, infraerrors.Unauthorized("UNAUTHORIZED", "admin authentication required")
+	}
+	if amount <= 0 || math.IsNaN(amount) || math.IsInf(amount, 0) {
+		return nil, infraerrors.BadRequest("INVALID_AMOUNT", "amount must be greater than 0")
+	}
+	if s == nil || s.repo == nil {
+		return nil, infraerrors.ServiceUnavailable("SERVICE_UNAVAILABLE", "affiliate service unavailable")
+	}
+
+	amount = roundTo(amount, 8)
+	if amount <= 0 {
+		return nil, infraerrors.BadRequest("INVALID_AMOUNT", "amount must be greater than 0")
+	}
+	remark = strings.TrimSpace(remark)
+	externalRef = strings.TrimSpace(externalRef)
+	if len(remark) > affiliateWithdrawRemarkMaxLength {
+		return nil, infraerrors.BadRequest("INVALID_REMARK", "remark is too long")
+	}
+	if len(externalRef) > affiliateWithdrawExternalRefMaxLength {
+		return nil, infraerrors.BadRequest("INVALID_EXTERNAL_REF", "external reference is too long")
+	}
+
+	result, err := s.repo.WithdrawQuota(ctx, userID, operatorUserID, amount, remark, externalRef)
+	if err != nil {
+		return nil, err
+	}
+	if result != nil && result.Amount > 0 {
+		s.invalidateAffiliateCaches(ctx, userID)
+	}
+	return result, nil
+}
+
 func (s *AffiliateService) AdminGetUserOverview(ctx context.Context, userID int64) (*AffiliateUserOverview, error) {
 	if userID <= 0 {
 		return nil, infraerrors.BadRequest("INVALID_USER", "invalid user")
@@ -609,6 +750,18 @@ func (s *AffiliateService) AdminGetUserOverview(ctx context.Context, userID int6
 }
 
 func normalizeAffiliateRecordFilter(filter AffiliateRecordFilter) AffiliateRecordFilter {
+	filter = normalizeAffiliateRecordPagination(filter)
+	filter.Action = normalizeAffiliateWalletRecordAction(filter.Action)
+	return filter
+}
+
+func normalizeUserAffiliateRecordFilter(filter AffiliateRecordFilter) AffiliateRecordFilter {
+	filter = normalizeAffiliateRecordPagination(filter)
+	filter.Action = normalizeUserAffiliateWalletRecordAction(filter.Action)
+	return filter
+}
+
+func normalizeAffiliateRecordPagination(filter AffiliateRecordFilter) AffiliateRecordFilter {
 	if filter.Page <= 0 {
 		filter.Page = 1
 	}
@@ -621,4 +774,22 @@ func normalizeAffiliateRecordFilter(filter AffiliateRecordFilter) AffiliateRecor
 	filter.Search = strings.TrimSpace(filter.Search)
 	filter.SortBy = strings.TrimSpace(filter.SortBy)
 	return filter
+}
+
+func normalizeAffiliateWalletRecordAction(action string) string {
+	switch strings.TrimSpace(action) {
+	case "discount", "withdraw":
+		return strings.TrimSpace(action)
+	default:
+		return ""
+	}
+}
+
+func normalizeUserAffiliateWalletRecordAction(action string) string {
+	switch strings.TrimSpace(action) {
+	case "accrue", "discount", "withdraw":
+		return strings.TrimSpace(action)
+	default:
+		return ""
+	}
 }

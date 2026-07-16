@@ -37,6 +37,8 @@ const (
 	FieldIPWhitelist = "ip_whitelist"
 	// FieldIPBlacklist holds the string denoting the ip_blacklist field in the database.
 	FieldIPBlacklist = "ip_blacklist"
+	// FieldQuotaDisabled holds the string denoting the quota_disabled field in the database.
+	FieldQuotaDisabled = "quota_disabled"
 	// FieldQuota holds the string denoting the quota field in the database.
 	FieldQuota = "quota"
 	// FieldQuotaUsed holds the string denoting the quota_used field in the database.
@@ -106,6 +108,7 @@ var Columns = []string{
 	FieldLastUsedAt,
 	FieldIPWhitelist,
 	FieldIPBlacklist,
+	FieldQuotaDisabled,
 	FieldQuota,
 	FieldQuotaUsed,
 	FieldExpiresAt,
@@ -152,6 +155,8 @@ var (
 	DefaultStatus string
 	// StatusValidator is a validator for the "status" field. It is called by the builders before save.
 	StatusValidator func(string) error
+	// DefaultQuotaDisabled holds the default value on creation for the "quota_disabled" field.
+	DefaultQuotaDisabled bool
 	// DefaultQuota holds the default value on creation for the "quota" field.
 	DefaultQuota float64
 	// DefaultQuotaUsed holds the default value on creation for the "quota_used" field.
@@ -221,6 +226,11 @@ func ByStatus(opts ...sql.OrderTermOption) OrderOption {
 // ByLastUsedAt orders the results by the last_used_at field.
 func ByLastUsedAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldLastUsedAt, opts...).ToFunc()
+}
+
+// ByQuotaDisabled orders the results by the quota_disabled field.
+func ByQuotaDisabled(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldQuotaDisabled, opts...).ToFunc()
 }
 
 // ByQuota orders the results by the quota field.

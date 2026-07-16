@@ -86,6 +86,9 @@ func TestCreateOrderInTx_WritesProviderSnapshot(t *testing.T) {
 		},
 		88,
 		88,
+		88,
+		0,
+		renewalOfferQuote{},
 		0,
 		88,
 		&payment.InstanceSelection{

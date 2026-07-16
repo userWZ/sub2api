@@ -1,6 +1,9 @@
 package routes
 
 import (
+	"net/http"
+
+	"github.com/Wei-Shaw/sub2api/internal/config"
 	"github.com/Wei-Shaw/sub2api/internal/handler"
 	"github.com/Wei-Shaw/sub2api/internal/server/middleware"
 	"github.com/Wei-Shaw/sub2api/internal/service"
@@ -13,8 +16,17 @@ func RegisterUserRoutes(
 	v1 *gin.RouterGroup,
 	h *handler.Handlers,
 	jwtAuth middleware.JWTAuthMiddleware,
+	apiKeyAuth middleware.APIKeyAuthMiddleware,
+	opsService *service.OpsService,
 	settingService *service.SettingService,
+	cfg *config.Config,
 ) {
+	bodyLimit := middleware.RequestBodyLimit(cfg.Gateway.MaxBodySize)
+	clientRequestID := middleware.ClientRequestID()
+	opsErrorLogger := handler.OpsErrorLoggerMiddleware(opsService)
+	endpointNorm := handler.InboundEndpointMiddleware()
+	requireGroupAnthropic := middleware.RequireGroupAssignment(settingService, middleware.AnthropicErrorWriter)
+
 	authenticated := v1.Group("")
 	authenticated.Use(gin.HandlerFunc(jwtAuth))
 	authenticated.Use(middleware.BackendModeUserGuard(settingService))
@@ -26,11 +38,37 @@ func RegisterUserRoutes(
 			user.PUT("/password", h.User.ChangePassword)
 			user.PUT("", h.User.UpdateProfile)
 			user.GET("/aff", h.User.GetAffiliate)
-			user.POST("/aff/transfer", h.User.TransferAffiliateQuota)
+			user.GET("/aff/records", h.User.GetAffiliateRecords)
 			user.POST("/account-bindings/email/send-code", h.User.SendEmailBindingCode)
 			user.POST("/account-bindings/email", h.User.BindEmailIdentity)
 			user.DELETE("/account-bindings/:provider", h.User.UnbindIdentity)
 			user.POST("/auth-identities/bind/start", h.User.StartIdentityBinding)
+			user.GET("/api-keys/:id/usage/daily", h.Usage.GetMyAPIKeyDailyUsage)
+			user.GET("/platform-quotas", h.User.GetMyPlatformQuotas)
+
+			user.POST("/image-workbench/images/generations",
+				bodyLimit,
+				clientRequestID,
+				opsErrorLogger,
+				endpointNorm,
+				h.OpenAIGateway.BindImageWorkbenchDefaultKey,
+				gin.HandlerFunc(apiKeyAuth),
+				requireGroupAnthropic,
+				func(c *gin.Context) {
+					apiKey, ok := middleware.GetAPIKeyFromContext(c)
+					if !ok || apiKey.Group == nil || apiKey.Group.Platform != service.PlatformOpenAI {
+						service.MarkOpsClientBusinessLimited(c, service.OpsClientBusinessLimitedReasonLocalFeatureGate)
+						c.JSON(http.StatusNotFound, gin.H{
+							"error": gin.H{
+								"type":    "not_found_error",
+								"message": "Images API is not supported for this platform",
+							},
+						})
+						return
+					}
+					h.OpenAIGateway.Images(c)
+				},
+			)
 
 			// 通知邮箱管理
 			notifyEmail := user.Group("/notify-email")
@@ -80,12 +118,15 @@ func RegisterUserRoutes(
 		usage := authenticated.Group("/usage")
 		{
 			usage.GET("", h.Usage.List)
+			usage.GET("/errors", h.Usage.ListErrors)
+			usage.GET("/errors/:id", h.Usage.GetErrorDetail)
 			usage.GET("/:id", h.Usage.GetByID)
 			usage.GET("/stats", h.Usage.Stats)
 			// User dashboard endpoints
 			usage.GET("/dashboard/stats", h.Usage.DashboardStats)
 			usage.GET("/dashboard/trend", h.Usage.DashboardTrend)
 			usage.GET("/dashboard/models", h.Usage.DashboardModels)
+			usage.GET("/dashboard/snapshot-v2", h.Usage.DashboardSnapshotV2)
 			usage.POST("/dashboard/api-keys-usage", h.Usage.DashboardAPIKeysUsage)
 		}
 

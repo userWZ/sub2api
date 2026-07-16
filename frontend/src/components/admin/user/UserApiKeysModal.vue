@@ -32,6 +32,10 @@
                   :platform="key.group.platform"
                   :subscription-type="key.group.subscription_type"
                   :rate-multiplier="key.group.rate_multiplier"
+                  :peak-rate-enabled="key.group.peak_rate_enabled"
+                  :peak-start="key.group.peak_start"
+                  :peak-end="key.group.peak_end"
+                  :peak-rate-multiplier="key.group.peak_rate_multiplier"
                 />
                 <span v-else class="text-gray-400 italic">{{ t('admin.users.none') }}</span>
                 <svg v-if="updatingKeyIds.has(key.id)" class="h-3 w-3 animate-spin text-primary-500" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
@@ -39,6 +43,29 @@
               </button>
             </div>
             <div class="flex items-center gap-1"><span>{{ t('admin.users.columns.created') }}: {{ formatDateTime(key.created_at) }}</span></div>
+          </div>
+          <div class="mt-3 flex flex-wrap items-center gap-2">
+            <span :class="['badge text-xs', key.status === 'active' ? 'badge-success' : 'badge-gray']">
+              {{ key.status === 'active' ? t('common.active') : t('common.inactive') }}
+            </span>
+            <span v-if="!isManagedUser" :class="['badge text-xs', key.quota_disabled ? 'badge-gray' : 'badge-warning']">
+              {{ key.quota_disabled ? t('admin.users.keyQuotaDisabled') : t('admin.users.keyQuotaEnabled') }}
+            </span>
+            <button
+              class="btn btn-ghost btn-sm px-2"
+              :disabled="updatingKeyIds.has(key.id)"
+              @click="toggleKeyPolicy(key, { status: key.status === 'active' ? 'inactive' : 'active' })"
+            >
+              {{ key.status === 'active' ? t('admin.users.disableKey') : t('admin.users.enableKey') }}
+            </button>
+            <button
+              v-if="!isManagedUser"
+              class="btn btn-ghost btn-sm px-2"
+              :disabled="updatingKeyIds.has(key.id)"
+              @click="toggleKeyPolicy(key, { quota_disabled: !key.quota_disabled })"
+            >
+              {{ key.quota_disabled ? t('admin.users.enableKeyQuota') : t('admin.users.disableKeyQuota') }}
+            </button>
           </div>
         </div>
       </div>
@@ -88,6 +115,10 @@
             :platform="group.platform"
             :subscription-type="group.subscription_type"
             :rate-multiplier="group.rate_multiplier"
+            :peak-rate-enabled="group.peak_rate_enabled"
+            :peak-start="group.peak_start"
+            :peak-end="group.peak_end"
+            :peak-rate-multiplier="group.peak_rate_multiplier"
             :description="group.description"
             :selected="selectedKeyForGroup?.group_id === group.id"
           />
@@ -127,6 +158,7 @@ const selectedKeyForGroup = computed(() => {
   if (groupSelectorKeyId.value === null) return null
   return apiKeys.value.find((k) => k.id === groupSelectorKeyId.value) || null
 })
+const isManagedUser = computed(() => props.user?.customer_type === 'managed')
 
 const setGroupButtonRef = (keyId: number, el: Element | ComponentPublicInstance | null) => {
   if (el instanceof HTMLElement) {
@@ -213,6 +245,25 @@ const changeGroup = async (key: ApiKey, newGroupId: number | null) => {
     }
   } catch (error: any) {
     appStore.showError(error?.message || t('admin.users.groupChangeFailed'))
+  } finally {
+    updatingKeyIds.value.delete(key.id)
+  }
+}
+
+const toggleKeyPolicy = async (
+  key: ApiKey,
+  patch: { status?: 'active' | 'inactive'; quota_disabled?: boolean }
+) => {
+  updatingKeyIds.value.add(key.id)
+  try {
+    const result = await adminAPI.apiKeys.updateApiKeyPolicy(key.id, patch)
+    const idx = apiKeys.value.findIndex((k) => k.id === key.id)
+    if (idx !== -1) {
+      apiKeys.value[idx] = result.api_key
+    }
+    appStore.showSuccess(t('admin.users.keyPolicyUpdated'))
+  } catch (error: any) {
+    appStore.showError(error?.message || t('admin.users.keyPolicyUpdateFailed'))
   } finally {
     updatingKeyIds.value.delete(key.id)
   }

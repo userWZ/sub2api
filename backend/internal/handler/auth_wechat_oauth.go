@@ -87,10 +87,11 @@ type wechatOAuthUserInfoResponse struct {
 }
 
 type wechatPaymentOAuthContext struct {
-	PaymentType string `json:"payment_type"`
-	Amount      string `json:"amount,omitempty"`
-	OrderType   string `json:"order_type,omitempty"`
-	PlanID      int64  `json:"plan_id,omitempty"`
+	PaymentType          string `json:"payment_type"`
+	Amount               string `json:"amount,omitempty"`
+	OrderType            string `json:"order_type,omitempty"`
+	PlanID               int64  `json:"plan_id,omitempty"`
+	UseAffiliateDiscount *bool  `json:"use_affiliate_discount,omitempty"`
 }
 
 // WeChatOAuthStart starts the WeChat OAuth login flow and stores the short-lived
@@ -125,6 +126,7 @@ func (h *AuthHandler) WeChatOAuthStart(c *gin.Context) {
 	wechatSetCookie(c, wechatOAuthRedirectCookieName, encodeCookieValue(redirectTo), wechatOAuthCookieMaxAgeSec, secureCookie)
 	wechatSetCookie(c, wechatOAuthIntentCookieName, encodeCookieValue(intent), wechatOAuthCookieMaxAgeSec, secureCookie)
 	wechatSetCookie(c, wechatOAuthModeCookieName, encodeCookieValue(cfg.mode), wechatOAuthCookieMaxAgeSec, secureCookie)
+	captureOAuthPromoCode(c, secureCookie)
 	setOAuthPendingBrowserCookie(c, browserSessionKey, secureCookie)
 	clearOAuthPendingSessionCookie(c, secureCookie)
 	if intent == oauthIntentBindCurrentUser {
@@ -171,6 +173,7 @@ func (h *AuthHandler) WeChatOAuthCallback(c *gin.Context) {
 		wechatClearCookie(c, wechatOAuthIntentCookieName, secureCookie)
 		wechatClearCookie(c, wechatOAuthModeCookieName, secureCookie)
 		wechatClearCookie(c, wechatOAuthBindUserCookieName, secureCookie)
+		clearOAuthPromoCodeCookie(c, secureCookie)
 	}()
 
 	expectedState, err := readCookieDecoded(c, wechatOAuthStateCookieName)
@@ -351,10 +354,11 @@ func (h *AuthHandler) WeChatPaymentOAuthStart(c *gin.Context) {
 		redirectTo = wechatPaymentOAuthDefaultTo
 	}
 	rawContext, err := encodeWeChatPaymentOAuthContext(wechatPaymentOAuthContext{
-		PaymentType: paymentType,
-		Amount:      strings.TrimSpace(c.Query("amount")),
-		OrderType:   strings.TrimSpace(c.Query("order_type")),
-		PlanID:      parseWeChatPaymentPlanID(c.Query("plan_id")),
+		PaymentType:          paymentType,
+		Amount:               strings.TrimSpace(c.Query("amount")),
+		OrderType:            strings.TrimSpace(c.Query("order_type")),
+		PlanID:               parseWeChatPaymentPlanID(c.Query("plan_id")),
+		UseAffiliateDiscount: parseOptionalBoolQuery(c.Query("use_affiliate_discount")),
 	})
 	if err != nil {
 		response.ErrorFrom(c, infraerrors.InternalServer("OAUTH_CONTEXT_ENCODE_FAILED", "failed to encode oauth context").WithCause(err))
@@ -451,13 +455,14 @@ func (h *AuthHandler) WeChatPaymentOAuthCallback(c *gin.Context) {
 	}
 
 	resumeToken, err := h.wechatPaymentResumeService().CreateWeChatPaymentResumeToken(service.WeChatPaymentResumeClaims{
-		OpenID:      openid,
-		PaymentType: paymentContext.PaymentType,
-		Amount:      paymentContext.Amount,
-		OrderType:   paymentContext.OrderType,
-		PlanID:      paymentContext.PlanID,
-		RedirectTo:  redirectTo,
-		Scope:       scope,
+		OpenID:               openid,
+		PaymentType:          paymentContext.PaymentType,
+		Amount:               paymentContext.Amount,
+		OrderType:            paymentContext.OrderType,
+		PlanID:               paymentContext.PlanID,
+		UseAffiliateDiscount: paymentContext.UseAffiliateDiscount,
+		RedirectTo:           redirectTo,
+		Scope:                scope,
 	})
 	if err != nil {
 		redirectOAuthError(c, frontendCallback, "invalid_context", "failed to encode payment resume context", "")
@@ -548,7 +553,15 @@ func (h *AuthHandler) CompleteWeChatOAuthRegistration(c *gin.Context) {
 		return
 	}
 
-	tokenPair, user, err := h.authService.LoginOrRegisterOAuthWithTokenPair(c.Request.Context(), email, username, req.InvitationCode, req.AffCode)
+	tokenPair, user, err := h.authService.LoginOrRegisterOAuthWithTokenPairAndPromoCode(
+		c.Request.Context(),
+		email,
+		username,
+		req.InvitationCode,
+		req.AffCode,
+		pendingOAuthPromoCode(session),
+		"wechat",
+	)
 	if err != nil {
 		response.ErrorFrom(c, err)
 		return
@@ -1323,6 +1336,18 @@ func decodeWeChatPaymentOAuthContext(raw string) (wechatPaymentOAuthContext, err
 func parseWeChatPaymentPlanID(raw string) int64 {
 	id, _ := strconv.ParseInt(strings.TrimSpace(raw), 10, 64)
 	return id
+}
+
+func parseOptionalBoolQuery(raw string) *bool {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return nil
+	}
+	value, err := strconv.ParseBool(raw)
+	if err != nil {
+		return nil
+	}
+	return &value
 }
 
 func wechatPaymentSetCookie(c *gin.Context, name string, value string, maxAgeSec int, secure bool) {

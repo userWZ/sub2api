@@ -35,6 +35,7 @@ type CreateAPIKeyRequest struct {
 	CustomKey     *string  `json:"custom_key"`      // 可选的自定义key
 	IPWhitelist   []string `json:"ip_whitelist"`    // IP 白名单
 	IPBlacklist   []string `json:"ip_blacklist"`    // IP 黑名单
+	QuotaDisabled bool     `json:"quota_disabled"`  // 禁用 Key 级额度统计
 	Quota         *float64 `json:"quota"`           // 配额限制 (USD)
 	ExpiresInDays *int     `json:"expires_in_days"` // 过期天数
 
@@ -46,14 +47,15 @@ type CreateAPIKeyRequest struct {
 
 // UpdateAPIKeyRequest represents the update API key request payload
 type UpdateAPIKeyRequest struct {
-	Name        string   `json:"name"`
-	GroupID     *int64   `json:"group_id"`
-	Status      string   `json:"status" binding:"omitempty,oneof=active inactive"`
-	IPWhitelist []string `json:"ip_whitelist"` // IP 白名单
-	IPBlacklist []string `json:"ip_blacklist"` // IP 黑名单
-	Quota       *float64 `json:"quota"`        // 配额限制 (USD), 0=无限制
-	ExpiresAt   *string  `json:"expires_at"`   // 过期时间 (ISO 8601)
-	ResetQuota  *bool    `json:"reset_quota"`  // 重置已用配额
+	Name          string   `json:"name"`
+	GroupID       *int64   `json:"group_id"`
+	Status        string   `json:"status" binding:"omitempty,oneof=active inactive"`
+	IPWhitelist   []string `json:"ip_whitelist"` // IP 白名单
+	IPBlacklist   []string `json:"ip_blacklist"` // IP 黑名单
+	QuotaDisabled *bool    `json:"quota_disabled"`
+	Quota         *float64 `json:"quota"`       // 配额限制 (USD), 0=无限制
+	ExpiresAt     *string  `json:"expires_at"`  // 过期时间 (ISO 8601)
+	ResetQuota    *bool    `json:"reset_quota"` // 重置已用配额
 
 	// Rate limit fields (nil = no change, 0 = unlimited)
 	RateLimit5h         *float64 `json:"rate_limit_5h"`
@@ -131,7 +133,7 @@ func (h *APIKeyHandler) GetByID(c *gin.Context) {
 
 	// 验证所有权
 	if key.UserID != subject.UserID {
-		response.Forbidden(c, "Not authorized to access this key")
+		response.NotFound(c, "API key not found")
 		return
 	}
 
@@ -159,6 +161,7 @@ func (h *APIKeyHandler) Create(c *gin.Context) {
 		CustomKey:     req.CustomKey,
 		IPWhitelist:   req.IPWhitelist,
 		IPBlacklist:   req.IPBlacklist,
+		QuotaDisabled: req.QuotaDisabled,
 		ExpiresInDays: req.ExpiresInDays,
 	}
 	if req.Quota != nil {
@@ -207,6 +210,7 @@ func (h *APIKeyHandler) Update(c *gin.Context) {
 	svcReq := service.UpdateAPIKeyRequest{
 		IPWhitelist:         req.IPWhitelist,
 		IPBlacklist:         req.IPBlacklist,
+		QuotaDisabled:       req.QuotaDisabled,
 		Quota:               req.Quota,
 		ResetQuota:          req.ResetQuota,
 		RateLimit5h:         req.RateLimit5h,

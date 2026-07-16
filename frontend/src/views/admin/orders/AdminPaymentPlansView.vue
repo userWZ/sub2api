@@ -1,186 +1,172 @@
 <template>
   <AppLayout>
     <div class="space-y-4">
-      <!-- Actions -->
-      <div class="flex items-center justify-end gap-2">
-        <button @click="loadPlans" :disabled="plansLoading" class="btn btn-secondary" :title="t('common.refresh')">
-          <Icon name="refresh" size="md" :class="plansLoading ? 'animate-spin' : ''" />
-        </button>
-        <button @click="openPlanEdit(null)" class="btn btn-primary">{{ t('payment.admin.createPlan') }}</button>
-      </div>
+      <section class="card space-y-4 p-5">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 class="text-lg font-bold text-gray-900 dark:text-white">订阅套餐管理</h2>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+              这里才是真正的套餐配置：价格、有效期、绑定订阅分组和是否上架都在这里修改。下面的前台商品配置只决定用户端展示哪几个套餐。
+            </p>
+          </div>
+          <button class="btn btn-primary" @click="openCreatePlan">新增套餐</button>
+        </div>
 
-      <!-- Plans Table -->
-      <DataTable :columns="planColumns" :data="plans" :loading="plansLoading">
-        <template #cell-name="{ value, row }">
-          <span class="text-sm font-medium" :class="getPlanNameClass(row.group_id)">{{ value }}</span>
-        </template>
-        <template #cell-group_id="{ value }">
-          <span v-if="isGroupMissing(value)" class="text-sm">
-            <span class="text-gray-400">#{{ value }}</span>
-            <span class="ml-1 badge badge-danger">{{ t('payment.admin.groupMissing') }}</span>
-          </span>
-          <GroupBadge
-            v-else-if="getGroup(value)"
-            :name="getGroup(value)!.name"
-            :platform="getGroup(value)!.platform"
-            :rate-multiplier="getGroup(value)!.rate_multiplier"
-          />
-          <span v-else class="text-sm text-gray-400">-</span>
-        </template>
-        <template #cell-price="{ value, row }">
-          <div class="text-sm">
-            <span class="font-medium text-gray-900 dark:text-white">${{ (value ?? 0).toFixed(2) }}</span>
-            <span v-if="row.original_price" class="ml-1 text-xs text-gray-400 line-through">${{ row.original_price.toFixed(2) }}</span>
-          </div>
-        </template>
-        <template #cell-validity_days="{ value, row }">
-          <span class="text-sm">{{ value }} {{ t('payment.admin.' + (row.validity_unit || 'days')) }}</span>
-        </template>
-        <template #cell-for_sale="{ value, row }">
-          <button
-            type="button"
-            :class="[
-              'relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2',
-              value ? 'bg-primary-500' : 'bg-gray-300 dark:bg-dark-600'
-            ]"
-            @click="toggleForSale(row)"
-          >
-            <span :class="[
-              'pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out',
-              value ? 'translate-x-4' : 'translate-x-0'
-            ]" />
-          </button>
-        </template>
-        <template #cell-actions="{ row }">
-          <div class="flex items-center gap-2">
-            <button @click="openPlanEdit(row)" class="flex flex-col items-center gap-0.5 rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/20 dark:hover:text-blue-400">
-              <Icon name="edit" size="sm" />
-              <span class="text-xs">{{ t('common.edit') }}</span>
-            </button>
-            <button @click="confirmDeletePlan(row)" class="flex flex-col items-center gap-0.5 rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400">
-              <Icon name="trash" size="sm" />
-              <span class="text-xs">{{ t('common.delete') }}</span>
-            </button>
-          </div>
-        </template>
-      </DataTable>
+        <div v-if="plansLoading" class="py-8 text-center text-sm text-gray-500 dark:text-gray-400">正在加载订阅套餐...</div>
+        <div v-else-if="!plans.length" class="rounded-lg border border-dashed border-gray-300 p-6 text-center text-sm text-gray-500 dark:border-dark-600 dark:text-gray-400">
+          当前还没有订阅套餐。请先新增套餐，再到前台商品配置里选择它。
+        </div>
+        <div v-else class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-200 text-sm dark:divide-dark-600">
+            <thead>
+              <tr class="text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                <th class="px-3 py-2">套餐</th>
+                <th class="px-3 py-2">价格</th>
+                <th class="px-3 py-2">有效期</th>
+                <th class="px-3 py-2">订阅分组</th>
+                <th class="px-3 py-2">额度</th>
+                <th class="px-3 py-2">状态</th>
+                <th class="px-3 py-2 text-right">操作</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100 dark:divide-dark-700">
+              <tr v-for="plan in plans" :key="plan.id" class="text-gray-700 dark:text-gray-300">
+                <td class="px-3 py-3">
+                  <div class="font-medium text-gray-900 dark:text-white">{{ plan.name }}</div>
+                  <div class="mt-0.5 max-w-md truncate text-xs text-gray-500 dark:text-gray-400">{{ plan.description || '-' }}</div>
+                </td>
+                <td class="px-3 py-3">
+                  <div class="font-semibold text-gray-900 dark:text-white">¥{{ formatAmount(plan.price) }}</div>
+                  <div v-if="plan.original_price" class="text-xs text-gray-400 line-through">¥{{ formatAmount(plan.original_price) }}</div>
+                </td>
+                <td class="px-3 py-3">{{ plan.validity_days }} {{ unitLabel(plan.validity_unit) }}</td>
+                <td class="px-3 py-3">{{ plan.group_name || groupName(plan.group_id) || `#${plan.group_id}` }}</td>
+                <td class="px-3 py-3 text-xs leading-5">
+                  <div>日：{{ formatLimit(plan.daily_limit_usd) }}</div>
+                  <div>周：{{ formatLimit(plan.weekly_limit_usd) }}</div>
+                  <div>月：{{ formatLimit(plan.monthly_limit_usd) }}</div>
+                </td>
+                <td class="px-3 py-3">
+                  <span :class="['badge', plan.for_sale ? 'badge-success' : 'badge-gray']">
+                    {{ plan.for_sale ? '已上架' : '已下架' }}
+                  </span>
+                </td>
+                <td class="px-3 py-3">
+                  <div class="flex justify-end gap-2">
+                    <button class="btn btn-secondary btn-sm" @click="openEditPlan(plan)">编辑</button>
+                    <button class="btn btn-danger btn-sm" @click="deletePlan(plan)">删除</button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <HomePricingConfigPanel :plans="plans" />
     </div>
 
-    <!-- Plan Edit Dialog -->
-    <PlanEditDialog :show="showPlanDialog" :plan="editingPlan" :groups="groups" @close="showPlanDialog = false" @saved="loadPlans" />
-
-    <ConfirmDialog :show="showDeletePlanDialog" :title="t('payment.admin.deletePlan')" :message="t('payment.admin.deletePlanConfirm')" :confirm-text="t('common.delete')" danger @confirm="handleDeletePlan" @cancel="showDeletePlanDialog = false" />
+    <PlanEditDialog
+      :show="showPlanDialog"
+      :plan="editingPlan"
+      :groups="groups"
+      @close="showPlanDialog = false"
+      @saved="handlePlanSaved"
+    />
   </AppLayout>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
+import { adminAPI } from '@/api/admin'
 import { adminPaymentAPI } from '@/api/admin/payment'
 import { extractI18nErrorMessage } from '@/utils/apiError'
-import adminAPI from '@/api/admin'
 import type { SubscriptionPlan } from '@/types/payment'
 import type { AdminGroup } from '@/types'
-import type { Column } from '@/components/common/types'
 import AppLayout from '@/components/layout/AppLayout.vue'
-import DataTable from '@/components/common/DataTable.vue'
-import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
-import Icon from '@/components/icons/Icon.vue'
-import GroupBadge from '@/components/common/GroupBadge.vue'
+import HomePricingConfigPanel from './HomePricingConfigPanel.vue'
 import PlanEditDialog from './PlanEditDialog.vue'
-import { platformTextClass } from '@/utils/platformColors'
 
 const { t } = useI18n()
 const appStore = useAppStore()
 
-// ==================== Groups ====================
-
-const groups = ref<AdminGroup[]>([])
-
-async function loadGroups() {
-  try {
-    groups.value = await adminAPI.groups.getAll()
-  } catch { /* ignore */ }
-}
-
-function getGroup(id: number): AdminGroup | undefined {
-  return groups.value.find(g => g.id === id)
-}
-
-function isGroupMissing(id: number): boolean {
-  return id > 0 && !groups.value.find(g => g.id === id)
-}
-
-function getPlanNameClass(groupId: number): string {
-  const group = getGroup(groupId)
-  return group ? platformTextClass(group.platform) : 'text-gray-900 dark:text-white'
-}
-
-
-// ==================== Plans ====================
-
-const plansLoading = ref(false)
 const plans = ref<SubscriptionPlan[]>([])
+const groups = ref<AdminGroup[]>([])
+const plansLoading = ref(false)
 const showPlanDialog = ref(false)
-const showDeletePlanDialog = ref(false)
 const editingPlan = ref<SubscriptionPlan | null>(null)
-const deletingPlanId = ref<number | null>(null)
-
-const planColumns = computed((): Column[] => [
-  { key: 'id', label: 'ID' },
-  { key: 'name', label: t('payment.admin.planName') },
-  { key: 'group_id', label: t('payment.admin.group') },
-  { key: 'price', label: t('payment.admin.price') },
-  { key: 'validity_days', label: t('payment.admin.validityDays') },
-  { key: 'for_sale', label: t('payment.admin.forSale') },
-  { key: 'sort_order', label: t('payment.admin.sortOrder') },
-  { key: 'actions', label: t('common.actions') },
-])
 
 async function loadPlans() {
   plansLoading.value = true
   try {
     const res = await adminPaymentAPI.getPlans()
-    // Backend returns features as newline-separated string; parse to array
     plans.value = (res.data || []).map((p: Omit<SubscriptionPlan, 'features'> & { features: string | string[] }) => ({
       ...p,
       features: typeof p.features === 'string'
         ? p.features.split('\n').map((f: string) => f.trim()).filter(Boolean)
         : (p.features || []),
     }))
+  } catch (err: unknown) {
+    appStore.showError(extractI18nErrorMessage(err, t, 'payment.errors', t('common.error')))
+  } finally {
+    plansLoading.value = false
   }
-  catch (err: unknown) { appStore.showError(extractI18nErrorMessage(err, t, 'payment.errors', t('common.error'))) }
-  finally { plansLoading.value = false }
 }
 
-function openPlanEdit(plan: SubscriptionPlan | null) {
-  editingPlan.value = plan
-  showPlanDialog.value = true
-}
-
-
-/** Quick toggle for_sale from the list */
-async function toggleForSale(plan: SubscriptionPlan) {
+async function loadGroups() {
   try {
-    await adminPaymentAPI.updatePlan(plan.id, { for_sale: !plan.for_sale })
-    plan.for_sale = !plan.for_sale
+    groups.value = await adminAPI.groups.getAll()
   } catch (err: unknown) {
     appStore.showError(extractI18nErrorMessage(err, t, 'payment.errors', t('common.error')))
   }
 }
 
-function confirmDeletePlan(plan: SubscriptionPlan) { deletingPlanId.value = plan.id; showDeletePlanDialog.value = true }
-async function handleDeletePlan() {
-  if (!deletingPlanId.value) return
-  try { await adminPaymentAPI.deletePlan(deletingPlanId.value); appStore.showSuccess(t('common.deleted')); showDeletePlanDialog.value = false; loadPlans() }
-  catch (err: unknown) { appStore.showError(extractI18nErrorMessage(err, t, 'payment.errors', t('common.error'))) }
+function openCreatePlan() {
+  editingPlan.value = null
+  showPlanDialog.value = true
 }
 
-// ==================== Lifecycle ====================
+function openEditPlan(plan: SubscriptionPlan) {
+  editingPlan.value = plan
+  showPlanDialog.value = true
+}
+
+async function deletePlan(plan: SubscriptionPlan) {
+  if (!window.confirm(`确定删除套餐「${plan.name}」吗？`)) return
+  try {
+    await adminPaymentAPI.deletePlan(plan.id)
+    appStore.showSuccess('套餐已删除')
+    await loadPlans()
+  } catch (err: unknown) {
+    appStore.showError(extractI18nErrorMessage(err, t, 'payment.errors', t('common.error')))
+  }
+}
+
+async function handlePlanSaved() {
+  await loadPlans()
+}
+
+function formatAmount(value?: number) {
+  return Number(value || 0).toFixed(2)
+}
+
+function formatLimit(value?: number | null) {
+  return value == null ? '不限' : `${Number(value).toFixed(2)} 积分`
+}
+
+function groupName(groupID: number) {
+  return groups.value.find(group => group.id === groupID)?.name || ''
+}
+
+function unitLabel(unit?: string) {
+  if (unit === 'weeks') return '周'
+  if (unit === 'months') return '月'
+  return '天'
+}
 
 onMounted(() => {
-  loadGroups()
   loadPlans()
+  loadGroups()
 })
 </script>

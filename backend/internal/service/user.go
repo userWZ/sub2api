@@ -19,8 +19,10 @@ type User struct {
 	PasswordHash   string
 	Role           string
 	Balance        float64
+	FrozenBalance  float64
 	Concurrency    int
 	Status         string
+	CustomerType   string
 	AllowedGroups  []int64
 	TokenVersion   int64 // Incremented on password change to invalidate existing tokens
 	// TokenVersionResolved indicates TokenVersion already contains the fingerprint-derived
@@ -32,6 +34,7 @@ type User struct {
 	LastUsedAt           *time.Time
 	CreatedAt            time.Time
 	UpdatedAt            time.Time
+	DeletedAt            *time.Time // 非 nil 表示用户已软删除
 
 	// GroupRates 用户专属分组倍率配置
 	// map[groupID]rateMultiplier
@@ -61,6 +64,11 @@ type User struct {
 	APIKeys       []APIKey
 	Subscriptions []UserSubscription
 }
+
+const (
+	CustomerTypeDirect  = "direct"
+	CustomerTypeManaged = "managed"
+)
 
 func (u *User) IsAdmin() bool {
 	return u.Role == RoleAdmin

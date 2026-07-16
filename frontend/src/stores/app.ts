@@ -14,24 +14,38 @@ import {
 } from '@/api/admin/system'
 import { getPublicSettings as fetchPublicSettingsAPI } from '@/api/auth'
 
+const DEFAULT_SITE_NAME = 'OceanWay AI'
+const DEFAULT_SITE_LOGO = '/logo.png'
+const LEGACY_SITE_NAME = 'Sub2API'
+
+function normalizeSiteName(value?: string): string {
+  const trimmed = value?.trim()
+  if (!trimmed || trimmed.toLowerCase() === LEGACY_SITE_NAME.toLowerCase()) {
+    return DEFAULT_SITE_NAME
+  }
+  return trimmed
+}
+
 export const useAppStore = defineStore('app', () => {
   // ==================== State ====================
 
   const sidebarCollapsed = ref<boolean>(false)
   const mobileOpen = ref<boolean>(false)
+  const sidebarScrollTop = ref<number>(0)
   const loading = ref<boolean>(false)
   const toasts = ref<Toast[]>([])
 
   // Public settings cache state
   const publicSettingsLoaded = ref<boolean>(false)
   const publicSettingsLoading = ref<boolean>(false)
-  const siteName = ref<string>('Sub2API')
-  const siteLogo = ref<string>('')
+  const siteName = ref<string>(DEFAULT_SITE_NAME)
+  const siteLogo = ref<string>(DEFAULT_SITE_LOGO)
   const siteVersion = ref<string>('')
   const contactInfo = ref<string>('')
   const apiBaseUrl = ref<string>('')
   const docUrl = ref<string>('')
   const cachedPublicSettings = ref<PublicSettings | null>(null)
+  let publicSettingsRequest: Promise<PublicSettings | null> | null = null
 
   // Version cache state
   const versionLoaded = ref<boolean>(false)
@@ -288,16 +302,21 @@ export const useAppStore = defineStore('app', () => {
    * Apply settings to store state (internal helper to avoid code duplication)
    */
   function applySettings(config: PublicSettings): void {
-    if (typeof window !== 'undefined') {
-      window.__APP_CONFIG__ = { ...config }
+    const normalizedConfig: PublicSettings = {
+      ...config,
+      site_name: normalizeSiteName(config.site_name),
+      site_logo: config.site_logo || DEFAULT_SITE_LOGO,
     }
-    cachedPublicSettings.value = config
-    siteName.value = config.site_name || 'Sub2API'
-    siteLogo.value = config.site_logo || ''
-    siteVersion.value = config.version || ''
-    contactInfo.value = config.contact_info || ''
-    apiBaseUrl.value = config.api_base_url || ''
-    docUrl.value = config.doc_url || ''
+    if (typeof window !== 'undefined') {
+      window.__APP_CONFIG__ = { ...normalizedConfig }
+    }
+    cachedPublicSettings.value = normalizedConfig
+    siteName.value = normalizedConfig.site_name
+    siteLogo.value = normalizedConfig.site_logo
+    siteVersion.value = normalizedConfig.version || ''
+    contactInfo.value = normalizedConfig.contact_info || ''
+    apiBaseUrl.value = normalizedConfig.api_base_url || ''
+    docUrl.value = normalizedConfig.doc_url || ''
     publicSettingsLoaded.value = true
   }
 
@@ -305,19 +324,25 @@ export const useAppStore = defineStore('app', () => {
    * Fetch public settings (uses cache unless force=true)
    * @param force - Force refresh from API
    */
-  async function fetchPublicSettings(force = false): Promise<PublicSettings | null> {
+  function fetchPublicSettings(force = false): Promise<PublicSettings | null> {
+    // An active request always wins over cache/force semantics so every caller observes
+    // the same refresh result and no older request can overwrite a newer one.
+    if (publicSettingsRequest) {
+      return publicSettingsRequest
+    }
+
     // Check for injected config from server (eliminates flash)
     if (!publicSettingsLoaded.value && !force && window.__APP_CONFIG__) {
       applySettings(window.__APP_CONFIG__)
-      return window.__APP_CONFIG__
+      return Promise.resolve(window.__APP_CONFIG__)
     }
 
     // Return cached data if available and not forcing refresh
     if (publicSettingsLoaded.value && !force) {
       if (cachedPublicSettings.value) {
-        return { ...cachedPublicSettings.value }
+        return Promise.resolve({ ...cachedPublicSettings.value })
       }
-      return {
+      return Promise.resolve({
         registration_enabled: false,
         email_verify_enabled: false,
         force_email_on_third_party_signup: false,
@@ -334,6 +359,8 @@ export const useAppStore = defineStore('app', () => {
         contact_info: contactInfo.value,
         doc_url: docUrl.value,
         home_content: '',
+        internal_home_domains: [],
+        home_pricing_config: null,
         hide_ccs_import_button: false,
         payment_enabled: false,
         table_default_page_size: 20,
@@ -358,26 +385,40 @@ export const useAppStore = defineStore('app', () => {
         channel_monitor_default_interval_seconds: 60,
         available_channels_enabled: false,
         risk_control_enabled: false,
+        service_quota_enabled: false,
         affiliate_enabled: false,
-      }
-    }
-
-    // Prevent duplicate requests
-    if (publicSettingsLoading.value) {
-      return null
+        allow_user_view_error_requests: false,
+      })
     }
 
     publicSettingsLoading.value = true
+    let apiRequest: Promise<PublicSettings>
     try {
-      const data = await fetchPublicSettingsAPI()
-      applySettings(data)
-      return data
+      apiRequest = fetchPublicSettingsAPI()
     } catch (error) {
       console.error('Failed to fetch public settings:', error)
-      return null
-    } finally {
       publicSettingsLoading.value = false
+      return Promise.resolve(null)
     }
+
+    const request = apiRequest
+      .then((data) => {
+        applySettings(data)
+        return data
+      })
+      .catch((error) => {
+        console.error('Failed to fetch public settings:', error)
+        return null
+      })
+      .finally(() => {
+        if (publicSettingsRequest === request) {
+          publicSettingsRequest = null
+          publicSettingsLoading.value = false
+        }
+      })
+
+    publicSettingsRequest = request
+    return request
   }
 
   /**
@@ -407,6 +448,7 @@ export const useAppStore = defineStore('app', () => {
     // State
     sidebarCollapsed,
     mobileOpen,
+    sidebarScrollTop,
     loading,
     toasts,
 

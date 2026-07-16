@@ -14,6 +14,7 @@ export type OrderStatus =
   | 'FAILED'
   | 'REFUND_REQUESTED'
   | 'REFUNDING'
+  | 'REFUND_PENDING'
   | 'PARTIALLY_REFUNDED'
   | 'REFUNDED'
   | 'REFUND_FAILED'
@@ -41,6 +42,7 @@ export interface PaymentConfig {
 
 export interface MethodLimit {
   currency?: string
+  display_name?: string
   daily_limit: number
   daily_used: number
   daily_remaining: number
@@ -69,6 +71,23 @@ export interface CheckoutInfoResponse {
   help_text: string
   help_image_url: string
   stripe_publishable_key: string
+  /** When true, Alipay payments on mobile always show the QR code instead of redirecting */
+  alipay_force_qrcode?: boolean
+  affiliate_discount?: {
+    enabled: boolean
+    max_percent: number
+    min_pay_amount: number
+  }
+	 renewal_offer?: {
+	  enabled: boolean
+	  window_days: number
+	  before_expiry_days: number
+	  after_expiry_days: number
+	  discount_enabled: boolean
+	  discount_percent: number
+	  rollover_enabled: boolean
+	  rollover_percent: number
+	}
 }
 
 // ==================== Orders ====================
@@ -77,6 +96,8 @@ export interface PaymentOrder {
   id: number
   user_id: number
   amount: number
+  original_amount?: number
+  affiliate_discount?: number
   pay_amount: number
   currency?: string
   fee_rate: number
@@ -105,6 +126,10 @@ export interface SubscriptionPlan {
   group_platform?: string
   group_name?: string
   rate_multiplier?: number
+  peak_rate_enabled?: boolean
+  peak_start?: string
+  peak_end?: string
+  peak_rate_multiplier?: number
   daily_limit_usd?: number | null
   weekly_limit_usd?: number | null
   monthly_limit_usd?: number | null
@@ -119,6 +144,12 @@ export interface SubscriptionPlan {
   features: string[]
   for_sale: boolean
   sort_order: number
+	 renewal_offer?: {
+	  eligible: boolean
+	  discount_percent: number
+	  discounted_amount: number
+	  rollover_amount: number
+	}
 }
 
 export interface PaymentChannel {
@@ -161,6 +192,7 @@ export interface CreateOrderRequest {
   openid?: string
   wechat_resume_token?: string
   is_mobile?: boolean
+  use_affiliate_discount?: boolean
 }
 
 export type CreateOrderResultType = 'order_created' | 'oauth_required' | 'jsapi_ready'
@@ -186,6 +218,10 @@ export interface WechatJSAPIPayload {
 export interface CreateOrderResult {
   order_id: number
   amount: number
+  original_amount?: number
+  affiliate_discount?: number
+	 renewal_discount?: number
+	 renewal_rollover_amount?: number
   pay_url?: string
   qr_code?: string
   client_secret?: string

@@ -10,25 +10,34 @@ import (
 )
 
 type stubAdminService struct {
-	users                []service.User
-	apiKeys              []service.APIKey
-	groups               []service.Group
-	accounts             []service.Account
-	proxies              []service.Proxy
-	proxyCounts          []service.ProxyWithAccountCount
-	redeems              []service.RedeemCode
-	boundAuthIdentity    *service.AdminBindAuthIdentityInput
-	boundAuthIdentityFor int64
-	createdAccounts      []*service.CreateAccountInput
-	createdProxies       []*service.CreateProxyInput
-	updatedProxyIDs      []int64
-	updatedProxies       []*service.UpdateProxyInput
-	testedProxyIDs       []int64
-	createAccountErr     error
-	updateAccountErr     error
-	bulkUpdateAccountErr error
-	checkMixedErr        error
-	lastMixedCheck       struct {
+	users                               []service.User
+	apiKeys                             []service.APIKey
+	groups                              []service.Group
+	accounts                            []service.Account
+	accountSchedulerScoreFilterAccounts []service.Account
+	openAISchedulerScorePoolAccounts    []service.Account
+	schedulerScoreFilterCalls           int
+	openAISchedulerScorePoolCalls       int
+	proxies                             []service.Proxy
+	proxyCounts                         []service.ProxyWithAccountCount
+	redeems                             []service.RedeemCode
+	boundAuthIdentity                   *service.AdminBindAuthIdentityInput
+	boundAuthIdentityFor                int64
+	createdAccounts                     []*service.CreateAccountInput
+	createdProxies                      []*service.CreateProxyInput
+	updatedProxyIDs                     []int64
+	updatedProxies                      []*service.UpdateProxyInput
+	testedProxyIDs                      []int64
+	getUserErr                          error
+	createAccountErr                    error
+	createSparkShadowErr                error
+	updateAccountErr                    error
+	bulkUpdateAccountErr                error
+	getAccountResult                    *service.Account
+	updateAccountCalls                  int
+	updateAccountExtraCalls             int
+	checkMixedErr                       error
+	lastMixedCheck                      struct {
 		accountID int64
 		platform  string
 		groupIDs  []int64
@@ -147,6 +156,9 @@ func (s *stubAdminService) ListUsers(ctx context.Context, page, pageSize int, fi
 }
 
 func (s *stubAdminService) GetUser(ctx context.Context, id int64) (*service.User, error) {
+	if s.getUserErr != nil {
+		return nil, s.getUserErr
+	}
 	for i := range s.users {
 		if s.users[i].ID == id {
 			return &s.users[i], nil
@@ -154,6 +166,10 @@ func (s *stubAdminService) GetUser(ctx context.Context, id int64) (*service.User
 	}
 	user := service.User{ID: id, Email: "user@example.com", Status: service.StatusActive}
 	return &user, nil
+}
+
+func (s *stubAdminService) GetUserIncludeDeleted(ctx context.Context, id int64) (*service.User, error) {
+	return s.GetUser(ctx, id)
 }
 
 func (s *stubAdminService) CreateUser(ctx context.Context, input *service.CreateUserInput) (*service.User, error) {
@@ -256,9 +272,20 @@ func (s *stubAdminService) GetAllGroupsByPlatform(ctx context.Context, platform 
 	return s.groups, nil
 }
 
+func (s *stubAdminService) GetAllGroupsIncludingInactive(ctx context.Context) ([]service.Group, error) {
+	return s.groups, nil
+}
+
 func (s *stubAdminService) GetGroup(ctx context.Context, id int64) (*service.Group, error) {
 	group := service.Group{ID: id, Name: "group", Status: service.StatusActive}
 	return &group, nil
+}
+
+func (s *stubAdminService) GetGroupModelsListCandidates(ctx context.Context, id int64, platform string) ([]string, error) {
+	if platform == service.PlatformOpenAI {
+		return []string{"gpt-5.5", "gpt-5.4"}, nil
+	}
+	return []string{"claude-sonnet-4-6"}, nil
 }
 
 func (s *stubAdminService) CreateGroup(ctx context.Context, input *service.CreateGroupInput) (*service.Group, error) {
@@ -309,10 +336,64 @@ func (s *stubAdminService) ListAccounts(ctx context.Context, page, pageSize int,
 	s.lastListAccounts.sortBy = sortBy
 	s.lastListAccounts.sortOrder = sortOrder
 	s.lastListAccounts.calls++
-	return s.accounts, int64(len(s.accounts)), nil
+	accounts := s.accounts
+	total := len(accounts)
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 {
+		pageSize = total
+	}
+	start := (page - 1) * pageSize
+	if start >= total {
+		return []service.Account{}, int64(total), nil
+	}
+	end := start + pageSize
+	if end > total {
+		end = total
+	}
+	return accounts[start:end], int64(total), nil
+}
+
+func (s *stubAdminService) ListAccountsForSchedulerScoreFilter(_ context.Context, platform, accountType, status, search string, groupID int64, privacyMode string) ([]service.Account, error) {
+	s.schedulerScoreFilterCalls++
+	if s.accountSchedulerScoreFilterAccounts != nil {
+		return s.accountSchedulerScoreFilterAccounts, nil
+	}
+	return s.accounts, nil
+}
+
+func (s *stubAdminService) ListOpenAISchedulableAccountsForSchedulerScore(_ context.Context, groupID *int64) ([]service.Account, error) {
+	s.openAISchedulerScorePoolCalls++
+	accounts := s.openAISchedulerScorePoolAccounts
+	if accounts == nil {
+		accounts = s.accounts
+	}
+	out := make([]service.Account, 0, len(accounts))
+	for _, account := range accounts {
+		if account.Platform != service.PlatformOpenAI || !account.IsSchedulable() {
+			continue
+		}
+		if groupID == nil {
+			if len(account.AccountGroups) == 0 && len(account.GroupIDs) == 0 {
+				out = append(out, account)
+			}
+			continue
+		}
+		for _, accountGroup := range account.AccountGroups {
+			if accountGroup.GroupID == *groupID {
+				out = append(out, account)
+				break
+			}
+		}
+	}
+	return out, nil
 }
 
 func (s *stubAdminService) GetAccount(ctx context.Context, id int64) (*service.Account, error) {
+	if s.getAccountResult != nil {
+		return s.getAccountResult, nil
+	}
 	account := service.Account{ID: id, Name: "account", Status: service.StatusActive}
 	return &account, nil
 }
@@ -337,12 +418,27 @@ func (s *stubAdminService) CreateAccount(ctx context.Context, input *service.Cre
 	return &account, nil
 }
 
+func (s *stubAdminService) DuplicateAccount(ctx context.Context, id int64, actorScope, operationKey string) (*service.Account, error) {
+	account := service.Account{ID: 301, Name: "account (Copy)", Status: service.StatusActive, Schedulable: false}
+	return &account, nil
+}
+
+func (s *stubAdminService) RecoverDuplicateAccount(ctx context.Context, id int64, actorScope, operationKey string) (*service.Account, error) {
+	return nil, nil
+}
+
 func (s *stubAdminService) UpdateAccount(ctx context.Context, id int64, input *service.UpdateAccountInput) (*service.Account, error) {
+	s.updateAccountCalls++
 	if s.updateAccountErr != nil {
 		return nil, s.updateAccountErr
 	}
 	account := service.Account{ID: id, Name: input.Name, Status: service.StatusActive}
 	return &account, nil
+}
+
+func (s *stubAdminService) UpdateAccountExtra(ctx context.Context, id int64, updates map[string]any) error {
+	s.updateAccountExtraCalls++
+	return nil
 }
 
 func (s *stubAdminService) DeleteAccount(ctx context.Context, id int64) error {
@@ -569,6 +665,25 @@ func (s *stubAdminService) AdminUpdateAPIKeyGroupID(ctx context.Context, keyID i
 	return nil, service.ErrAPIKeyNotFound
 }
 
+func (s *stubAdminService) AdminUpdateAPIKeyPolicy(ctx context.Context, keyID int64, input service.AdminUpdateAPIKeyPolicyInput) (*service.APIKey, error) {
+	for i := range s.apiKeys {
+		if s.apiKeys[i].ID == keyID {
+			if input.Status != nil {
+				s.apiKeys[i].Status = *input.Status
+			}
+			if input.QuotaDisabled != nil {
+				s.apiKeys[i].QuotaDisabled = *input.QuotaDisabled
+				if *input.QuotaDisabled && s.apiKeys[i].Status == service.StatusAPIKeyQuotaExhausted {
+					s.apiKeys[i].Status = service.StatusAPIKeyActive
+				}
+			}
+			k := s.apiKeys[i]
+			return &k, nil
+		}
+	}
+	return nil, service.ErrAPIKeyNotFound
+}
+
 func (s *stubAdminService) AdminResetAPIKeyRateLimitUsage(ctx context.Context, keyID int64) (*service.APIKey, error) {
 	for i := range s.apiKeys {
 		if s.apiKeys[i].ID == keyID {
@@ -607,6 +722,30 @@ func (s *stubAdminService) ForceAntigravityPrivacy(ctx context.Context, account 
 
 func (s *stubAdminService) ReplaceUserGroup(ctx context.Context, userID, oldGroupID, newGroupID int64) (*service.ReplaceUserGroupResult, error) {
 	return &service.ReplaceUserGroupResult{MigratedKeys: 0}, nil
+}
+
+func (s *stubAdminService) RevertAccountProxyFallback(ctx context.Context, id int64) error {
+	return nil
+}
+
+func (s *stubAdminService) CreateShadow(ctx context.Context, parentID int64, opts service.ShadowOptions) (*service.Account, error) {
+	if s.createSparkShadowErr != nil {
+		return nil, s.createSparkShadowErr
+	}
+	pid := parentID
+	return &service.Account{
+		ID:              9001,
+		Name:            opts.Name,
+		Platform:        service.PlatformOpenAI,
+		Type:            service.AccountTypeOAuth,
+		Priority:        opts.Priority,
+		Concurrency:     opts.Concurrency,
+		GroupIDs:        opts.GroupIDs,
+		ParentAccountID: &pid,
+		QuotaDimension:  service.QuotaDimensionSpark,
+		Credentials:     map[string]any{},
+		Extra:           map[string]any{},
+	}, nil
 }
 
 // Ensure stub implements interface.

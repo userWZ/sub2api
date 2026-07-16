@@ -52,6 +52,8 @@ function airwallexSnapshot(overrides: Partial<PaymentRecoverySnapshot> = {}): Pa
     countryCode: 'CN',
     paymentEnv: 'demo',
     payAmount: 88,
+    originalAmount: 88,
+    affiliateDiscount: 0,
     orderType: 'balance',
     paymentMode: '',
     resumeToken: 'resume-awx',
