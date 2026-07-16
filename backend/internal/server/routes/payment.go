@@ -75,6 +75,8 @@ func RegisterPaymentRoutes(
 		// Config
 		adminGroup.GET("/config", adminPaymentHandler.GetConfig)
 		adminGroup.PUT("/config", adminPaymentHandler.UpdateConfig)
+		adminGroup.GET("/renewal", adminPaymentHandler.GetRenewalSettings)
+		adminGroup.PUT("/renewal", adminPaymentHandler.UpdateRenewalSettings)
 
 		// Orders
 		adminOrders := adminGroup.Group("/orders")

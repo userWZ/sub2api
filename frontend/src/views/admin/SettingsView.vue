@@ -6761,34 +6761,12 @@
                     </p>
                   </div>
                 </div>
-				<div class="rounded-lg border border-primary-200 bg-primary-50/50 p-4 dark:border-primary-900/60 dark:bg-primary-950/20">
-				  <div class="flex items-center justify-between gap-4">
-					<div>
-					  <label class="font-medium text-gray-900 dark:text-white">{{ t("admin.settings.payment.renewalOffer") }}</label>
-					  <p class="text-sm text-gray-500 dark:text-gray-400">{{ t("admin.settings.payment.renewalOfferHint") }}</p>
-					</div>
-					<Toggle v-model="form.payment_renewal_offer_enabled" />
+				<div class="flex flex-col gap-3 rounded-lg border border-primary-200 bg-primary-50/50 p-4 dark:border-primary-900/60 dark:bg-primary-950/20 sm:flex-row sm:items-center sm:justify-between">
+				  <div>
+					<div class="font-medium text-gray-900 dark:text-white">{{ t("admin.renewal.title") }}</div>
+					<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ t("admin.renewal.movedHint") }}</p>
 				  </div>
-				  <div v-if="form.payment_renewal_offer_enabled" class="mt-4 grid gap-3 md:grid-cols-4">
-					<div>
-					  <label class="input-label">{{ t("admin.settings.payment.renewalWindowDays") }}</label>
-					  <input v-model.number="form.payment_renewal_window_days" type="number" min="1" max="365" class="input" />
-					</div>
-					<div>
-					  <label class="input-label">{{ t("admin.settings.payment.renewalDiscountPercent") }}</label>
-					  <input v-model.number="form.payment_renewal_discount_percent" type="number" min="0" max="99.99" step="0.01" class="input" />
-					</div>
-					<div>
-					  <label class="input-label">{{ t("admin.settings.payment.renewalRolloverPercent") }}</label>
-					  <input v-model.number="form.payment_renewal_rollover_percent" type="number" min="0" max="100" step="0.01" class="input" />
-					</div>
-					<div class="flex items-end pb-2">
-					  <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-						<input v-model="form.payment_renewal_email_enabled" type="checkbox" class="rounded border-gray-300" />
-						{{ t("admin.settings.payment.renewalEmail") }}
-					  </label>
-					</div>
-				  </div>
+				  <router-link to="/admin/orders/renewal" class="btn btn-secondary whitespace-nowrap">{{ t("admin.renewal.openSettings") }}</router-link>
 				</div>
 
                 <!-- Row 3: Pending orders + load balance + cancel rate limit (all in one row) -->

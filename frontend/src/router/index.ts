@@ -747,6 +747,19 @@ const routes: RouteRecordRaw[] = [
       requiresPayment: true
     }
   },
+  {
+    path: '/admin/orders/renewal',
+    name: 'AdminRenewalSettings',
+    component: () => import('@/views/admin/orders/AdminRenewalSettingsView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      title: 'Subscription Renewal Campaign',
+      titleKey: 'nav.renewalCampaign',
+      descriptionKey: 'admin.renewal.description',
+      requiresPayment: true
+    }
+  },
 
   // ==================== 404 Not Found ====================
   {

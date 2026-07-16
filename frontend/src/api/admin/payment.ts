@@ -61,6 +61,22 @@ export interface UpdatePaymentConfigRequest {
   help_text?: string
 }
 
+export interface RenewalSettings {
+  offer_enabled: boolean
+  before_expiry_days: number
+  after_expiry_days: number
+  discount_enabled: boolean
+  discount_percent: number
+  discount_min_order_amount: number
+  discount_max_amount: number
+  rollover_enabled: boolean
+  rollover_percent: number
+  rollover_min_unused_amount: number
+  rollover_max_amount: number
+  email_enabled: boolean
+  email_reminder_days: number[]
+}
+
 export interface RefundResult {
   success: boolean
   warning?: string
@@ -80,6 +96,16 @@ export const adminPaymentAPI = {
   /** Update payment configuration */
   updateConfig(data: UpdatePaymentConfigRequest) {
     return apiClient.put('/admin/payment/config', data)
+  },
+
+  /** Get the dedicated subscription renewal campaign settings. */
+  getRenewalSettings() {
+    return apiClient.get<RenewalSettings>('/admin/payment/renewal')
+  },
+
+  /** Update only subscription renewal campaign settings. */
+  updateRenewalSettings(data: RenewalSettings) {
+    return apiClient.put<RenewalSettings>('/admin/payment/renewal', data)
   },
 
   // ==================== Dashboard ====================

@@ -471,3 +471,30 @@ func (h *PaymentHandler) UpdateConfig(c *gin.Context) {
 	}
 	response.Success(c, gin.H{"message": "updated"})
 }
+
+// GetRenewalSettings returns the dedicated subscription renewal campaign settings.
+// GET /api/v1/admin/payment/renewal
+func (h *PaymentHandler) GetRenewalSettings(c *gin.Context) {
+	settings, err := h.configService.GetRenewalSettings(c.Request.Context())
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, settings)
+}
+
+// UpdateRenewalSettings updates only subscription renewal campaign settings.
+// PUT /api/v1/admin/payment/renewal
+func (h *PaymentHandler) UpdateRenewalSettings(c *gin.Context) {
+	var req service.RenewalSettings
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Invalid request: "+err.Error())
+		return
+	}
+	settings, err := h.configService.UpdateRenewalSettings(c.Request.Context(), req)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, settings)
+}

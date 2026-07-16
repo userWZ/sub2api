@@ -893,8 +893,11 @@ func notificationEmailSampleVariables(locale string) map[string]string {
 			"renewal_discount":    "10.00",
 			"rollover_amount":     "12.00",
 			"window_days":         "14",
+			"before_days":         "14",
+			"after_days":          "14",
 			"discount_percent":    "10",
 			"rollover_percent":    "20",
+			"offer_summary":       "10% 续订优惠，未用月额度的 20% 结转至余额",
 			"renew_url":           "https://example.com/payment?tab=subscription",
 		}
 	}
@@ -945,8 +948,11 @@ func notificationEmailSampleVariables(locale string) map[string]string {
 		"renewal_discount":    "10.00",
 		"rollover_amount":     "12.00",
 		"window_days":         "14",
+		"before_days":         "14",
+		"after_days":          "14",
 		"discount_percent":    "10",
 		"rollover_percent":    "20",
+		"offer_summary":       "10% renewal discount and 20% of unused monthly credit carried to balance",
 		"renew_url":           "https://example.com/payment?tab=subscription",
 	}
 }
@@ -1016,7 +1022,7 @@ var notificationEmailEventDefinitions = map[string]NotificationEmailEventInfo{
 		Description:  "Optional reminder sent when a subscription enters the configured renewal window.",
 		Category:     "subscription",
 		Optional:     true,
-		Placeholders: append(append([]string{}, notificationEmailCommonPlaceholders...), "subscription_group", "expiry_time", "window_days", "discount_percent", "rollover_percent", "renew_url", "unsubscribe_url"),
+		Placeholders: append(append([]string{}, notificationEmailCommonPlaceholders...), "subscription_group", "expiry_time", "window_days", "before_days", "after_days", "discount_percent", "rollover_percent", "offer_summary", "renew_url", "unsubscribe_url"),
 	},
 	NotificationEmailEventSubscriptionExpiryReminder: {
 		Event:        NotificationEmailEventSubscriptionExpiryReminder,
@@ -1208,7 +1214,7 @@ var notificationEmailOfficialTemplates = map[string]map[string]notificationEmail
 			HTML: notificationEmailCard("#7c3aed", "Renew and keep more value", `
 <p>Hello {{recipient_name}},</p>
 <p>Your <strong>{{subscription_group}}</strong> subscription expires at <strong>{{expiry_time}}</strong>.</p>
-<p>Renew within <strong>{{window_days}} days before or after expiry</strong> to receive <strong>{{discount_percent}}% off</strong> and carry <strong>{{rollover_percent}}%</strong> of unused monthly credit into your balance.</p>
+<p>Renew from <strong>{{before_days}} days before</strong> through <strong>{{after_days}} days after</strong> expiry to receive: <strong>{{offer_summary}}</strong>.</p>
 <p><a class="button" href="{{renew_url}}">Renew subscription</a></p>
 <p class="muted"><a href="{{unsubscribe_url}}">Unsubscribe from optional subscription reminders</a></p>`),
 		},
@@ -1217,7 +1223,7 @@ var notificationEmailOfficialTemplates = map[string]map[string]notificationEmail
 			HTML: notificationEmailCard("#7c3aed", "续订更划算", `
 <p>{{recipient_name}}，您好：</p>
 <p>您的 <strong>{{subscription_group}}</strong> 订阅将于 <strong>{{expiry_time}}</strong> 到期。</p>
-<p>在到期前后 <strong>{{window_days}} 天</strong>内续订，可享 <strong>{{discount_percent}}% 续订优惠</strong>，并将上月未用月额度的 <strong>{{rollover_percent}}%</strong> 结转至余额。</p>
+<p>在到期前 <strong>{{before_days}} 天</strong>至到期后 <strong>{{after_days}} 天</strong>内续订，可享：<strong>{{offer_summary}}</strong>。</p>
 <p><a class="button" href="{{renew_url}}">立即续订</a></p>
 <p class="muted"><a href="{{unsubscribe_url}}">退订此类订阅提醒</a></p>`),
 		},

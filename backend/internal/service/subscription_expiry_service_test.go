@@ -136,7 +136,14 @@ func (r *subscriptionExpirySettingRepoStub) Set(context.Context, string, string)
 }
 
 func (r *subscriptionExpirySettingRepoStub) GetMultiple(context.Context, []string) (map[string]string, error) {
-	return nil, nil
+	if r.err != nil {
+		return nil, r.err
+	}
+	result := make(map[string]string, len(r.values))
+	for key, value := range r.values {
+		result[key] = value
+	}
+	return result, nil
 }
 
 func (r *subscriptionExpirySettingRepoStub) SetMultiple(context.Context, map[string]string) error {
@@ -177,4 +184,27 @@ func TestSubscriptionExpiryService_ExpiryReminderSettingReadErrorFailsClosed(t *
 	svc.SetSettingRepository(&subscriptionExpirySettingRepoStub{err: errors.New("db down")})
 
 	require.False(t, svc.expiryReminderEnabled(context.Background()))
+}
+
+func TestSubscriptionExpiryService_RenewalEmailScansWhenGenericExpiryEmailDisabled(t *testing.T) {
+	repo := &subscriptionExpiryRepoStub{}
+	settingRepo := &subscriptionExpirySettingRepoStub{values: map[string]string{
+		SettingKeySubscriptionExpiryNotifyEnabled: "false",
+		SettingRenewalOfferEnabled:                "true",
+		SettingRenewalEmailEnabled:                "true",
+		SettingRenewalDiscountEnabled:             "true",
+	}}
+	svc := NewSubscriptionExpiryService(repo, time.Minute)
+	svc.SetSettingRepository(settingRepo)
+	svc.SetNotificationEmailService(NewNotificationEmailService(settingRepo, nil))
+
+	svc.sendExpiryReminders(context.Background())
+
+	require.Equal(t, 1, repo.listCalls)
+}
+
+func TestRenewalReminderDayDuePrefersExactMilestone(t *testing.T) {
+	day, due := renewalReminderDayDue(0, []int{1, 0})
+	require.True(t, due)
+	require.Equal(t, 0, day)
 }

@@ -60,9 +60,9 @@ func (s *PaymentService) CreateOrder(ctx context.Context, req CreateOrderRequest
 		orderAmount = plan.Price
 		limitAmount = plan.Price
 		originalOrderAmount = plan.Price
-		renewalQuote = s.quoteRenewalOffer(ctx, req.UserID, plan.GroupID, cfg, time.Now())
+		renewalQuote = s.quoteRenewalOffer(ctx, req.UserID, plan.GroupID, plan.Price, cfg, time.Now())
 		if renewalQuote.Eligible {
-			orderAmount = renewalDiscountedAmount(plan.Price, renewalQuote.DiscountPercent)
+			orderAmount = roundRenewalCurrency(math.Max(plan.Price-renewalQuote.DiscountAmount, 0))
 			limitAmount = orderAmount
 		}
 	} else if req.OrderType == payment.OrderTypeBalance {

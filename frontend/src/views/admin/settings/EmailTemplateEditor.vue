@@ -60,7 +60,7 @@
               id="email-template-event"
               v-model="selectedEvent"
               class="input"
-              :disabled="loadingTemplate || eventOptions.length === 0"
+              :disabled="loadingTemplate || eventOptions.length === 0 || lockEvent"
             >
               <option
                 v-for="option in eventOptions"
@@ -240,6 +240,14 @@ import type {
 import { useAppStore } from "@/stores";
 import { extractApiErrorMessage } from "@/utils/apiError";
 
+const props = withDefaults(defineProps<{
+  event?: string;
+  lockEvent?: boolean;
+}>(), {
+  event: "",
+  lockEvent: false,
+});
+
 const { t, locale } = useI18n();
 const appStore = useAppStore();
 
@@ -254,6 +262,12 @@ const fallbackPlaceholders = [
   "{{subscription_days}}",
   "{{expiry_time}}",
   "{{days_remaining}}",
+	"{{before_days}}",
+	"{{after_days}}",
+	"{{discount_percent}}",
+	"{{rollover_percent}}",
+	"{{offer_summary}}",
+	"{{renew_url}}",
   "{{current_balance}}",
   "{{threshold}}",
   "{{recharge_url}}",
@@ -337,6 +351,11 @@ const eventDisplayMeta: Record<string, EventDisplayMeta> = {
     timing: "订阅订单完成支付并成功开通或续期后发送。",
     categoryLabel: "订阅",
   },
+  "subscription.renewal_offer": {
+    label: "订阅续订活动提醒",
+    timing: "按照续订活动页面配置的提醒节点发送；每个订阅在每个节点最多发送一次。",
+    categoryLabel: "订阅",
+  },
   "subscription.expiry_reminder": {
     label: "订阅到期提醒",
     timing: "后台任务在订阅仍有效且距离到期剩余 7 天、3 天、1 天时各发送一次，可通过邮件设置中的开关关闭。",
@@ -398,6 +417,11 @@ const eventDisplayMetaEn: Record<string, EventDisplayMeta> = {
   "subscription.purchase_success": {
     label: "Subscription Activated",
     timing: "Sent after a subscription order is paid and the subscription is activated or extended.",
+    categoryLabel: "Subscription",
+  },
+  "subscription.renewal_offer": {
+    label: "Subscription Renewal Campaign",
+    timing: "Sent at the reminder milestones configured on the renewal campaign page, at most once per subscription and milestone.",
     categoryLabel: "Subscription",
   },
   "subscription.expiry_reminder": {
@@ -593,11 +617,14 @@ async function loadTemplateList() {
   loadingList.value = true;
   try {
     const response = await adminAPI.settings.getEmailTemplates();
-    eventOptions.value = response.events.map(normalizeEventOption);
+    const allEvents = response.events.map(normalizeEventOption);
+    eventOptions.value = props.event
+      ? allEvents.filter((option) => option.value === props.event)
+      : allEvents;
     localeOptions.value = response.locales;
     placeholders.value = response.placeholders || [];
     initializingSelection.value = true;
-    selectedEvent.value = eventOptions.value[0]?.value || "";
+    selectedEvent.value = props.event || eventOptions.value[0]?.value || "";
     selectedLocale.value = selectInitialLocale(response.locales);
     await loadTemplate();
     initializingSelection.value = false;

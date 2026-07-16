@@ -81,8 +81,12 @@ export interface CheckoutInfoResponse {
 	 renewal_offer?: {
 	  enabled: boolean
 	  window_days: number
-	  rollover_percent: number
+	  before_expiry_days: number
+	  after_expiry_days: number
+	  discount_enabled: boolean
 	  discount_percent: number
+	  rollover_enabled: boolean
+	  rollover_percent: number
 	}
 }
 
